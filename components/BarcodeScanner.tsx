@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Alert, SafeAreaView, StatusBar, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Alert, StatusBar, Keyboard } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
@@ -80,6 +81,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [barcodeInput, setBarcodeInput] = useState('');
   const inputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
@@ -211,7 +213,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
       <StatusBar barStyle="light-content" />
-      <SafeAreaView style={localStyles.container}>
+      <View style={[localStyles.container, { paddingTop: insets.top }]}>
         <View style={localStyles.header}>
           <TouchableOpacity style={localStyles.closeBtn} onPress={handleClose}>
             <Icon name="close" size={24} color="#F0F0F2" />
@@ -305,7 +307,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
             </View>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
