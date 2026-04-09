@@ -22,13 +22,18 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.CaobaPOS"
+      "package": "com.caoba.pos"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8db7ca9e-d037-4d51-8b6f-257dd189314a"
+      }
+    }
   }
 }
