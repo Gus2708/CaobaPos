@@ -95,7 +95,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, barcode, image_url')
+        .select('id, name, price, cost, barcode, image_url')
         .eq('is_active', true);
       if (error) throw error;
       return data ?? [];

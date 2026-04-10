@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CartItem as CartItemType } from '../store/cartStore';
+import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 
@@ -69,7 +70,7 @@ export const CartItemRow = memo(function CartItemRow({
           activeOpacity={0.7}
           accessibilityLabel="Eliminar producto"
         >
-          <Icon name="trash" size={14} color="#C96B6B" />
+          <Icon name="trash" size={18} color="#C96B6B" />
         </TouchableOpacity>
       </View>
     </View>
@@ -86,7 +87,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginVertical: 4,
     borderRadius: 14,
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
     overflow: 'hidden',
@@ -158,8 +159,10 @@ const styles = StyleSheet.create({
     color: '#B87B5A',
   },
   removeButton: {
-    padding: 4,
-    borderRadius: 6,
-    backgroundColor: 'rgba(201, 107, 107, 0.1)',
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(201, 107, 107, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 107, 107, 0.2)',
   },
 });

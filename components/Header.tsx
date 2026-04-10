@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, Platform, StatusBar } from 'react-native';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontNames } from '../lib/fontNames';
+import { tokens } from '../lib/designTokens';
 
 export function Header() {
   const [time, setTime] = useState(new Date());
@@ -12,45 +13,47 @@ export function Header() {
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('es-MX', {
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString('es-MX', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
     });
-  };
+
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('es-MX', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
 
   return (
-    <View style={[styles.container, { paddingTop: statusBarHeight + 12 }]}>
-      <LinearGradient
-        colors={['rgba(10, 10, 12, 0.95)', 'rgba(10, 10, 12, 0.85)']}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.topBorder} />
-      <View style={styles.shimmer} />
-      
+    <View style={[styles.container, { paddingTop: statusBarHeight + 10 }]}>
+
+
+
       <View style={styles.content}>
+        {/* Logo */}
         <View style={styles.logoSection}>
           <View style={styles.logoIcon}>
             <LinearGradient
-              colors={['#B87B5A', '#8B5A3C']}
+              colors={[tokens.colors.mahogany, tokens.colors.mahoganyDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.logoGradient}
+              style={StyleSheet.absoluteFillObject}
             />
             <Text style={styles.logoIconText}>C</Text>
           </View>
           <View style={styles.logoText}>
             <Text style={styles.logoTextMain}>CAOBA</Text>
-            <Text style={styles.logoTextSub}>PUNTO DE VENTA</Text>
+            <Text style={styles.logoTextSub}>{formatDate(time)}</Text>
           </View>
         </View>
-        
+
+        {/* Time — no container box */}
         <View style={styles.timeSection}>
-          <View style={styles.timeContainer}>
-            <Text style={styles.timeText}>{formatTime(time)}</Text>
-            <View style={styles.timeIndicator} />
-          </View>
+          <Text style={styles.timeText}>{formatTime(time)}</Text>
+          <View style={styles.liveIndicator} />
         </View>
       </View>
     </View>
@@ -60,34 +63,11 @@ export function Header() {
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
-    backgroundColor: 'rgba(10, 10, 12, 0.95)',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(184, 123, 90, 0.15)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: tokens.colors.bg,
+    paddingHorizontal: tokens.spacing.xl,
+    paddingBottom: tokens.spacing.sm,
   },
-  topBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    backgroundColor: 'rgba(184, 123, 90, 0.03)',
-    transform: [{ skewX: '-20deg' }],
-  },
+  accentLine: {},
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -96,83 +76,58 @@ const styles = StyleSheet.create({
   logoSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: tokens.spacing.md,
   },
   logoIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: tokens.radius.icon,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
-    shadowColor: '#B87B5A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  logoGradient: {
-    ...StyleSheet.absoluteFillObject,
+    borderColor: tokens.colors.borderAccent,
   },
   logoIconText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: 22,
-    fontWeight: '800',
-    color: '#F0F0F2',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontWeight: tokens.typography.extrabold,
+    color: tokens.colors.text,
   },
   logoText: {
-    gap: 2,
+    gap: 1,
   },
   logoTextMain: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#F0F0F2',
+    fontSize: tokens.typography['3xl'],
+    fontWeight: tokens.typography.extrabold,
+    color: tokens.colors.text,
     letterSpacing: 3,
   },
   logoTextSub: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#B87B5A',
-    letterSpacing: 2,
-    marginTop: 2,
+    fontSize: tokens.typography.xs,
+    fontWeight: tokens.typography.medium,
+    color: tokens.colors.mahogany,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   timeSection: {
-    alignItems: 'flex-end',
-  },
-  timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(30, 30, 36, 0.6)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    gap: tokens.spacing.sm,
   },
   timeText: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#F0F0F2',
-    letterSpacing: 1,
+    fontSize: tokens.typography.xl,
+    fontWeight: tokens.typography.semibold,
+    color: tokens.colors.text,
+    letterSpacing: 0.5,
   },
-  timeIndicator: {
+  liveIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#6DB88A',
-    shadowColor: '#6DB88A',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: tokens.colors.sage,
   },
 });

@@ -1,10 +1,13 @@
 import React, { useMemo, memo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from '../components/Icon';
+import { tokens } from '../lib/designTokens';
+import { generateDailyReport } from '../lib/pdfReportGenerator';
+import { useToast } from '../components/Toast';
 
 interface Sale {
   id: string;
@@ -16,46 +19,49 @@ interface Sale {
 interface SaleItem {
   product_id: string;
   quantity: number;
+  unit_price: number;
+  subtotal: number;
 }
 
 interface Product {
   id: string;
   name: string;
+  cost: number;
+  price: number;
   stock_quantity: number;
 }
 
 interface StatCardProps {
   label: string;
   value: string;
-  variant?: 'default' | 'accent' | 'success' | 'warning';
+  variant?: 'default' | 'accent' | 'success' | 'warning' | 'profit';
   icon: string;
+  subtitle?: string;
 }
 
-const StatCard = memo(function StatCard({ label, value, variant = 'default', icon }: StatCardProps) {
-  const colors = {
-    default: { bg: 'rgba(30, 30, 36, 0.6)', accent: '#B87B5A' },
-    accent: { bg: 'rgba(184, 123, 90, 0.15)', accent: '#B87B5A' },
-    success: { bg: 'rgba(109, 184, 138, 0.12)', accent: '#6DB88A' },
-    warning: { bg: 'rgba(201, 107, 107, 0.12)', accent: '#C96B6B' },
+const StatCard = memo(function StatCard({ label, value, variant = 'default', icon, subtitle }: StatCardProps) {
+  const bgColors = {
+    default: { bg: tokens.colors.bg, accent: '#B87B5A' },
+    accent: { bg: tokens.colors.bg, accent: '#B87B5A' },
+    success: { bg: tokens.colors.bg, accent: '#6DB88A' },
+    warning: { bg: tokens.colors.bg, accent: '#C96B6B' },
+    profit: { bg: tokens.colors.bg, accent: '#6DB88A' },
   };
+  const c = bgColors[variant];
 
   return (
-    <View style={styles.statCard}>
-      <LinearGradient
-        colors={[colors[variant].bg, 'rgba(30, 30, 36, 0.3)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.statCard, { backgroundColor: c.bg }]}>
+      {/* Top accent stripe */}
+      <View style={[styles.statAccentBar, { backgroundColor: c.accent }]} />
       <View style={styles.statBorder} />
       <View style={styles.statHeader}>
-        <View style={[styles.statIconContainer, { backgroundColor: `${colors[variant].accent}20` }]}>
-          <Icon name={icon} size={18} color={colors[variant].accent} />
+        <View style={[styles.statIconContainer, { backgroundColor: `${c.accent}22` }]}>
+          <Icon name={icon} size={16} color={c.accent} />
         </View>
         <Text style={styles.statLabel}>{label}</Text>
       </View>
-      <Text style={[styles.statValue, { color: colors[variant].accent }]}>{value}</Text>
-      <View style={[styles.statGlow, { backgroundColor: colors[variant].accent }]} />
+      <Text style={[styles.statValue, { color: c.accent }]}>{value}</Text>
+      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
     </View>
   );
 });
@@ -73,10 +79,12 @@ export const DashboardPanel = memo(function DashboardPanel() {
     },
   });
 
-  const { data: items } = useQuery<SaleItem[]>({
+  const { data: saleItems } = useQuery<SaleItem[]>({
     queryKey: ['dashboard', 'sale_items'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('sale_items').select('product_id, quantity');
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('product_id, quantity, unit_price, subtotal');
       if (error) throw error;
       return data ?? [];
     },
@@ -85,7 +93,9 @@ export const DashboardPanel = memo(function DashboardPanel() {
   const { data: products } = useQuery<Product[]>({
     queryKey: ['dashboard', 'products'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('products').select('id,name,stock_quantity');
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, cost, price, stock_quantity');
       if (error) throw error;
       return data ?? [];
     },
@@ -114,9 +124,68 @@ export const DashboardPanel = memo(function DashboardPanel() {
     [sales, weekAgo]
   );
 
-  const todayRevenue = todaySales.reduce((acc, s) => acc + Number(s.total_amount), 0);
-  const weekRevenue = weekSales.reduce((acc, s) => acc + Number(s.total_amount), 0);
-  const totalRevenue = (sales ?? []).reduce((acc, s) => acc + Number(s.total_amount), 0);
+  const productMap = useMemo(() => {
+    const map: Record<string, Product> = {};
+    (products ?? []).forEach(p => { map[p.id] = p; });
+    return map;
+  }, [products]);
+
+  const calculateMetrics = useMemo(() => {
+    const revenue = (saleItems ?? []).reduce((acc, item) => acc + Number(item.subtotal), 0);
+    const cost = (saleItems ?? []).reduce((acc, item) => {
+      const product = productMap[item.product_id];
+      return acc + (product ? Number(product.cost || 0) * item.quantity : 0);
+    }, 0);
+    const profit = revenue - cost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    return { revenue, cost, profit, margin };
+  }, [saleItems, productMap]);
+
+  const calculateMetricsForSales = useMemo(() => {
+    return (saleList: Sale[]) => {
+      const saleIds = new Set(saleList.map(s => s.id));
+      const relevantItems = (saleItems ?? []).filter(item => {
+        return true;
+      });
+      const revenue = saleList.reduce((acc, s) => acc + Number(s.total_amount), 0);
+      const cost = (saleItems ?? []).reduce((acc, item) => {
+        const product = productMap[item.product_id];
+        return acc + (product ? Number(product.cost || 0) * item.quantity : 0);
+      }, 0);
+      const profit = revenue - cost;
+      return { revenue, cost, profit };
+    };
+  }, [saleItems, productMap]);
+
+  const todayMetrics = useMemo(() => calculateMetricsForSales(todaySales), [todaySales, calculateMetricsForSales]);
+  const weekMetrics = useMemo(() => calculateMetricsForSales(weekSales), [weekSales, calculateMetricsForSales]);
+  const totalMetrics = useMemo(() => calculateMetrics, [calculateMetrics]);
+
+  const { showToast } = useToast();
+
+  const handleDownloadPDF = async () => {
+    try {
+      if (todaySales.length === 0) {
+        showToast('No hay ventas hoy para generar el reporte', 'warning');
+        return;
+      }
+      await generateDailyReport(todaySales, todayMetrics);
+      showToast('Reporte generado con éxito', 'success');
+    } catch (error) {
+      showToast('Error al generar el PDF', 'error');
+      console.error(error);
+    }
+  };
+
+  const paymentBreakdown = useMemo(() => {
+    const counts: Record<string, number> = { cash: 0, card: 0, transfer: 0 };
+    (sales ?? []).forEach(s => {
+      if (counts[s.payment_method] !== undefined) {
+        counts[s.payment_method]++;
+      }
+    });
+    return counts;
+  }, [sales]);
 
   const lowStock = useMemo(
     () => (products ?? []).filter((p) => p.stock_quantity < 10).slice(0, 5),
@@ -124,9 +193,9 @@ export const DashboardPanel = memo(function DashboardPanel() {
   );
 
   const topProducts = useMemo(() => {
-    if (!items || !products) return [];
+    if (!saleItems || !products) return [];
     const sums: Record<string, number> = {};
-    items.forEach((it) => {
+    saleItems.forEach((it) => {
       sums[it.product_id] = (sums[it.product_id] ?? 0) + it.quantity;
     });
     return Object.entries(sums)
@@ -136,7 +205,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
         name: products.find((p) => p.id === id)?.name ?? 'Desconocido',
         qty,
       }));
-  }, [items, products]);
+  }, [saleItems, products]);
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -152,7 +221,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
     return (
       <View style={styles.loading}>
         <LinearGradient
-          colors={['rgba(30, 30, 36, 0.8)', 'rgba(10, 10, 12, 0.9)']}
+          colors={['rgba(10, 10, 12, 0.8)', 'rgba(10, 10, 12, 0.9)']}
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.loadingContent}>
@@ -170,48 +239,116 @@ export const DashboardPanel = memo(function DashboardPanel() {
       contentContainerStyle={styles.content}
     >
       <LinearGradient
-        colors={['rgba(20, 20, 26, 0.95)', 'rgba(10, 10, 12, 0.98)']}
+        colors={['rgba(10, 10, 12, 0.95)', 'rgba(10, 10, 12, 0.98)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
-        <View style={styles.headerBadge}>
-          <View style={styles.statusDot} />
-          <Text style={styles.headerBadgeText}>En vivo</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.title}>Dashboard</Text>
+          <View style={styles.headerBadge}>
+            <View style={styles.statusDot} />
+            <Text style={styles.headerBadgeText}>En vivo</Text>
+          </View>
+        </View>
+        <TouchableOpacity 
+          style={styles.downloadBtn}
+          onPress={handleDownloadPDF}
+          activeOpacity={0.7}
+        >
+          <Icon name="file-pdf" size={14} color="#B87B5A" />
+          <Text style={styles.downloadBtnText}>PDF</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <StatCard 
+          label="Ventas Hoy" 
+          value={`${todaySales.length}`} 
+          variant="accent"
+          icon="receipt"
+        />
+        <StatCard 
+          label="Ganancia Hoy" 
+          value={`$${todayMetrics.profit.toFixed(2)}`}
+          variant="success"
+          icon="trending-up"
+          subtitle={`Margen: ${todayMetrics.revenue > 0 ? ((todayMetrics.profit / todayMetrics.revenue) * 100).toFixed(1) : 0}%`}
+        />
+      </View>
+
+      <View style={styles.statsGrid}>
+        <StatCard 
+          label="Semana" 
+          value={`$${weekMetrics.profit.toFixed(2)}`}
+          variant="profit"
+          icon="trending-up"
+          subtitle={`Ventas: $${weekMetrics.revenue.toFixed(2)}`}
+        />
+        <StatCard 
+          label="Ganancia Total" 
+          value={`$${totalMetrics.profit.toFixed(2)}`}
+          variant="success"
+          icon="chart-line"
+          subtitle={`Margen: ${totalMetrics.margin.toFixed(1)}%`}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIcon, { backgroundColor: 'rgba(109, 184, 138, 0.15)' }]}>
+            <Icon name="chart-pie" size={18} color="#6DB88A" />
+          </View>
+          <Text style={styles.sectionTitle}>Resumen Financiero</Text>
+        </View>
+        <View style={styles.financialGrid}>
+          <View style={styles.financialItem}>
+            <Text style={styles.financialLabel}>Ventas Totales</Text>
+            <Text style={styles.financialValue}>${totalMetrics.revenue.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialItem}>
+            <Text style={styles.financialLabel}>Costos Totales</Text>
+            <Text style={styles.financialValueCost}>-${totalMetrics.cost.toFixed(2)}</Text>
+          </View>
+          <View style={[styles.financialItem, styles.financialItemHighlight]}>
+            <Text style={styles.financialLabelHighlight}>Ganancia Neta</Text>
+            <Text style={styles.financialValueProfit}>${totalMetrics.profit.toFixed(2)}</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.statsGrid}>
-        <StatCard 
-          label="Hoy" 
-          value={`$${todayRevenue.toFixed(2)}`} 
-          variant="accent"
-          icon="money-bill"
-        />
-        <StatCard 
-          label="Esta Semana" 
-          value={`$${weekRevenue.toFixed(2)}`} 
-          variant="success"
-          icon="folder"
-        />
-      </View>
-
-      <View style={styles.statsGrid}>
-        <StatCard 
-          label="Total" 
-          value={`$${totalRevenue.toFixed(2)}`} 
-          variant="default"
-          icon="cart"
-        />
-        <StatCard 
-          label="Ventas" 
-          value={`${(sales ?? []).length}`} 
-          variant="default"
-          icon="document"
-        />
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionIcon}>
+            <Icon name="credit-card" size={18} color="#B87B5A" />
+          </View>
+          <Text style={styles.sectionTitle}>Metodos de Pago</Text>
+        </View>
+        <View style={styles.paymentMethodsGrid}>
+          <View style={styles.paymentMethodItem}>
+            <View style={styles.paymentMethodIcon}>
+              <Icon name="money-bill" size={16} color="#B87B5A" />
+            </View>
+            <Text style={styles.paymentMethodLabel}>Efectivo</Text>
+            <Text style={styles.paymentMethodValue}>{paymentBreakdown.cash}</Text>
+          </View>
+          <View style={styles.paymentMethodItem}>
+            <View style={styles.paymentMethodIcon}>
+              <Icon name="credit-card" size={16} color="#B87B5A" />
+            </View>
+            <Text style={styles.paymentMethodLabel}>Tarjeta</Text>
+            <Text style={styles.paymentMethodValue}>{paymentBreakdown.card}</Text>
+          </View>
+          <View style={styles.paymentMethodItem}>
+            <View style={styles.paymentMethodIcon}>
+              <Icon name="mobile-alt" size={16} color="#B87B5A" />
+            </View>
+            <Text style={styles.paymentMethodLabel}>Transf.</Text>
+            <Text style={styles.paymentMethodValue}>{paymentBreakdown.transfer}</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -246,7 +383,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionIcon, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
-              <Icon name="trash" size={18} color="#C96B6B" />
+              <Icon name="exclamation-triangle" size={18} color="#C96B6B" />
             </View>
             <Text style={[styles.sectionTitle, { color: '#C96B6B' }]}>Stock Bajo</Text>
           </View>
@@ -255,7 +392,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
               <View key={i} style={styles.listItem}>
                 <View style={styles.listItemLeft}>
                   <View style={[styles.rankBadge, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
-                    <Icon name="trash" size={12} color="#C96B6B" />
+                    <Icon name="box" size={12} color="#C96B6B" />
                   </View>
                   <Text style={styles.listText}>{p.name}</Text>
                 </View>
@@ -273,7 +410,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionIcon}>
-            <Icon name="document" size={18} color="#B87B5A" />
+            <Icon name="clock" size={18} color="#B87B5A" />
           </View>
           <Text style={styles.sectionTitle}>Ventas Recientes</Text>
         </View>
@@ -305,6 +442,7 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     position: 'relative',
+    backgroundColor: tokens.colors.bg,
   },
   content: {
     padding: 16,
@@ -338,14 +476,38 @@ const styles = StyleSheet.create({
     fontWeight: '800', 
     letterSpacing: 1,
   },
+  headerTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 12,
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 123, 90, 0.2)',
+  },
+  downloadBtnText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B87B5A',
+    textTransform: 'uppercase',
+  },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(109, 184, 138, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
+    backgroundColor: 'rgba(109, 184, 138, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 4,
   },
   statusDot: {
     width: 8,
@@ -355,9 +517,10 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: '#6DB88A',
+    textTransform: 'uppercase',
   },
   statsGrid: { 
     flexDirection: 'row', 
@@ -367,50 +530,62 @@ const styles = StyleSheet.create({
   statCard: { 
     flex: 1, 
     position: 'relative',
-    padding: 18, 
+    padding: 16,
+    paddingTop: 18,
     borderRadius: 20, 
     borderWidth: 1, 
-    borderColor: 'rgba(184, 123, 90, 0.15)',
+    borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
   },
-  statBorder: {
+  statAccentBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    height: 3,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    opacity: 0.85,
+  },
+  statBorder: {
+    position: 'absolute',
+    top: 3,
+    left: 0,
+    right: 0,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   statHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   statIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   statLabel: { 
     fontFamily: FontNames.instrumentSans, 
     color: '#8A8A96', 
-    fontSize: 12, 
+    fontSize: 11, 
     fontWeight: '600',
     textTransform: 'uppercase', 
     letterSpacing: 0.5,
   },
   statValue: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: 24, 
+    fontSize: 22, 
     fontWeight: '800',
+  },
+  statSubtitle: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 11,
+    color: '#8A8A96',
+    marginTop: 4,
   },
   statGlow: {
     position: 'absolute',
@@ -445,11 +620,66 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionCard: { 
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: 20, 
     padding: 16,
     borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  financialGrid: {
+    backgroundColor: tokens.colors.bg,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 12,
+  },
+  financialItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  financialItemHighlight: {
+    backgroundColor: 'rgba(109, 184, 138, 0.1)',
+    marginHorizontal: -16,
+    marginBottom: -16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 0,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  financialLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 14,
+    color: '#8A8A96',
+  },
+  financialLabelHighlight: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6DB88A',
+  },
+  financialValue: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F0F0F2',
+  },
+  financialValueCost: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#C96B6B',
+  },
+  financialValueProfit: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#6DB88A',
   },
   listItem: { 
     flexDirection: 'row', 
@@ -503,7 +733,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     paddingVertical: 14,
     borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   saleLeft: {
     gap: 6,
@@ -524,7 +754,7 @@ const styles = StyleSheet.create({
   saleMethod: { 
     fontFamily: FontNames.instrumentSans, 
     color: '#8A8A96', 
-    fontSize: 11, 
+    fontSize: 11,
     textTransform: 'capitalize',
   },
   saleRight: { 
@@ -548,5 +778,43 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
     marginTop: 16,
     marginBottom: 8,
+  },
+  paymentMethodsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  paymentMethodItem: {
+    flexGrow: 1,
+    minWidth: 100,
+    backgroundColor: tokens.colors.bg,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  paymentMethodIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  paymentMethodLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 12,
+    color: '#8A8A96',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  paymentMethodValue: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F0F0F2',
   },
 });
