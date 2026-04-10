@@ -8,11 +8,14 @@ import { FontNames } from '../lib/fontNames';
 import { pickFromCamera, pickFromGallery, uploadProductImage } from '../lib/imageUpload';
 import { Icon } from '../components/Icon';
 import { ImagePickerModal } from '../components/ImagePickerModal';
+import { useToast } from '../components/Toast';
+import { tokens } from '../lib/designTokens';
 
 interface EditState {
   id: string;
   name: string;
   price: string;
+  cost: string;
   stock: string;
   categories: string[];
   barcode: string;
@@ -23,6 +26,7 @@ interface EditState {
 interface NewProductState {
   name: string;
   price: string;
+  cost: string;
   stock: string;
   categories: string[];
   barcode: string;
@@ -33,12 +37,13 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<EditState | null>(null);
-  const [newProduct, setNewProduct] = useState<NewProductState>({ name: '', price: '', stock: '', categories: [], barcode: '' });
+  const [newProduct, setNewProduct] = useState<NewProductState>({ name: '', price: '', cost: '', stock: '', categories: [], barcode: '' });
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [imagePickerTarget, setImagePickerTarget] = useState<'new' | 'edit'>('new');
+  const { showToast } = useToast();
   
   const categories = useSettingsStore((state) => state.categories);
   const addCategory = useSettingsStore((state) => state.addCategory);
@@ -99,6 +104,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       const updates: Record<string, any> = {
         name: item.name,
         price: parseFloat(item.price) || 0,
+        cost: parseFloat(item.cost) || 0,
         stock_quantity: parseInt(item.stock) || 0,
       };
       
@@ -122,9 +128,9 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       setEditing(null);
-      Alert.alert('Éxito', 'Producto actualizado');
+      showToast('Producto actualizado', 'success');
     },
-    onError: () => Alert.alert('Error', 'No se pudo actualizar'),
+    onError: () => showToast('No se pudo actualizar', 'error'),
   });
 
   const deleteMutation = useMutation({
@@ -133,7 +139,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory-products'] }),
-    onError: () => Alert.alert('Error', 'No se pudo eliminar'),
+    onError: () => showToast('No se pudo eliminar', 'error'),
   });
 
   const createMutation = useMutation({
@@ -141,6 +147,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       const { data, error: insertError } = await supabase.from('products').insert({
         name: newProduct.name,
         price: parseFloat(newProduct.price) || 0,
+        cost: parseFloat(newProduct.cost) || 0,
         stock_quantity: parseInt(newProduct.stock) || 0,
         barcode: newProduct.barcode || null,
         is_active: true,
@@ -172,18 +179,18 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      setNewProduct({ name: '', price: '', stock: '', categories: [], barcode: '' });
+      setNewProduct({ name: '', price: '', cost: '', stock: '', categories: [], barcode: '' });
       setShowAddForm(false);
-      Alert.alert('Éxito', 'Producto agregado');
+      showToast('Producto agregado', 'success');
     },
-    onError: () => Alert.alert('Error', 'No se pudo crear el producto'),
+    onError: () => showToast('No se pudo crear el producto', 'error'),
   });
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
     addCategory(newCategoryName.trim());
     setNewCategoryName('');
-    Alert.alert('Éxito', 'Categoría agregada');
+    showToast('Categoría agregada', 'success');
   };
 
   const handleDeleteCategory = (cat: string) => {
@@ -250,6 +257,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       id: product.id,
       name: product.name,
       price: String(product.price),
+      cost: String(product.cost || 0),
       stock: String(product.stock_quantity),
       categories: product.categories || [],
       barcode: product.barcode || '',
@@ -260,11 +268,11 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
   const saveEdit = () => {
     if (!editing) return;
     if (!editing.name.trim()) {
-      Alert.alert('Error', 'El nombre es requerido');
+      showToast('El nombre es requerido', 'warning');
       return;
     }
     if (editing.categories.length === 0) {
-      Alert.alert('Error', 'Selecciona al menos una categoría');
+      showToast('Selecciona al menos una categoría', 'warning');
       return;
     }
     updateMutation.mutate(editing);
@@ -275,7 +283,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       return (
         <View style={styles.editCard}>
           <LinearGradient
-            colors={['rgba(30, 30, 36, 0.6)', 'rgba(20, 20, 26, 0.4)']}
+            colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -310,11 +318,22 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
           />
           <View style={styles.row}>
             <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Precio</Text>
+              <Text style={styles.inputLabel}>Precio Venta</Text>
               <TextInput
                 style={styles.input}
                 value={editing.price}
                 onChangeText={(v) => setEditing((e) => e ? { ...e, price: v } : null)}
+                placeholder="0.00"
+                placeholderTextColor="#6A6A72"
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View style={[styles.flex1, styles.formSection]}>
+              <Text style={styles.inputLabel}>Costo</Text>
+              <TextInput
+                style={styles.input}
+                value={editing.cost}
+                onChangeText={(v) => setEditing((e) => e ? { ...e, cost: v } : null)}
                 placeholder="0.00"
                 placeholderTextColor="#6A6A72"
                 keyboardType="decimal-pad"
@@ -384,7 +403,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
     return (
       <View style={styles.listItemWrapper}>
         <LinearGradient
-          colors={['rgba(30, 30, 36, 0.5)', 'rgba(20, 20, 26, 0.3)']}
+          colors={['rgba(10, 10, 12, 0.5)', 'rgba(10, 10, 12, 0.3)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -442,7 +461,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(20, 20, 26, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -477,7 +496,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
       {showCategoryManager && (
         <View style={styles.categoryManager}>
           <LinearGradient
-            colors={['rgba(30, 30, 36, 0.6)', 'rgba(20, 20, 26, 0.4)']}
+            colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -531,7 +550,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
         {showAddForm && !readOnly && (
           <View style={styles.addForm}>
             <LinearGradient
-              colors={['rgba(30, 30, 36, 0.6)', 'rgba(20, 20, 26, 0.4)']}
+              colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -559,7 +578,7 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
             />
             <View style={styles.row}>
               <View style={[styles.flex1, styles.formSection]}>
-                <Text style={styles.inputLabel}>Precio</Text>
+                <Text style={styles.inputLabel}>Precio Venta</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="0.00"
@@ -567,6 +586,17 @@ export const InventoryPanel = memo(function InventoryPanel({ readOnly = false }:
                   keyboardType="decimal-pad"
                   value={newProduct.price}
                   onChangeText={(v) => setNewProduct((p) => ({ ...p, price: v }))}
+                />
+              </View>
+              <View style={[styles.flex1, styles.formSection]}>
+                <Text style={styles.inputLabel}>Costo</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
+                  placeholderTextColor="#6A6A72"
+                  keyboardType="decimal-pad"
+                  value={newProduct.cost}
+                  onChangeText={(v) => setNewProduct((p) => ({ ...p, cost: v }))}
                 />
               </View>
               <View style={[styles.flex1, styles.formSection]}>
@@ -661,10 +691,13 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     position: 'relative',
+    backgroundColor: tokens.colors.bg,
     padding: 16,
   },
   header: { 
     flexDirection: 'row', 
+    flexWrap: 'wrap',
+    gap: 12,
     justifyContent: 'space-between', 
     alignItems: 'center', 
     marginBottom: 16,
@@ -732,7 +765,7 @@ const styles = StyleSheet.create({
   },
   categoryManager: { 
     position: 'relative',
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: 'rgba(10, 10, 12, 0.5)',
     padding: 16, 
     borderRadius: 20, 
     marginBottom: 16, 
@@ -800,7 +833,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     paddingHorizontal: 14,
     borderWidth: 1,
@@ -828,7 +861,7 @@ const styles = StyleSheet.create({
   loader: { marginTop: 40 },
   addForm: { 
     position: 'relative',
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     padding: 22, 
     borderRadius: 24, 
     marginBottom: 16, 
@@ -929,7 +962,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   item: { 
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     padding: 14, 
     borderRadius: 18,
     flexDirection: 'row', 
@@ -1050,12 +1083,13 @@ const styles = StyleSheet.create({
   },
   editCard: { 
     position: 'relative',
-    backgroundColor: 'rgba(30, 30, 36, 0.6)',
+    backgroundColor: 'rgba(10, 10, 12, 0.6)',
     padding: 22, 
     borderRadius: 24, 
     borderWidth: 1.5, 
     borderColor: 'rgba(184, 123, 90, 0.3)', 
-    marginTop: 10, 
+    marginTop: 12, 
+    marginBottom: 24,
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
@@ -1158,5 +1192,5 @@ const styles = StyleSheet.create({
     marginTop: 40 
   },
   scrollView: { flex: 1 },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: { paddingTop: 8, paddingBottom: 32 },
 });

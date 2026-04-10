@@ -1,9 +1,9 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
 import { useSettingsStore } from '../store/cartStore';
+import { Icon } from './Icon';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -13,11 +13,16 @@ interface CategoryTabsProps {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  todos: 'cart',
-  helados: 'cart',
-  cafe: 'cart',
-  snacks: 'cart',
-  bebidas: 'cart',
+  todos: 'filter',
+  helados: 'ice-cream',
+  icecream: 'ice-cream',
+  cafe: 'coffee',
+  coffee: 'coffee',
+  snacks: 'cookie-bite',
+  bebidas: 'glass-martini',
+  drinks: 'glass-martini',
+  panaderia: 'bread-slice',
+  bakery: 'bread-slice',
 };
 
 function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
@@ -37,15 +42,13 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
         accessibilityRole="button"
         accessibilityState={{ selected: selected === 'todos' }}
       >
-        {selected === 'todos' && (
-          <LinearGradient
-            colors={['rgba(184, 123, 90, 0.35)', 'rgba(184, 123, 90, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
+
         <View style={[styles.tabContent, selected === 'todos' && styles.tabContentActive]}>
+          <Icon 
+            name="filter" 
+            size={14} 
+            color={selected === 'todos' ? '#F0F0F2' : '#8A8A96'} 
+          />
           <Text style={[styles.tabText, selected === 'todos' && styles.tabTextActive]}>
             Todos
           </Text>
@@ -61,15 +64,13 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
           accessibilityRole="button"
           accessibilityState={{ selected: selected === cat }}
         >
-          {selected === cat && (
-            <LinearGradient
-              colors={['rgba(184, 123, 90, 0.35)', 'rgba(184, 123, 90, 0.15)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
+
           <View style={[styles.tabContent, selected === cat && styles.tabContentActive]}>
+            <Icon 
+              name={CATEGORY_ICONS[cat.toLowerCase()] || 'folder'} 
+              size={14} 
+              color={selected === cat ? '#F0F0F2' : '#8A8A96'} 
+            />
             <Text style={[styles.tabText, selected === cat && styles.tabTextActive]}>
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </Text>
@@ -95,26 +96,19 @@ const styles = StyleSheet.create({
   tab: {
     position: 'relative',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
     overflow: 'hidden',
-    minHeight: 44,
+    minHeight: 36,
     justifyContent: 'center',
   },
   tabActive: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(184, 123, 90, 0.3)',
-    shadowColor: '#B87B5A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: 'rgba(184, 123, 90, 0.15)',
   },
   tabContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     justifyContent: 'center',
   },
   tabContentActive: {

@@ -1,13 +1,15 @@
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
 import { useState, memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCartStore, CartItem, useSettingsStore } from '../store/cartStore';
 import { useCreateSale } from '../hooks/useProducts';
 import { CartItemRow } from './CartItem';
 import { PriceDisplay } from './PriceDisplay';
-import { SaleSummaryModal } from './SaleSummaryModal';
+ import { SaleSummaryModal } from './SaleSummaryModal';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
+import { useToast } from './Toast';
+import { tokens } from '../lib/designTokens';
 
 const TAX_RATE = 0.16;
 const PAYMENT_METHODS = [
@@ -25,7 +27,11 @@ interface SaleResult {
   paymentMethod: string;
 }
 
-export const CheckoutPanel = memo(function CheckoutPanel() {
+interface CheckoutPanelProps {
+  onCloseMobile?: () => void;
+}
+
+export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: CheckoutPanelProps) {
   const items = useCartStore((state) => state.items);
   const getTotal = useCartStore((state) => state.getTotal);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -37,6 +43,7 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
   const [selectedPayment, setSelectedPayment] = useState<typeof PAYMENT_METHODS[number]['key'] | null>(null);
   const [completedSale, setCompletedSale] = useState<SaleResult | null>(null);
   const createSale = useCreateSale();
+  const { showToast } = useToast();
   
   const subtotal = getTotal();
   const tax = ivaEnabled ? subtotal * TAX_RATE : 0;
@@ -44,11 +51,11 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
 
   const handleCheckout = useCallback(async () => {
     if (!selectedPayment) {
-      Alert.alert('Selecciona método de pago', 'Elige cómo pagarán');
+      showToast('Selecciona método de pago', 'warning');
       return;
     }
     if (items.length === 0) {
-      Alert.alert('Carrito vacío', 'Agrega productos primero');
+      showToast('Carrito vacío', 'warning');
       return;
     }
 
@@ -78,11 +85,12 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
 
       clearCart();
       setSelectedPayment(null);
+      showToast('Venta completada con éxito', 'success');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo completar la venta');
+      showToast('No se pudo completar la venta', 'error');
       console.error(error);
     }
-  }, [selectedPayment, items, total, subtotal, tax, createSale, clearCart]);
+  }, [selectedPayment, items, total, subtotal, tax, createSale, clearCart, showToast]);
 
   const handleCloseModal = useCallback(() => {
     setCompletedSale(null);
@@ -100,14 +108,7 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(20, 20, 26, 0.98)', 'rgba(10, 10, 12, 0.95)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.leftBorder} />
-      <View style={styles.topGlow} />
+
       
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -117,8 +118,15 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
             </View>
             <Text style={styles.title}>Carrito</Text>
           </View>
-          <View style={styles.itemCountBadge}>
-            <Text style={styles.itemCount}>{items.length}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={styles.itemCountBadge}>
+              <Text style={styles.itemCount}>{items.length}</Text>
+            </View>
+            {onCloseMobile && (
+              <TouchableOpacity onPress={onCloseMobile} style={styles.closeButton}>
+                <Icon name="close" size={20} color="#F0F0F2" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -130,9 +138,11 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
       >
         {items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Icon name="cart" size={48} color="rgba(184, 123, 90, 0.3)" />
-            <Text style={styles.emptyText}>Sin productos</Text>
-            <Text style={styles.emptySubtext}>Agrega productos del menú</Text>
+            <View style={styles.emptyIconCircle}>
+              <Icon name="cart" size={32} color="rgba(184, 123, 90, 0.6)" />
+            </View>
+            <Text style={styles.emptyText}>Carrito vacío</Text>
+            <Text style={styles.emptySubtext}>Toca un producto para agregarlo</Text>
           </View>
         ) : (
           items.map(renderCartItem)
@@ -176,28 +186,18 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
 
       <View style={styles.paymentSection}>
         <Text style={styles.sectionTitle}>Método de pago</Text>
-        <View style={styles.paymentButtons}>
+        <View style={styles.paymentChips}>
           {PAYMENT_METHODS.map((method) => {
             const isActive = selectedPayment === method.key;
             return (
               <TouchableOpacity
                 key={method.key}
-                style={[styles.paymentButton, isActive && styles.paymentButtonActive]}
+                style={[styles.paymentChip, isActive && styles.paymentChipActive]}
                 onPress={() => setSelectedPayment(method.key)}
                 activeOpacity={0.7}
               >
-                {isActive && (
-                  <LinearGradient
-                    colors={['rgba(184, 123, 90, 0.35)', 'rgba(184, 123, 90, 0.15)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
-                <View style={[styles.paymentIconContainer, isActive && styles.paymentIconActive]}>
-                  <Icon name={method.icon} size={22} color={isActive ? '#B87B5A' : '#8A8A96'} />
-                </View>
-                <Text style={[styles.paymentLabel, isActive && styles.paymentLabelActive]}>
+                <Icon name={method.icon} size={14} color={isActive ? '#B87B5A' : '#8A8A96'} />
+                <Text style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
                   {method.label}
                 </Text>
               </TouchableOpacity>
@@ -213,18 +213,18 @@ export const CheckoutPanel = memo(function CheckoutPanel() {
         ]}
         onPress={handleCheckout}
         disabled={!selectedPayment || items.length === 0 || createSale.isPending}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         <LinearGradient
           colors={(!selectedPayment || items.length === 0) 
-            ? ['rgba(184, 123, 90, 0.5)', 'rgba(184, 123, 90, 0.4)']
-            : ['rgba(184, 123, 90, 0.9)', 'rgba(139, 90, 60, 0.85)']}
+            ? ['rgba(184, 123, 90, 0.45)', 'rgba(184, 123, 90, 0.35)']
+            : ['#C48B68', '#8B5A3C']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.checkoutGradient}
         />
         <View style={styles.checkoutContent}>
-          <Icon name="check" size={20} color="#F0F0F2" />
+          <Icon name="check" size={18} color="#F0F0F2" />
           <Text style={styles.checkoutText}>
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
           </Text>
@@ -251,24 +251,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     position: 'relative',
-    backgroundColor: 'rgba(10, 10, 12, 0.98)',
+    backgroundColor: tokens.colors.bg,
+    paddingBottom: Platform.OS === 'android' ? 40 : 34,
   },
-  leftBorder: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(184, 123, 90, 0.2)',
-  },
-  topGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-    backgroundColor: 'rgba(184, 123, 90, 0.03)',
-  },
+  leftBorder: {},
+  topGlow: {},
   header: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -316,6 +303,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#B87B5A',
   },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
   itemsList: {
     flex: 1,
   },
@@ -328,7 +325,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 60,
-    gap: 12,
+    gap: 10,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(184,123,90,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(184,123,90,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   emptyText: {
     fontFamily: FontNames.instrumentSans,
@@ -346,7 +354,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   summaryCard: {
-    backgroundColor: 'rgba(30, 30, 36, 0.6)',
+    backgroundColor: 'rgba(10, 10, 12, 0.6)',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
@@ -437,72 +445,54 @@ const styles = StyleSheet.create({
   },
   paymentSection: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 12,
   },
   sectionTitle: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8A8A96',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  paymentButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  paymentButton: {
-    position: 'relative',
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    overflow: 'hidden',
-    minHeight: 56,
-    justifyContent: 'center',
-  },
-  paymentButtonActive: {
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(184, 123, 90, 0.4)',
-  },
-  paymentIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  paymentIconActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-  },
-  paymentLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: 11,
     fontWeight: '600',
     color: '#8A8A96',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  paymentLabelActive: {
+  paymentChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  paymentChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 40,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  paymentChipActive: {
+    backgroundColor: 'rgba(184,123,90,0.15)',
+    borderColor: 'rgba(184,123,90,0.4)',
+  },
+  paymentChipText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8A8A96',
+  },
+  paymentChipTextActive: {
     color: '#F0F0F2',
   },
   checkoutButton: {
     position: 'relative',
     marginHorizontal: 16,
+    marginTop: 8,
     marginBottom: 16,
-    borderRadius: 16,
+    borderRadius: 999,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.4)',
-    shadowColor: '#B87B5A',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: 'transparent',
   },
   checkoutGradient: {
     ...StyleSheet.absoluteFillObject,
@@ -515,7 +505,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   checkoutButtonDisabled: {
-    shadowOpacity: 0.1,
+    opacity: 0.6,
   },
   checkoutText: {
     fontFamily: FontNames.instrumentSans,

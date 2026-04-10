@@ -9,17 +9,17 @@ interface GlassCardProps extends ViewProps {
 
 const INTENSITY_CONFIG = {
   subtle: {
-    backgroundColor: 'rgba(30, 30, 36, 0.4)',
+    backgroundColor: 'rgba(10, 10, 12, 0.4)',
     borderOpacity: 0.06,
     blurIntensity: 10,
   },
   medium: {
-    backgroundColor: 'rgba(30, 30, 36, 0.6)',
+    backgroundColor: 'rgba(10, 10, 12, 0.6)',
     borderOpacity: 0.1,
     blurIntensity: 20,
   },
   strong: {
-    backgroundColor: 'rgba(30, 30, 36, 0.8)',
+    backgroundColor: 'rgba(10, 10, 12, 0.8)',
     borderOpacity: 0.15,
     blurIntensity: 30,
   },

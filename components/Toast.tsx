@@ -1,5 +1,7 @@
-import React, { useEffect, useState, createContext, useContext, useCallback, memo } from 'react';
+import React, { useEffect, useState, createContext, useContext, useCallback, memo, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { FontNames } from '../lib/fontNames';
+import { tokens } from '../lib/designTokens';
 
 interface Toast {
   id: string;
@@ -15,107 +17,147 @@ const ToastContext = createContext<ToastContextType | null>(null);
 
 export function useToast() {
   const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
-  }
+  if (!context) throw new Error('useToast must be used within ToastProvider');
   return context;
 }
 
-const ToastItem = memo(function ToastItem({ 
-  toast, 
-  onRemove 
-}: { 
-  toast: Toast; 
+const ACCENT_COLORS = {
+  success: tokens.colors.sage,
+  error: tokens.colors.coral,
+  warning: tokens.colors.amber,
+  info: tokens.colors.mahogany,
+};
+
+const LABELS = {
+  success: 'Éxito',
+  error: 'Error',
+  warning: 'Aviso',
+  info: 'Info',
+};
+
+const SYMBOLS = {
+  success: '✓',
+  error: '✕',
+  warning: '!',
+  info: 'i',
+};
+
+const ToastItem = memo(function ToastItem({
+  toast,
+  onRemove,
+}: {
+  toast: Toast;
   onRemove: () => void;
 }) {
-  const opacity = useState(new Animated.Value(0))[0];
-  const translateY = useState(new Animated.Value(-50))[0];
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(20)).current;
+  const scaleX = useRef(new Animated.Value(1)).current;
+
+  const accentColor = ACCENT_COLORS[toast.type];
 
   useEffect(() => {
+    // Enter animation
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 300,
+        duration: tokens.animation.normal,
         useNativeDriver: true,
       }),
       Animated.spring(translateY, {
         toValue: 0,
         useNativeDriver: true,
-        tension: 100,
-        friction: 10,
+        ...tokens.animation.spring,
       }),
     ]).start();
+
+    // Progress bar shrink
+    Animated.timing(scaleX, {
+      toValue: 0,
+      duration: 3200,
+      useNativeDriver: true,
+    }).start();
 
     const timeout = setTimeout(() => {
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 300,
+          duration: tokens.animation.normal,
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: -50,
-          duration: 300,
+          toValue: 20,
+          duration: tokens.animation.normal,
           useNativeDriver: true,
         }),
       ]).start(onRemove);
-    }, 3000);
+    }, 3200);
 
     return () => clearTimeout(timeout);
-  }, [opacity, translateY, onRemove]);
-
-  const backgroundColor = {
-    success: 'rgba(109, 184, 138, 0.95)',
-    error: 'rgba(201, 107, 107, 0.95)',
-    warning: 'rgba(232, 181, 96, 0.95)',
-    info: 'rgba(90, 130, 200, 0.95)',
-  }[toast.type];
-
-  const icon = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ',
-  }[toast.type];
+  }, []);
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.toast,
-        { 
-          backgroundColor,
-          opacity,
-          transform: [{ translateY }],
-        }
+        { opacity, transform: [{ translateY }] },
       ]}
     >
-      <Text style={styles.toastIcon}>{icon}</Text>
-      <Text style={styles.toastMessage}>{toast.message}</Text>
+      {/* Left accent bar */}
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+      {/* Icon circle */}
+      <View style={[styles.iconCircle, { backgroundColor: `${accentColor}22` }]}>
+        <Text style={[styles.iconText, { color: accentColor }]}>
+          {SYMBOLS[toast.type]}
+        </Text>
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        <Text style={[styles.label, { color: accentColor }]}>
+          {LABELS[toast.type]}
+        </Text>
+        <Text style={styles.message} numberOfLines={2}>
+          {toast.message}
+        </Text>
+      </View>
+
+      {/* Progress bar */}
+      <Animated.View
+        style={[
+          styles.progressBar,
+          { backgroundColor: accentColor, transform: [{ scaleX }] },
+        ]}
+      />
     </Animated.View>
   );
 });
 
-export const ToastProvider = memo(function ToastProvider({ children }: { children: React.ReactNode }) {
+export const ToastProvider = memo(function ToastProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev.slice(-2), { id, message, type }]);
   }, []);
 
   const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <View style={styles.container}>
-        {toasts.map(toast => (
-          <ToastItem 
-            key={toast.id} 
-            toast={toast} 
-            onRemove={() => removeToast(toast.id)} 
+      <View style={styles.container} pointerEvents="none">
+        {toasts.map((toast) => (
+          <ToastItem
+            key={toast.id}
+            toast={toast}
+            onRemove={() => removeToast(toast.id)}
           />
         ))}
       </View>
@@ -126,34 +168,66 @@ export const ToastProvider = memo(function ToastProvider({ children }: { childre
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
+    bottom: 100,
+    left: 16,
+    right: 16,
     zIndex: 9999,
-    gap: 10,
+    gap: 8,
+    alignItems: 'stretch',
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: 'rgba(20, 20, 26, 0.97)',
+    borderRadius: tokens.radius.card,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    overflow: 'hidden',
+    minHeight: 60,
   },
-  toastIcon: {
-    fontSize: 16,
-    color: '#fff',
-    marginRight: 10,
-    fontWeight: '700',
+  accentBar: {
+    width: 4,
+    alignSelf: 'stretch',
   },
-  toastMessage: {
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: tokens.spacing.md,
+    marginRight: tokens.spacing.sm,
+  },
+  iconText: {
+    fontSize: tokens.typography.md,
+    fontWeight: tokens.typography.bold,
+  },
+  content: {
     flex: 1,
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
+    paddingVertical: tokens.spacing.md,
+    paddingRight: tokens.spacing.md,
+    gap: 2,
+  },
+  label: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: tokens.typography.xs,
+    fontWeight: tokens.typography.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  message: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: tokens.typography.base,
+    fontWeight: tokens.typography.medium,
+    color: tokens.colors.text,
+    lineHeight: 20,
+  },
+  progressBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    transformOrigin: 'left',
   },
 });

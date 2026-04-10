@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Ale
 import { FontNames } from '../lib/fontNames';
 import { CartItem } from '../store/cartStore';
 import { Icon } from './Icon';
+import { tokens } from '../lib/designTokens';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modal: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: tokens.colors.bg,
     borderRadius: 20,
     width: '100%',
     maxWidth: 400,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   closeButton: {
-    backgroundColor: '#2a2a2e',
+    backgroundColor: tokens.colors.bg,
     paddingVertical: 31,
     alignItems: 'center',
   },

@@ -1,8 +1,8 @@
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, RefreshControl, TextInput } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal } from 'react-native';
 import { useState, useMemo, useCallback, memo, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProducts, Category } from '../hooks/useProducts';
-import { useCartStore } from '../store/cartStore';
+import { useCartStore, useSettingsStore } from '../store/cartStore';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { ProductButton } from '../components/ProductButton';
 import { CheckoutPanel } from '../components/CheckoutPanel';
@@ -14,8 +14,8 @@ import { useToast } from '../components/Toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
-const ITEM_HEIGHT = 188;
-const NUM_COLUMNS = 3;
+const ITEM_HEIGHT = 200; // Slightly increased for breathing room
+const LOW_STOCK_THRESHOLD = 10;
 
 const ProductItem = memo(function ProductItem({ 
   product, 
@@ -43,17 +43,36 @@ export function POSScreen() {
   const barcodeInputRef = useRef<TextInput>(null);
   const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const numColumns = isMobile ? 1 : 3;
+
+  const [showMobileCart, setShowMobileCart] = useState(false);
+  const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
+
+  const subtotal = useMemo(() => items.reduce((acc, i) => acc + i.price * i.quantity, 0), [items]);
+  const finalTotal = ivaEnabled ? subtotal * 1.16 : subtotal;
+
   const { data: allProducts } = useQuery<Product[]>({
     queryKey: ['products-all-for-barcode'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, barcode, image_url, stock_quantity, categories, is_active, created_at')
+        .select('id, name, price, cost, barcode, image_url, stock_quantity, categories, is_active, created_at')
         .eq('is_active', true);
       if (error) throw error;
       return data ?? [];
     },
   });
+
+  const checkLowStock = useCallback((product: Product) => {
+    if (product.stock_quantity <= 0) {
+      showToast(`${product.name} sin stock`, 'error');
+      return false;
+    }
+    // Low stock warning removed by user request
+    return true;
+  }, [showToast]);
 
   const handleBarcodeBuffer = useCallback((text: string) => {
     setBarcodeBuffer(text);
@@ -67,8 +86,10 @@ export function POSScreen() {
       if (barcode) {
         const product = allProducts?.find(p => p.barcode === barcode);
         if (product) {
-          addItem(product);
-          showToast(`Agregado: ${product.name}`, 'success');
+          if (checkLowStock(product)) {
+            addItem(product);
+            showToast(`Agregado: ${product.name}`, 'success');
+          }
         } else {
           showToast(`Producto no encontrado: ${barcode}`, 'error');
         }
@@ -83,8 +104,10 @@ export function POSScreen() {
         if (barcode.length >= 3) {
           const product = allProducts?.find(p => p.barcode === barcode);
           if (product) {
-            addItem(product);
-            showToast(`Agregado: ${product.name}`, 'success');
+            if (checkLowStock(product)) {
+              addItem(product);
+              showToast(`Agregado: ${product.name}`, 'success');
+            }
           } else {
             showToast(`Producto no encontrado: ${barcode}`, 'error');
           }
@@ -92,7 +115,7 @@ export function POSScreen() {
         setBarcodeBuffer('');
       }
     }, 500);
-  }, [allProducts, addItem, showToast, barcodeBuffer]);
+  }, [allProducts, addItem, showToast, barcodeBuffer, checkLowStock]);
 
   useEffect(() => {
     return () => {
@@ -125,26 +148,29 @@ export function POSScreen() {
   }, [products, searchQuery, selectedCategory]);
 
   const handleProductPress = useCallback((product: Product) => {
-    addItem(product);
-  }, [addItem]);
+    if (checkLowStock(product)) {
+      addItem(product);
+    }
+  }, [addItem, checkLowStock]);
+
+  const handleClearCart = useCallback(() => {
+    clearCart();
+    showToast('Carrito vaciado', 'info');
+  }, [clearCart, showToast]);
 
   const renderItem = useCallback(({ item }: { item: Product }) => (
-    <ProductItem 
-      product={item} 
-      onPress={() => handleProductPress(item)} 
-    />
-  ), [handleProductPress]);
+    <View style={[styles.productItem, !isMobile && { width: `${100 / numColumns}%` }]}>
+      <ProductButton 
+        product={item} 
+        onPress={() => handleProductPress(item)}
+        compact={!isMobile}
+      />
+    </View>
+  ), [handleProductPress, isMobile, numColumns]);
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
-  const getItemLayout = useCallback(
-    (_data: ArrayLike<Product> | null | undefined, index: number) => ({
-      length: ITEM_HEIGHT,
-      offset: ITEM_HEIGHT * Math.floor(index / NUM_COLUMNS),
-      index,
-    }),
-    []
-  );
+
 
   const ListEmptyComponent = useCallback(() => (
     <View style={styles.emptyContainer}>
@@ -163,13 +189,8 @@ export function POSScreen() {
   ), [searchQuery]);
 
   return (
-    <View style={styles.main}>
-      <LinearGradient
-        colors={['rgba(15, 15, 20, 0.98)', 'rgba(10, 10, 12, 0.95)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.main, isMobile && { flexDirection: 'column' }]}>
+
       
       <TextInput
         ref={barcodeInputRef}
@@ -182,7 +203,7 @@ export function POSScreen() {
         returnKeyType="done"
       />
       
-      <View style={styles.leftPanel}>
+      <View style={[styles.leftPanel, isMobile && { flex: 1 }]}>
         <View style={styles.tabsContainer}>
           <CategoryTabs 
             selected={selectedCategory} 
@@ -192,7 +213,7 @@ export function POSScreen() {
 
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-            <Icon name="search" size={18} color="#8A8A96" />
+            <Icon name="search" size={16} color="#8A8A96" />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar producto..."
@@ -216,14 +237,14 @@ export function POSScreen() {
             </View>
           ) : (
             <FlatList
+              key={`products-grid-${numColumns}`}
               data={filteredProducts}
-              numColumns={NUM_COLUMNS}
+              numColumns={numColumns}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
-              getItemLayout={getItemLayout}
               contentContainerStyle={styles.productGrid}
               showsVerticalScrollIndicator={false}
-              removeClippedSubviews={true}
+              removeClippedSubviews={false}
               maxToRenderPerBatch={12}
               windowSize={5}
               initialNumToRender={12}
@@ -233,7 +254,7 @@ export function POSScreen() {
                   refreshing={false}
                   onRefresh={refetch}
                   tintColor="#B87B5A"
-                  progressBackgroundColor="rgba(30, 30, 36, 0.8)"
+                  progressBackgroundColor="rgba(10, 10, 12, 0.8)"
                 />
               }
               ListEmptyComponent={ListEmptyComponent}
@@ -241,17 +262,50 @@ export function POSScreen() {
           )}
         </View>
         
-        <View style={styles.actionsContainer}>
+        <View style={[styles.actionsContainer, isMobile && items.length > 0 && { paddingBottom: 86 }]}>
           <QuickActions 
-            onClear={clearCart} 
+            onClear={handleClearCart} 
             hasItems={items.length > 0}
           />
         </View>
+
+        {isMobile && items.length > 0 && (
+          <TouchableOpacity 
+            style={styles.mobileFab} 
+            onPress={() => setShowMobileCart(true)}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Icon name="shopping-cart" size={20} color="#F0F0F2" />
+            <Text style={styles.mobileFabText}>Ver Carrito ({items.length})</Text>
+            <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
+          </TouchableOpacity>
+        )}
       </View>
       
-      <View style={styles.rightPanel}>
-        <CheckoutPanel />
-      </View>
+      {isMobile ? (
+        <Modal
+          visible={showMobileCart}
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          navigationBarTranslucent={true}
+          onRequestClose={() => setShowMobileCart(false)}
+        >
+          <View style={styles.mobileCartOverlay}>
+             <CheckoutPanel onCloseMobile={() => setShowMobileCart(false)} />
+          </View>
+        </Modal>
+      ) : (
+        <View style={styles.rightPanel}>
+          <CheckoutPanel />
+        </View>
+      )}
     </View>
   );
 }
@@ -275,7 +329,7 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -285,13 +339,14 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 30, 36, 0.6)',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(10, 10, 12, 0.6)',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 0,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
     gap: 10,
+    height: 44,
   },
   searchInput: {
     flex: 1,
@@ -339,9 +394,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   productItem: {
-    flex: 1,
-    padding: 6,
-    maxWidth: `${100 / NUM_COLUMNS}%`,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   emptyContainer: {
     flex: 1,
@@ -368,5 +422,34 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.instrumentSans,
     fontSize: 14,
     color: '#666',
+  },
+  mobileFab: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    height: 56,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    overflow: 'hidden',
+  },
+  mobileFabText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F0F0F2',
+  },
+  mobileFabTotal: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F0F0F2',
+  },
+  mobileCartOverlay: {
+    flex: 1,
+    backgroundColor: '#0A0A0C',
   },
 });

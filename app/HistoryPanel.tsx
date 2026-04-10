@@ -6,6 +6,8 @@ import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { SaleDetailModal } from '../components/SaleDetailModal';
 import { Icon } from '../components/Icon';
+import { useToast } from '../components/Toast';
+import { tokens } from '../lib/designTokens';
 
 interface SaleItem {
   id: string;
@@ -57,7 +59,7 @@ const SaleCard = memo(function SaleCard({
   return (
     <View style={styles.saleCard}>
       <LinearGradient
-        colors={['rgba(30, 30, 36, 0.5)', 'rgba(20, 20, 26, 0.3)']}
+        colors={['rgba(10, 10, 12, 0.5)', 'rgba(10, 10, 12, 0.3)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -99,6 +101,7 @@ export const HistoryPanel = memo(function HistoryPanel() {
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const { showToast } = useToast();
 
   const { data: sales, isLoading, refetch, isRefetching } = useQuery<Sale[]>({
     queryKey: ['sales-history'],
@@ -156,9 +159,9 @@ export const HistoryPanel = memo(function HistoryPanel() {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       setShowDetail(false);
       setSelectedSale(null);
-      Alert.alert('Éxito', 'Venta eliminada y stock restaurado');
+      showToast('Venta eliminada y stock restaurado', 'success');
     },
-    onError: () => Alert.alert('Error', 'No se pudo eliminar la venta'),
+    onError: () => showToast('No se pudo eliminar la venta', 'error'),
   });
 
   const updateSaleMutation = useMutation({
@@ -192,9 +195,9 @@ export const HistoryPanel = memo(function HistoryPanel() {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       setShowDetail(false);
       setSelectedSale(null);
-      Alert.alert('Éxito', 'Venta actualizada');
+      showToast('Venta actualizada', 'success');
     },
-    onError: () => Alert.alert('Error', 'No se pudo actualizar la venta'),
+    onError: () => showToast('No se pudo actualizar la venta', 'error'),
   });
 
   const handleDelete = useCallback((sale: Sale) => {
@@ -219,9 +222,9 @@ export const HistoryPanel = memo(function HistoryPanel() {
       setSelectedSale({ ...sale, sale_items: items ?? [] });
       setShowDetail(true);
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron cargar los detalles');
+      showToast('No se pudieron cargar los detalles', 'error');
     }
-  }, []);
+  }, [showToast]);
 
   const renderItem = useCallback(({ item }: { item: Sale }) => (
     <SaleCard 
@@ -234,7 +237,7 @@ export const HistoryPanel = memo(function HistoryPanel() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(20, 20, 26, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -288,7 +291,7 @@ export const HistoryPanel = memo(function HistoryPanel() {
               refreshing={isRefetching}
               onRefresh={refetch}
               tintColor="#B87B5A"
-              progressBackgroundColor="rgba(30, 30, 36, 0.8)"
+              progressBackgroundColor="rgba(10, 10, 12, 0.8)"
             />
           }
         />
@@ -316,6 +319,7 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     position: 'relative',
+    backgroundColor: tokens.colors.bg,
     padding: 16,
   },
   header: { 
@@ -366,7 +370,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 4,
@@ -412,7 +416,7 @@ const styles = StyleSheet.create({
   },
   saleCard: {
     position: 'relative',
-    backgroundColor: 'rgba(30, 30, 36, 0.5)',
+    backgroundColor: tokens.colors.bg,
     padding: 16, 
     borderRadius: 20, 
     marginBottom: 12, 

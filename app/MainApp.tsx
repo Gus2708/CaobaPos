@@ -50,10 +50,11 @@ export default function MainApp() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: '#0A0A0C' 
+    backgroundColor: tokens.colors.bg 
   },
   content: {
     flex: 1,
+    backgroundColor: tokens.colors.bg,
     overflow: 'hidden',
   },
 });
