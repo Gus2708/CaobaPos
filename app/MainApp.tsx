@@ -7,6 +7,7 @@ import { DashboardPanel } from './DashboardPanel';
 import { InventoryPanel } from './InventoryPanel';
 import { HistoryPanel } from './HistoryPanel';
 import { ToastProvider } from '../components/Toast';
+import { tokens } from '../lib/designTokens';
 
 type Screen = 'pos' | 'dashboard' | 'inventory' | 'history';
 
