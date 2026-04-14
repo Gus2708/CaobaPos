@@ -1,7 +1,8 @@
-import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Modal, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -52,68 +53,68 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: scale(20),
   },
   modal: {
     backgroundColor: 'rgba(10, 10, 12, 0.95)',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: scale(24),
+    padding: scale(24),
     width: '100%',
-    maxWidth: 340,
+    maxWidth: scale(340),
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.3)',
   },
   title: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: '700',
     color: '#F0F0F2',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: verticalScale(24),
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: verticalScale(16),
+    paddingHorizontal: scale(16),
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: scale(16),
+    marginBottom: verticalScale(12),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(12),
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: scale(14),
   },
   optionText: {
     flex: 1,
   },
   optionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     color: '#F0F0F2',
   },
   optionSubtitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 13,
+    fontSize: moderateScale(13),
     color: '#8A8A96',
-    marginTop: 2,
+    marginTop: verticalScale(2),
   },
   cancelButton: {
-    paddingVertical: 16,
+    paddingVertical: verticalScale(16),
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: verticalScale(8),
   },
   cancelText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     color: '#8A8A96',
   },

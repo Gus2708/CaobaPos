@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Header } from '../components/Header';
 import { Navbar } from './Navbar';
@@ -6,10 +7,11 @@ import { POSScreen } from './index';
 import { DashboardPanel } from './DashboardPanel';
 import { InventoryPanel } from './InventoryPanel';
 import { HistoryPanel } from './HistoryPanel';
+import ClientsPanel from './ClientsPanel';
 import { ToastProvider } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 
-type Screen = 'pos' | 'dashboard' | 'inventory' | 'history';
+type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
 export default function MainApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
@@ -22,9 +24,14 @@ export default function MainApp() {
       case 'dashboard':
         return <DashboardPanel />;
       case 'inventory':
-        return <InventoryPanel readOnly={mode === 'view'} />;
+        return <InventoryPanel 
+          readOnly={mode === 'view'} 
+          onSuccess={() => setMode('view')}
+        />;
       case 'history':
         return <HistoryPanel />;
+      case 'clients':
+        return <ClientsPanel />;
       default:
         return <POSScreen />;
     }
@@ -51,7 +58,9 @@ export default function MainApp() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: tokens.colors.bg 
+    backgroundColor: tokens.colors.bg,
+    paddingTop: tokens.spacing.sm,
+    paddingBottom: tokens.spacing.sm,
   },
   content: {
     flex: 1,

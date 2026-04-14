@@ -40,5 +40,14 @@ yarn-error.*
 *.tsbuildinfo
 
 # generated native folders
-/ios
 /android
+/ios
+
+# Agent & System folders (must be ignored for EAS Build symlink stability)
+.agents/
+.claude/
+.antigravity/
+.gemini/
+.trae/
+.idea/
+.vscode/

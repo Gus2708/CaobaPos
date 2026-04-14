@@ -45,9 +45,10 @@ export function useCreateSale() {
       totalAmount,
       paymentMethod,
       items,
+      clientId,
     }: {
       totalAmount: number;
-      paymentMethod: 'cash' | 'card' | 'transfer';
+      paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
       items: Array<{
         product_id: string;
         product_name: string;
@@ -55,22 +56,51 @@ export function useCreateSale() {
         unit_price: number;
         subtotal: number;
       }>;
+      clientId?: string;
     }) => {
+      // 1. Pre-checkout Stock Validation
+      const productIds = items.map(i => i.product_id);
+      const { data: dbProducts, error: fetchError } = await supabase
+        .from('products')
+        .select('id, name, stock_quantity, cost')
+        .in('id', productIds);
+
+      if (fetchError) throw fetchError;
+
+      for (const item of items) {
+        const dbProduct = dbProducts?.find(p => p.id === item.product_id);
+        if (!dbProduct) {
+          throw new Error(`Producto no encontrado: ${item.product_name}`);
+        }
+        if (dbProduct.stock_quantity < item.quantity) {
+          throw new Error(`Stock insuficiente para ${dbProduct.name}. Disponible: ${dbProduct.stock_quantity}`);
+        }
+      }
+
+      // 2. Proceed with sale creation
+      const status = paymentMethod === 'credito' ? 'pending_payment' : 'paid';
+      
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
           total_amount: totalAmount,
           payment_method: paymentMethod,
+          client_id: clientId || null,
+          status,
         })
         .select()
         .single();
 
       if (saleError) throw saleError;
 
-      const saleItems = items.map((item) => ({
-        sale_id: sale.id,
-        ...item,
-      }));
+      const saleItems = items.map((item) => {
+        const dbProduct = dbProducts?.find(p => p.id === item.product_id);
+        return {
+          sale_id: sale.id,
+          unit_cost: dbProduct?.cost || 0,
+          ...item,
+        };
+      });
 
       const { error: itemsError } = await supabase
         .from('sale_items')
@@ -91,8 +121,15 @@ export function useCreateSale() {
 
       return sale;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-history'] });
+      if (variables.paymentMethod === 'credito') {
+        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        if (variables.clientId) {
+          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', variables.clientId] });
+        }
+      }
       clearCart();
     },
   });

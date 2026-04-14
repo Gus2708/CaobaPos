@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
   product_name TEXT NOT NULL,
   quantity INTEGER NOT NULL,
   unit_price NUMERIC(10,2) NOT NULL,
+  unit_cost NUMERIC(10,2) DEFAULT 0,
   subtotal NUMERIC(10,2) NOT NULL
 );
 

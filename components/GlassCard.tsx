@@ -1,5 +1,6 @@
 import { View, ViewProps, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { scale } from '../lib/responsive';
 
 interface GlassCardProps extends ViewProps {
   children: React.ReactNode;
@@ -27,19 +28,19 @@ const INTENSITY_CONFIG = {
 
 const VARIANT_CONFIG = {
   default: {
-    borderRadius: 24,
+    borderRadius: scale(24),
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 8 },
   },
   elevated: {
-    borderRadius: 28,
+    borderRadius: scale(28),
     shadowOpacity: 0.35,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 16 },
   },
   inset: {
-    borderRadius: 20,
+    borderRadius: scale(20),
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },

@@ -1,6 +1,7 @@
 import React from 'react';
 import FontAwesome from '@react-native-vector-icons/fontawesome-free-solid';
 import EvilIcons from '@react-native-vector-icons/evil-icons';
+import { moderateScale } from '../lib/responsive';
 
 interface IconProps {
   name: string;
@@ -41,6 +42,13 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; lib
   'glass-martini': { lib: 'fontawesome', component: FontAwesome, libraryName: 'glass-martini-alt' },
   'cookie-bite': { lib: 'fontawesome', component: FontAwesome, libraryName: 'cookie-bite' },
   'filter': { lib: 'fontawesome', component: FontAwesome, libraryName: 'filter' },
+  'calculator': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calculator' },
+  'calendar-day': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-day' },
+  'calendar-week': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-week' },
+  'calendar-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-alt' },
+  'user': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user' },
+  'users': { lib: 'fontawesome', component: FontAwesome, libraryName: 'users' },
+  'user-plus': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user-plus' },
   // EvilIcons
   'search': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
   'search-plus': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
@@ -74,7 +82,7 @@ export function Icon({ name, size = 20, color = '#F0F0F2' }: IconProps) {
     return null;
   }
   
-  return <IconComponent name={icon.libraryName || normalizedName} size={size} color={color} />;
+  return <IconComponent name={icon.libraryName || normalizedName} size={moderateScale(size)} color={color} />;
 }
 
 export default Icon;

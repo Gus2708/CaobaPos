@@ -1,13 +1,18 @@
-import React, { useMemo, memo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useMemo, memo, useState } from 'react';
+import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from '../components/Icon';
 import { tokens } from '../lib/designTokens';
-import { generateDailyReport } from '../lib/pdfReportGenerator';
+import { generateReport } from '../lib/pdfReportGenerator';
 import { useToast } from '../components/Toast';
+import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
+import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface Sale {
   id: string;
@@ -17,10 +22,20 @@ interface Sale {
 }
 
 interface SaleItem {
+  sale_id: string;
   product_id: string;
   quantity: number;
   unit_price: number;
+  unit_cost: number;
   subtotal: number;
+}
+
+interface ClientPayment {
+  id: string;
+  client_id: string;
+  amount: number;
+  created_at: string;
+  payment_method: string;
 }
 
 interface Product {
@@ -58,7 +73,7 @@ const StatCard = memo(function StatCard({ label, value, variant = 'default', ico
         <View style={[styles.statIconContainer, { backgroundColor: `${c.accent}22` }]}>
           <Icon name={icon} size={16} color={c.accent} />
         </View>
-        <Text style={styles.statLabel}>{label}</Text>
+        <Text style={styles.statLabel} numberOfLines={2}>{label}</Text>
       </View>
       <Text style={[styles.statValue, { color: c.accent }]}>{value}</Text>
       {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
@@ -67,6 +82,9 @@ const StatCard = memo(function StatCard({ label, value, variant = 'default', ico
 });
 
 export const DashboardPanel = memo(function DashboardPanel() {
+  const [period, setPeriod] = useState<DashboardPeriod>('dia');
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [methodModalVisible, setMethodModalVisible] = useState(false);
   const { data: sales, isLoading: loadingSales } = useQuery<Sale[]>({
     queryKey: ['dashboard', 'sales'],
     queryFn: async () => {
@@ -84,7 +102,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sale_items')
-        .select('product_id, quantity, unit_price, subtotal');
+        .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal');
       if (error) throw error;
       return data ?? [];
     },
@@ -96,6 +114,17 @@ export const DashboardPanel = memo(function DashboardPanel() {
       const { data, error } = await supabase
         .from('products')
         .select('id, name, cost, price, stock_quantity');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: allPayments } = useQuery<ClientPayment[]>({
+    queryKey: ['dashboard', 'client_payments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('client_payments')
+        .select('*');
       if (error) throw error;
       return data ?? [];
     },
@@ -114,15 +143,22 @@ export const DashboardPanel = memo(function DashboardPanel() {
     return d.toISOString();
   }, []);
 
-  const todaySales = useMemo(
-    () => (sales ?? []).filter((s) => s.created_at >= today),
-    [sales, today]
-  );
+  const monthAgo = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, []);
 
-  const weekSales = useMemo(
-    () => (sales ?? []).filter((s) => s.created_at >= weekAgo),
-    [sales, weekAgo]
-  );
+  const filteredSales = useMemo(() => {
+    if (period === 'dia') return (sales ?? []).filter((s) => s.created_at >= today);
+    if (period === 'semana') return (sales ?? []).filter((s) => s.created_at >= weekAgo);
+    if (period === 'mes') return (sales ?? []).filter((s) => s.created_at >= monthAgo);
+    return sales ?? [];
+  }, [sales, period, today, weekAgo, monthAgo]);
+
+  const periodLabel = period === 'dia' ? 'Hoy' : period === 'semana' ? 'Esta Semana' : 'Este Mes';
+  const pdfTitleLabel = period === 'dia' ? 'Resumen Financiero Diario' : period === 'semana' ? 'Resumen Financiero Semanal' : 'Resumen Financiero Mensual';
 
   const productMap = useMemo(() => {
     const map: Record<string, Product> = {};
@@ -130,46 +166,58 @@ export const DashboardPanel = memo(function DashboardPanel() {
     return map;
   }, [products]);
 
-  const calculateMetrics = useMemo(() => {
-    const revenue = (saleItems ?? []).reduce((acc, item) => acc + Number(item.subtotal), 0);
-    const cost = (saleItems ?? []).reduce((acc, item) => {
-      const product = productMap[item.product_id];
-      return acc + (product ? Number(product.cost || 0) * item.quantity : 0);
-    }, 0);
-    const profit = revenue - cost;
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-    return { revenue, cost, profit, margin };
-  }, [saleItems, productMap]);
-
   const calculateMetricsForSales = useMemo(() => {
-    return (saleList: Sale[]) => {
+    return (saleList: Sale[], paymentList: ClientPayment[]) => {
       const saleIds = new Set(saleList.map(s => s.id));
-      const relevantItems = (saleItems ?? []).filter(item => {
-        return true;
-      });
+      const relevantItems = (saleItems ?? []).filter(item => saleIds.has(item.sale_id));
+      
       const revenue = saleList.reduce((acc, s) => acc + Number(s.total_amount), 0);
-      const cost = (saleItems ?? []).reduce((acc, item) => {
-        const product = productMap[item.product_id];
-        return acc + (product ? Number(product.cost || 0) * item.quantity : 0);
+      
+      // Breakdown by payment readiness
+      const pendingCredit = saleList
+        .filter(s => s.payment_method === 'credito')
+        .reduce((acc, s) => acc + Number(s.total_amount), 0);
+      
+      // Real Cash Flow = (Cash from immediate sales) + (Payments received today for past debts)
+      const cashFromSales = revenue - pendingCredit;
+      const totalAbonos = paymentList.reduce((acc, p) => acc + Number(p.amount), 0);
+      
+      const receivedMoney = cashFromSales + totalAbonos;
+
+      // Use persisted cost if available, fallback to current product cost for old items
+      const cost = relevantItems.reduce((acc, item) => {
+        const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
+        return acc + (itemCost * item.quantity);
       }, 0);
+
       const profit = revenue - cost;
-      return { revenue, cost, profit };
+      return { revenue, cost, profit, pendingCredit, receivedMoney };
     };
   }, [saleItems, productMap]);
 
-  const todayMetrics = useMemo(() => calculateMetricsForSales(todaySales), [todaySales, calculateMetricsForSales]);
-  const weekMetrics = useMemo(() => calculateMetricsForSales(weekSales), [weekSales, calculateMetricsForSales]);
-  const totalMetrics = useMemo(() => calculateMetrics, [calculateMetrics]);
+  const currentMetrics = useMemo(() => {
+    const periodPayments = (allPayments ?? []).filter(p => {
+      if (period === 'dia') return p.created_at >= today;
+      if (period === 'semana') return p.created_at >= weekAgo;
+      if (period === 'mes') return p.created_at >= monthAgo;
+      return true;
+    });
 
+    const m = calculateMetricsForSales(filteredSales, periodPayments);
+    const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
+    return { ...m, margin };
+  }, [filteredSales, allPayments, calculateMetricsForSales, period, today, weekAgo, monthAgo]);
+
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
 
   const handleDownloadPDF = async () => {
     try {
-      if (todaySales.length === 0) {
-        showToast('No hay ventas hoy para generar el reporte', 'warning');
+      if (filteredSales.length === 0) {
+        showToast(`No hay ventas en este periodo para generar el reporte`, 'warning');
         return;
       }
-      await generateDailyReport(todaySales, todayMetrics);
+      await generateReport(filteredSales, currentMetrics, pdfTitleLabel);
       showToast('Reporte generado con éxito', 'success');
     } catch (error) {
       showToast('Error al generar el PDF', 'error');
@@ -178,14 +226,14 @@ export const DashboardPanel = memo(function DashboardPanel() {
   };
 
   const paymentBreakdown = useMemo(() => {
-    const counts: Record<string, number> = { cash: 0, card: 0, transfer: 0 };
-    (sales ?? []).forEach(s => {
+    const counts: Record<string, number> = { cash: 0, card: 0, transfer: 0, credito: 0 };
+    filteredSales.forEach(s => {
       if (counts[s.payment_method] !== undefined) {
         counts[s.payment_method]++;
       }
     });
     return counts;
-  }, [sales]);
+  }, [filteredSales]);
 
   const lowStock = useMemo(
     () => (products ?? []).filter((p) => p.stock_quantity < 10).slice(0, 5),
@@ -194,9 +242,12 @@ export const DashboardPanel = memo(function DashboardPanel() {
 
   const topProducts = useMemo(() => {
     if (!saleItems || !products) return [];
+    const validSaleIds = new Set(filteredSales.map(s => s.id));
     const sums: Record<string, number> = {};
     saleItems.forEach((it) => {
-      sums[it.product_id] = (sums[it.product_id] ?? 0) + it.quantity;
+      if (validSaleIds.has(it.sale_id)) {
+        sums[it.product_id] = (sums[it.product_id] ?? 0) + it.quantity;
+      }
     });
     return Object.entries(sums)
       .sort((a, b) => b[1] - a[1])
@@ -205,7 +256,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
         name: products.find((p) => p.id === id)?.name ?? 'Desconocido',
         qty,
       }));
-  }, [saleItems, products]);
+  }, [saleItems, products, filteredSales]);
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -236,7 +287,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
     <ScrollView 
       style={styles.container} 
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: verticalScale(32) + insets.bottom }]}
     >
       <LinearGradient
         colors={['rgba(10, 10, 12, 0.95)', 'rgba(10, 10, 12, 0.98)']}
@@ -263,36 +314,21 @@ export const DashboardPanel = memo(function DashboardPanel() {
         </TouchableOpacity>
       </View>
 
+      <PeriodSelector selected={period} onSelect={setPeriod} />
+
       <View style={styles.statsGrid}>
         <StatCard 
-          label="Ventas Hoy" 
-          value={`${todaySales.length}`} 
+          label={`Ventas (${periodLabel})`} 
+          value={`${filteredSales.length}`} 
           variant="accent"
           icon="receipt"
         />
         <StatCard 
-          label="Ganancia Hoy" 
-          value={`$${todayMetrics.profit.toFixed(2)}`}
+          label={`Ganancia (${periodLabel})`} 
+          value={`$${currentMetrics.profit.toFixed(2)}`}
           variant="success"
           icon="trending-up"
-          subtitle={`Margen: ${todayMetrics.revenue > 0 ? ((todayMetrics.profit / todayMetrics.revenue) * 100).toFixed(1) : 0}%`}
-        />
-      </View>
-
-      <View style={styles.statsGrid}>
-        <StatCard 
-          label="Semana" 
-          value={`$${weekMetrics.profit.toFixed(2)}`}
-          variant="profit"
-          icon="trending-up"
-          subtitle={`Ventas: $${weekMetrics.revenue.toFixed(2)}`}
-        />
-        <StatCard 
-          label="Ganancia Total" 
-          value={`$${totalMetrics.profit.toFixed(2)}`}
-          variant="success"
-          icon="chart-line"
-          subtitle={`Margen: ${totalMetrics.margin.toFixed(1)}%`}
+          subtitle={`Margen: ${currentMetrics.margin.toFixed(1)}%`}
         />
       </View>
 
@@ -305,16 +341,29 @@ export const DashboardPanel = memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <View style={styles.financialItem}>
-            <Text style={styles.financialLabel}>Ventas Totales</Text>
-            <Text style={styles.financialValue}>${totalMetrics.revenue.toFixed(2)}</Text>
+            <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
+            <Text style={styles.financialValue}>${currentMetrics.revenue.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialItem}>
+            <View style={styles.labelWithBadge}>
+              <Text style={styles.financialLabel}>Efectivo/Caja Real</Text>
+              <View style={styles.receivedBadge}>
+                <Text style={styles.receivedBadgeText}>Recibido</Text>
+              </View>
+            </View>
+            <Text style={styles.financialValueReceived}>${currentMetrics.receivedMoney.toFixed(2)}</Text>
+          </View>
+          <View style={styles.financialItem}>
+            <Text style={styles.financialLabel}>Crédito Pendiente</Text>
+            <Text style={styles.financialValuePending}>${currentMetrics.pendingCredit.toFixed(2)}</Text>
           </View>
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Costos Totales</Text>
-            <Text style={styles.financialValueCost}>-${totalMetrics.cost.toFixed(2)}</Text>
+            <Text style={styles.financialValueCost}>-${currentMetrics.cost.toFixed(2)}</Text>
           </View>
           <View style={[styles.financialItem, styles.financialItemHighlight]}>
-            <Text style={styles.financialLabelHighlight}>Ganancia Neta</Text>
-            <Text style={styles.financialValueProfit}>${totalMetrics.profit.toFixed(2)}</Text>
+            <Text style={styles.financialLabelHighlight}>Ganancia Estimada</Text>
+            <Text style={styles.financialValueProfit}>${currentMetrics.profit.toFixed(2)}</Text>
           </View>
         </View>
       </View>
@@ -327,27 +376,50 @@ export const DashboardPanel = memo(function DashboardPanel() {
           <Text style={styles.sectionTitle}>Metodos de Pago</Text>
         </View>
         <View style={styles.paymentMethodsGrid}>
-          <View style={styles.paymentMethodItem}>
+          <TouchableOpacity 
+            style={styles.paymentMethodItem}
+            activeOpacity={0.7}
+            onPress={() => { setSelectedMethod('cash'); setMethodModalVisible(true); }}
+          >
             <View style={styles.paymentMethodIcon}>
               <Icon name="money-bill" size={16} color="#B87B5A" />
             </View>
             <Text style={styles.paymentMethodLabel}>Efectivo</Text>
             <Text style={styles.paymentMethodValue}>{paymentBreakdown.cash}</Text>
-          </View>
-          <View style={styles.paymentMethodItem}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.paymentMethodItem}
+            activeOpacity={0.7}
+            onPress={() => { setSelectedMethod('card'); setMethodModalVisible(true); }}
+          >
             <View style={styles.paymentMethodIcon}>
               <Icon name="credit-card" size={16} color="#B87B5A" />
             </View>
             <Text style={styles.paymentMethodLabel}>Tarjeta</Text>
             <Text style={styles.paymentMethodValue}>{paymentBreakdown.card}</Text>
-          </View>
-          <View style={styles.paymentMethodItem}>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.paymentMethodItem}
+            activeOpacity={0.7}
+            onPress={() => { setSelectedMethod('transfer'); setMethodModalVisible(true); }}
+          >
             <View style={styles.paymentMethodIcon}>
               <Icon name="mobile-alt" size={16} color="#B87B5A" />
             </View>
             <Text style={styles.paymentMethodLabel}>Transf.</Text>
             <Text style={styles.paymentMethodValue}>{paymentBreakdown.transfer}</Text>
-          </View>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.paymentMethodItem}
+            activeOpacity={0.7}
+            onPress={() => { setSelectedMethod('credito'); setMethodModalVisible(true); }}
+          >
+            <View style={styles.paymentMethodIcon}>
+              <Icon name="user" size={16} color="#B87B5A" />
+            </View>
+            <Text style={styles.paymentMethodLabel}>Créditos</Text>
+            <Text style={styles.paymentMethodValue}>{paymentBreakdown.credito}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -429,11 +501,19 @@ export const DashboardPanel = memo(function DashboardPanel() {
               </View>
             </View>
           ))}
-          {(sales ?? []).length === 0 && (
+          {(filteredSales ?? []).length === 0 && (
             <Text style={styles.empty}>Sin ventas registradas</Text>
           )}
         </View>
       </View>
+
+      <PaymentDetailsModal 
+        visible={methodModalVisible}
+        onClose={() => setMethodModalVisible(false)}
+        method={selectedMethod}
+        periodLabel={periodLabel}
+        sales={filteredSales.filter(s => s.payment_method === selectedMethod)}
+      />
     </ScrollView>
   );
 });
@@ -445,8 +525,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bg,
   },
   content: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: scale(16),
+    paddingBottom: verticalScale(32),
   },
   loading: {
     flex: 1,
@@ -456,46 +536,46 @@ const styles = StyleSheet.create({
   },
   loadingContent: {
     alignItems: 'center',
-    gap: 12,
+    gap: verticalScale(12),
   },
   loadingText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#8A8A96',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: verticalScale(20),
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 26, 
+    fontSize: moderateScale(26), 
     color: '#F0F0F2', 
     fontWeight: '800', 
-    letterSpacing: 1,
+    letterSpacing: scale(1),
   },
   headerTitleRow: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 12,
+    gap: scale(12),
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    gap: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
+    borderRadius: scale(10),
     backgroundColor: 'rgba(184, 123, 90, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.2)',
   },
   downloadBtnText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 11,
+    fontSize: moderateScale(11),
     fontWeight: '700',
     color: '#B87B5A',
     textTransform: 'uppercase',
@@ -504,35 +584,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(109, 184, 138, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 4,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: scale(8),
+    gap: scale(4),
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
     backgroundColor: '#6DB88A',
   },
   headerBadgeText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 10,
+    fontSize: moderateScale(10),
     fontWeight: '600',
     color: '#6DB88A',
     textTransform: 'uppercase',
   },
   statsGrid: { 
     flexDirection: 'row', 
-    marginBottom: 12, 
-    gap: 12 
+    marginBottom: verticalScale(12), 
+    gap: scale(12) 
   },
   statCard: { 
     flex: 1, 
     position: 'relative',
-    padding: 16,
-    paddingTop: 18,
-    borderRadius: 20, 
+    padding: scale(16),
+    paddingTop: verticalScale(18),
+    borderRadius: scale(20), 
     borderWidth: 1, 
     borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
@@ -542,14 +622,14 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 3,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    height: verticalScale(3),
+    borderTopLeftRadius: scale(20),
+    borderTopRightRadius: scale(20),
     opacity: 0.85,
   },
   statBorder: {
     position: 'absolute',
-    top: 3,
+    top: verticalScale(3),
     left: 0,
     right: 0,
     height: 1,
@@ -558,263 +638,294 @@ const styles = StyleSheet.create({
   statHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
+    gap: scale(10),
+    marginBottom: verticalScale(10),
   },
   statIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
   },
   statLabel: { 
+    flex: 1,
     fontFamily: FontNames.instrumentSans, 
     color: '#8A8A96', 
-    fontSize: 11, 
+    fontSize: moderateScale(11), 
     fontWeight: '600',
     textTransform: 'uppercase', 
-    letterSpacing: 0.5,
+    letterSpacing: scale(0.5),
   },
   statValue: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: 22, 
+    fontSize: moderateScale(22), 
     fontWeight: '800',
   },
   statSubtitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 11,
+    fontSize: moderateScale(11),
     color: '#8A8A96',
-    marginTop: 4,
+    marginTop: verticalScale(4),
   },
   statGlow: {
     position: 'absolute',
-    bottom: -20,
-    right: -20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: verticalScale(-20),
+    right: scale(-20),
+    width: scale(60),
+    height: scale(60),
+    borderRadius: scale(30),
     opacity: 0.05,
   },
   section: { 
-    marginTop: 20,
+    marginTop: verticalScale(20),
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: scale(10),
+    marginBottom: verticalScale(12),
   },
   sectionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionTitle: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 16, 
+    fontSize: moderateScale(16), 
     color: '#F0F0F2', 
     fontWeight: '700',
   },
   sectionCard: { 
     backgroundColor: tokens.colors.bg,
-    borderRadius: 20, 
-    padding: 16,
+    borderRadius: scale(20), 
+    padding: scale(16),
     borderWidth: 1, 
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   financialGrid: {
     backgroundColor: tokens.colors.bg,
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: scale(20),
+    padding: scale(16),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 12,
+    gap: verticalScale(12),
   },
   financialItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: verticalScale(10),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   financialItemHighlight: {
     backgroundColor: 'rgba(109, 184, 138, 0.1)',
-    marginHorizontal: -16,
-    marginBottom: -16,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    marginHorizontal: scale(-16),
+    marginBottom: verticalScale(-16),
+    paddingHorizontal: scale(16),
+    paddingBottom: verticalScale(16),
     borderBottomWidth: 0,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: scale(20),
+    borderBottomRightRadius: scale(20),
   },
   financialLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#8A8A96',
   },
   financialLabelHighlight: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
     color: '#6DB88A',
   },
   financialValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
     color: '#F0F0F2',
   },
   financialValueCost: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
     color: '#C96B6B',
   },
   financialValueProfit: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: '800',
     color: '#6DB88A',
+  },
+  financialValueReceived: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
+    color: tokens.colors.text,
+  },
+  financialValuePending: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  labelWithBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+  },
+  receivedBadge: {
+    backgroundColor: 'rgba(109, 184, 138, 0.1)',
+    paddingHorizontal: scale(6),
+    paddingVertical: verticalScale(2),
+    borderRadius: scale(4),
+  },
+  receivedBadgeText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(9),
+    fontWeight: '700',
+    color: '#6DB88A',
+    textTransform: 'uppercase',
   },
   listItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: verticalScale(12),
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   listItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: scale(12),
     flex: 1,
   },
   rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(8),
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   rankText: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '700',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
   },
   listText: { 
     fontFamily: FontNames.instrumentSans, 
-    color: '#F0F0F2', 
-    fontSize: 14,
+    color: tokens.colors.text, 
+    fontSize: moderateScale(14),
     flex: 1,
   },
   listValueContainer: {
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: tokens.colors.mahoganyDim,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: scale(8),
   },
   listValue: { 
     fontFamily: FontNames.jetBrainsMono, 
-    color: '#B87B5A', 
-    fontSize: 13, 
+    color: tokens.colors.mahogany, 
+    fontSize: moderateScale(13), 
     fontWeight: '700',
   },
   saleItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingVertical: 14,
+    paddingVertical: verticalScale(14),
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   saleLeft: {
-    gap: 6,
+    gap: verticalScale(6),
   },
   saleAmount: { 
     fontFamily: FontNames.jetBrainsMono, 
-    color: '#F0F0F2', 
-    fontSize: 16, 
+    color: tokens.colors.text, 
+    fontSize: moderateScale(16), 
     fontWeight: '700',
   },
   paymentBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: scale(6),
     alignSelf: 'flex-start',
   },
   saleMethod: { 
     fontFamily: FontNames.instrumentSans, 
-    color: '#8A8A96', 
-    fontSize: 11,
+    color: tokens.colors.textMuted, 
+    fontSize: moderateScale(11),
     textTransform: 'capitalize',
   },
   saleRight: { 
     alignItems: 'flex-end',
-    gap: 4,
+    gap: verticalScale(4),
   },
   saleDate: { 
     fontFamily: FontNames.instrumentSans, 
-    color: '#F0F0F2', 
-    fontSize: 13,
+    color: tokens.colors.text, 
+    fontSize: moderateScale(13),
   },
   saleTime: { 
     fontFamily: FontNames.jetBrainsMono, 
-    color: '#8A8A96', 
-    fontSize: 11,
+    color: tokens.colors.textMuted, 
+    fontSize: moderateScale(11),
   },
   empty: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 14, 
+    fontSize: moderateScale(14), 
     textAlign: 'center', 
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: verticalScale(16),
+    marginBottom: verticalScale(8),
   },
   paymentMethodsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: scale(12),
   },
   paymentMethodItem: {
     flexGrow: 1,
-    minWidth: 100,
+    minWidth: scale(100),
     backgroundColor: tokens.colors.bg,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: scale(16),
+    padding: scale(16),
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   paymentMethodIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
     backgroundColor: 'rgba(184, 123, 90, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: verticalScale(8),
   },
   paymentMethodLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: '#8A8A96',
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: scale(0.5),
   },
   paymentMethodValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
 });

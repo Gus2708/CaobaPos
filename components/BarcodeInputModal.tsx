@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Keyboard } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import { View, TextInput, TouchableOpacity, Modal, StyleSheet, Keyboard } from 'react-native';
+import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface BarcodeInputModalProps {
   visible: boolean;
@@ -94,14 +96,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: scale(20),
   },
   modal: {
     backgroundColor: 'rgba(30, 30, 40, 0.98)',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: scale(20),
+    padding: scale(20),
     width: '100%',
-    maxWidth: 360,
+    maxWidth: scale(360),
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.3)',
   },
@@ -109,50 +111,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: verticalScale(20),
   },
   title: {
     color: '#F0F0F2',
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '700',
   },
   closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   label: {
     color: '#F0F0F2',
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
   inputContainer: {
     backgroundColor: 'rgba(20, 20, 26, 0.8)',
-    borderRadius: 12,
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.3)',
-    marginBottom: 10,
+    marginBottom: verticalScale(10),
   },
   input: {
     color: '#F0F0F2',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontFamily: FontNames.jetBrainsMono,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(14),
   },
   hint: {
     color: '#6A6A72',
-    fontSize: 12,
-    marginBottom: 20,
+    fontSize: moderateScale(12),
+    marginBottom: verticalScale(20),
   },
   submitBtn: {
     backgroundColor: '#B87B5A',
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: scale(12),
+    paddingVertical: verticalScale(14),
     alignItems: 'center',
   },
   submitBtnDisabled: {
@@ -160,7 +162,8 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     color: '#F0F0F2',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
   },
 });
+

@@ -1,10 +1,12 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text } from './Text';
 import { memo, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CartItem as CartItemType } from '../store/cartStore';
 import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface CartItemProps {
   item: CartItemType;
@@ -45,7 +47,7 @@ export const CartItemRow = memo(function CartItemRow({
           activeOpacity={0.7}
           accessibilityLabel="Disminuir cantidad"
         >
-          <Icon name="minus" size={16} color="#F0F0F2" />
+          <Icon name="minus" size={16} color={tokens.colors.text} />
         </TouchableOpacity>
         
         <View style={styles.quantityContainer}>
@@ -58,7 +60,7 @@ export const CartItemRow = memo(function CartItemRow({
           activeOpacity={0.7}
           accessibilityLabel="Aumentar cantidad"
         >
-          <Icon name="plus" size={16} color="#F0F0F2" />
+          <Icon name="plus" size={16} color={tokens.colors.text} />
         </TouchableOpacity>
       </View>
       
@@ -70,7 +72,7 @@ export const CartItemRow = memo(function CartItemRow({
           activeOpacity={0.7}
           accessibilityLabel="Eliminar producto"
         >
-          <Icon name="trash" size={18} color="#C96B6B" />
+          <Icon name="trash" size={18} color={tokens.colors.coral} />
         </TouchableOpacity>
       </View>
     </View>
@@ -83,10 +85,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    marginVertical: 4,
-    borderRadius: 14,
+    paddingVertical: verticalScale(12),
+    paddingHorizontal: scale(10),
+    marginVertical: verticalScale(4),
+    borderRadius: scale(14),
     backgroundColor: tokens.colors.bg,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.04)',
@@ -102,14 +104,14 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    marginRight: 10,
+    marginRight: scale(10),
   },
   name: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
-    color: '#F0F0F2',
-    marginBottom: 4,
+    color: tokens.colors.text,
+    marginBottom: verticalScale(4),
   },
   priceRow: {
     flexDirection: 'row',
@@ -117,50 +119,50 @@ const styles = StyleSheet.create({
   },
   unitPrice: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 11,
-    color: '#8A8A96',
+    fontSize: moderateScale(11),
+    color: tokens.colors.textMuted,
   },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: scale(8),
   },
   button: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(10),
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 36,
+    minWidth: scale(36),
   },
   quantityContainer: {
-    minWidth: 28,
+    minWidth: scale(28),
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantity: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
     color: '#F0F0F2',
   },
   totalContainer: {
     alignItems: 'flex-end',
-    marginLeft: 10,
-    gap: 6,
+    marginLeft: scale(10),
+    gap: verticalScale(6),
   },
   total: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: '700',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
   },
   removeButton: {
-    padding: 10,
-    borderRadius: 12,
+    padding: scale(10),
+    borderRadius: scale(12),
     backgroundColor: 'rgba(201, 107, 107, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(201, 107, 107, 0.2)',

@@ -1,5 +1,8 @@
-import { Text, TextProps } from 'react-native';
+import { TextProps } from 'react-native';
+import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
+import { tokens } from '../lib/designTokens';
+import { moderateScale } from '../lib/responsive';
 
 interface PriceDisplayProps extends TextProps {
   amount: number;
@@ -8,10 +11,10 @@ interface PriceDisplayProps extends TextProps {
 
 export function PriceDisplay({ amount, size = 'md', style, ...props }: PriceDisplayProps) {
   const sizes = {
-    sm: 14,
-    md: 18,
-    lg: 24,
-    xl: 36,
+    sm: moderateScale(14),
+    md: moderateScale(18),
+    lg: moderateScale(24),
+    xl: moderateScale(36),
   };
 
   return (
@@ -20,7 +23,7 @@ export function PriceDisplay({ amount, size = 'md', style, ...props }: PriceDisp
         {
           fontFamily: FontNames.jetBrainsMono,
           fontWeight: '700',
-          color: '#B87B5A',
+          color: tokens.colors.mahogany,
           fontSize: sizes[size],
         },
         style,
