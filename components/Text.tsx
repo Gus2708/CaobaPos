@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text as RNText, TextProps as RNTextProps } from 'react-native';
+import { Text as RNText, TextProps as RNTextProps, StyleSheet } from 'react-native';
+import { moderateScale } from '../lib/responsive';
 
 type FontWeight = 'regular' | 'medium' | 'semiBold' | 'bold';
 type FontFamily = 'sans' | 'mono';
@@ -25,10 +26,21 @@ const fontMap: Record<FontFamily, Record<FontWeight, any>> = {
 };
 
 export function AppText({ weight = 'regular', family = 'sans', style, ...props }: AppTextProps) {
+  // Flatten and scale font size if it exists in styles
+  const flattenedStyle = StyleSheet.flatten(style) || {};
+  const scaledStyle = { ...flattenedStyle };
+  
+  if (scaledStyle.fontSize) {
+    scaledStyle.fontSize = moderateScale(scaledStyle.fontSize);
+  } else {
+    // Default size is 14 scaled
+    scaledStyle.fontSize = moderateScale(14);
+  }
+
   return (
     <RNText
       {...props}
-      style={[{ fontFamily: fontMap[family][weight] }, style]}
+      style={[{ fontFamily: fontMap[family][weight] }, scaledStyle]}
     />
   );
 }

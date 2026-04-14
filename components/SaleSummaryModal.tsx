@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { CartItem } from '../store/cartStore';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -226,53 +228,53 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: scale(20),
   },
   modal: {
     backgroundColor: tokens.colors.bg,
-    borderRadius: 20,
+    borderRadius: scale(20),
     width: '100%',
-    maxWidth: 400,
+    maxWidth: scale(400),
     maxHeight: '90%',
     overflow: 'hidden',
   },
   header: {
-    backgroundColor: '#6DB88A',
-    padding: 20,
+    backgroundColor: tokens.colors.sage,
+    padding: scale(20),
     alignItems: 'center',
   },
   headerTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 22,
+    fontSize: moderateScale(22),
     fontWeight: '700',
     color: '#FFFFFF',
   },
   receiptId: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+    fontSize: moderateScale(12),
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: verticalScale(4),
   },
   content: {
-    padding: 20,
+    padding: scale(20),
   },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     color: '#F0F0F2',
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
   },
   divider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    marginVertical: 12,
+    marginVertical: verticalScale(12),
   },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: verticalScale(8),
   },
   itemInfo: {
     flex: 1,
@@ -281,101 +283,101 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
-    color: '#F0F0F2',
+    fontSize: moderateScale(14),
+    color: tokens.colors.text,
     flex: 1,
   },
   itemQty: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 12,
+    fontSize: moderateScale(12),
     color: '#8A8A96',
-    marginLeft: 8,
+    marginLeft: scale(8),
   },
   itemPrice: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 14,
-    color: '#B87B5A',
+    fontSize: moderateScale(14),
+    color: tokens.colors.mahogany,
   },
   totalsSection: {
-    marginTop: 8,
+    marginTop: verticalScale(8),
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
   },
   totalLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#8A8A96',
   },
   totalValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#F0F0F2',
   },
   grandTotalLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '700',
     color: '#F0F0F2',
   },
   grandTotalValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: '700',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
   },
   paymentMethod: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
+    marginTop: verticalScale(12),
+    paddingTop: verticalScale(12),
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
   paymentLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#8A8A96',
   },
   paymentValue: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
     color: '#F0F0F2',
   },
   actions: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(12),
   },
   shareButton: {
-    backgroundColor: '#B87B5A',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: tokens.colors.mahogany,
+    borderRadius: scale(12),
+    paddingVertical: verticalScale(16),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   shareIcon: {
-    fontSize: 20,
-    marginRight: 8,
+    fontSize: moderateScale(20),
+    marginRight: scale(8),
   },
   shareButtonText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     color: '#FFFFFF',
   },
   closeButton: {
     backgroundColor: tokens.colors.bg,
-    paddingVertical: 31,
+    paddingVertical: verticalScale(20),
     alignItems: 'center',
   },
   closeButtonText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     color: '#8A8A96',
   },

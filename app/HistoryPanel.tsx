@@ -1,5 +1,6 @@
-import React, { useState, useMemo, memo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { Text } from '../components/Text';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
@@ -8,6 +9,7 @@ import { SaleDetailModal } from '../components/SaleDetailModal';
 import { Icon } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface SaleItem {
   id: string;
@@ -80,7 +82,7 @@ const SaleCard = memo(function SaleCard({
       
       <View style={styles.saleFooter}>
         <View style={styles.paymentBadge}>
-          <Icon name="credit-card" size={14} color="#B87B5A" />
+          <Icon name="credit-card" size={14} color={tokens.colors.mahogany} />
           <Text style={styles.paymentText}>{getPaymentLabel(item.payment_method)}</Text>
         </View>
         <View style={styles.saleActions}>
@@ -88,7 +90,7 @@ const SaleCard = memo(function SaleCard({
             <Text style={styles.btnText}>Ver</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
-            <Icon name="trash" size={14} color="#C96B6B" />
+            <Icon name="trash" size={14} color={tokens.colors.coral} />
           </TouchableOpacity>
         </View>
       </View>
@@ -148,15 +150,32 @@ export const HistoryPanel = memo(function HistoryPanel() {
         .eq('sale_id', sale.id);
       if (deleteError) throw deleteError;
 
+      // 2. Automatically clear any payments associated with this specific sale
+      // link to help keep client balances consistent. This MUST happen before
+      // deleting the sale due to foreign key constraints.
+      await supabase
+        .from('client_payments')
+        .delete()
+        .eq('sale_id', sale.id);
+
+      // 3. Delete the sale itself
       const { error: saleError } = await supabase
         .from('sales')
         .delete()
         .eq('id', sale.id);
       if (saleError) throw saleError;
     },
-    onSuccess: () => {
+    onSuccess: (_, sale) => {
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Refresh analytics
+      if (sale.payment_method === 'credito') {
+        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        if (sale.client_id) {
+          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', sale.client_id] });
+          queryClient.invalidateQueries({ queryKey: ['client_payments', sale.client_id] });
+        }
+      }
       setShowDetail(false);
       setSelectedSale(null);
       showToast('Venta eliminada y stock restaurado', 'success');
@@ -166,12 +185,48 @@ export const HistoryPanel = memo(function HistoryPanel() {
 
   const updateSaleMutation = useMutation({
     mutationFn: async ({ saleId, items, newTotal }: { saleId: string; items: SaleItem[]; newTotal: number }) => {
+      // 1. Recover old items to revert their stock
+      const { data: oldItems, error: fetchError } = await supabase
+        .from('sale_items')
+        .select('product_id, quantity')
+        .eq('sale_id', saleId);
+      
+      if (fetchError) throw fetchError;
+
+      // 2. Revert old stock
+      if (oldItems) {
+        for (const item of oldItems) {
+          await supabase.rpc('increment_stock', {
+            p_product_id: item.product_id,
+            p_quantity: item.quantity,
+          });
+        }
+      }
+
+      // 3. Delete old items
       const { error: deleteError } = await supabase
         .from('sale_items')
         .delete()
         .eq('sale_id', saleId);
       if (deleteError) throw deleteError;
 
+      // 4. Pre-check new stock availability
+      const productIds = items.map(i => i.product_id);
+      const { data: dbProducts, error: stockCheckError } = await supabase
+        .from('products')
+        .select('id, name, stock_quantity')
+        .in('id', productIds);
+      
+      if (stockCheckError) throw stockCheckError;
+
+      for (const item of items) {
+        const dbProduct = dbProducts?.find(p => p.id === item.product_id);
+        if (dbProduct && dbProduct.stock_quantity < item.quantity) {
+          throw new Error(`Stock insuficiente para ${dbProduct.name}. Disponible: ${dbProduct.stock_quantity}`);
+        }
+      }
+
+      // 5. Insert new items and decrement stock
       for (const item of items) {
         const { error: insertError } = await supabase.from('sale_items').insert({
           sale_id: saleId,
@@ -182,17 +237,29 @@ export const HistoryPanel = memo(function HistoryPanel() {
           subtotal: item.subtotal,
         });
         if (insertError) throw insertError;
+
+        await supabase.rpc('decrement_stock', {
+          p_product_id: item.product_id,
+          p_quantity: item.quantity,
+        });
       }
 
+      // 5. Update sale total
       const { error: updateError } = await supabase
         .from('sales')
         .update({ total_amount: newTotal })
         .eq('id', saleId);
       if (updateError) throw updateError;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      if (selectedSale?.payment_method === 'credito') {
+        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        if (selectedSale?.client_id) {
+          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', selectedSale.client_id] });
+        }
+      }
       setShowDetail(false);
       setSelectedSale(null);
       showToast('Venta actualizada', 'success');
@@ -270,7 +337,7 @@ export const HistoryPanel = memo(function HistoryPanel() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#B87B5A" />
+          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
           <Text style={styles.loadingText}>Cargando ventas...</Text>
         </View>
       ) : (
@@ -290,8 +357,8 @@ export const HistoryPanel = memo(function HistoryPanel() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor="#B87B5A"
-              progressBackgroundColor="rgba(10, 10, 12, 0.8)"
+              tintColor={tokens.colors.mahogany}
+              progressBackgroundColor={tokens.colors.glass.heavy}
             />
           }
         />
@@ -320,23 +387,23 @@ const styles = StyleSheet.create({
     flex: 1, 
     position: 'relative',
     backgroundColor: tokens.colors.bg,
-    padding: 16,
+    padding: scale(16),
   },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 16,
+    marginBottom: verticalScale(16),
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: scale(10),
   },
   titleIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -345,81 +412,81 @@ const styles = StyleSheet.create({
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 22, 
-    color: '#F0F0F2', 
+    fontSize: moderateScale(22), 
+    color: tokens.colors.text, 
     fontWeight: '700', 
-    letterSpacing: 1,
+    letterSpacing: scale(1),
   },
   countBadge: {
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.2)',
   },
   count: { 
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 13, 
-    color: '#B87B5A',
+    fontSize: moderateScale(13), 
+    color: tokens.colors.mahogany,
     fontWeight: '600',
   },
   searchRow: { 
-    marginBottom: 16,
+    marginBottom: verticalScale(16),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: tokens.colors.bg,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    borderRadius: scale(14),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(4),
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.15)',
-    gap: 10,
+    gap: scale(10),
   },
   searchInput: { 
     flex: 1,
-    color: '#F0F0F2', 
-    paddingVertical: 14, 
+    color: tokens.colors.text, 
+    paddingVertical: verticalScale(14), 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 15,
+    fontSize: moderateScale(15),
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: verticalScale(12),
   },
   loadingText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
-    color: '#8A8A96',
+    fontSize: moderateScale(14),
+    color: tokens.colors.textMuted,
   },
   list: { 
-    paddingBottom: 20,
+    paddingBottom: verticalScale(20),
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
-    gap: 12,
+    paddingTop: verticalScale(80),
+    gap: verticalScale(12),
   },
   empty: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '600',
     textAlign: 'center', 
-    marginTop: 8 
+    marginTop: verticalScale(8) 
   },
   saleCard: {
     position: 'relative',
     backgroundColor: tokens.colors.bg,
-    padding: 16, 
-    borderRadius: 20, 
-    marginBottom: 12, 
+    padding: scale(16), 
+    borderRadius: scale(20), 
+    marginBottom: verticalScale(12), 
     borderWidth: 1, 
     borderColor: 'rgba(184, 123, 90, 0.12)',
     shadowColor: '#000',
@@ -441,43 +508,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'flex-start', 
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
   },
   saleInfo: {
     flex: 1,
   },
   idContainer: {
     backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: scale(8),
     alignSelf: 'flex-start',
-    marginBottom: 6,
+    marginBottom: verticalScale(6),
   },
   saleId: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: 13, 
-    color: '#B87B5A', 
+    fontSize: moderateScale(13), 
+    color: tokens.colors.mahogany, 
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: scale(0.5),
   },
   saleDate: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 12, 
-    color: '#8A8A96',
+    fontSize: moderateScale(12), 
+    color: tokens.colors.textMuted,
   },
   totalContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: scale(12),
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   saleTotal: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: 20, 
-    color: '#F0F0F2', 
+    fontSize: moderateScale(20), 
+    color: tokens.colors.text, 
     fontWeight: '700',
   },
   saleFooter: { 
@@ -489,39 +556,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(184, 123, 90, 0.15)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 8, 
-    borderRadius: 10, 
+    paddingHorizontal: scale(12), 
+    paddingVertical: verticalScale(8), 
+    borderRadius: scale(10), 
     borderWidth: 1, 
     borderColor: 'rgba(184, 123, 90, 0.2)',
-    gap: 6,
+    gap: scale(6),
   },
   paymentText: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 12, 
-    color: '#B87B5A', 
+    fontSize: moderateScale(12), 
+    color: tokens.colors.mahogany, 
     fontWeight: '600',
   },
   saleActions: { 
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   viewBtn: { 
     backgroundColor: 'rgba(184, 123, 90, 0.8)', 
-    paddingHorizontal: 18, 
-    paddingVertical: 10, 
-    borderRadius: 12,
-    minWidth: 70,
+    paddingHorizontal: scale(18), 
+    paddingVertical: verticalScale(10), 
+    borderRadius: scale(12),
+    minWidth: scale(70),
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(184, 123, 90, 0.4)',
   },
   deleteBtn: { 
     backgroundColor: 'rgba(201, 107, 107, 0.2)', 
-    paddingHorizontal: 14, 
-    paddingVertical: 10, 
-    borderRadius: 12, 
-    minWidth: 44,
+    paddingHorizontal: scale(14), 
+    paddingVertical: verticalScale(10), 
+    borderRadius: scale(12), 
+    minWidth: scale(44),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -529,9 +596,10 @@ const styles = StyleSheet.create({
   },
   btnText: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: 13, 
+    fontSize: moderateScale(13), 
     fontWeight: '600', 
-    color: '#F0F0F2', 
+    color: tokens.colors.text, 
     textAlign: 'center' 
   },
 });
+

@@ -1,9 +1,11 @@
-import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Text } from './Text';
 import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
 import { useSettingsStore } from '../store/cartStore';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -88,18 +90,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    minHeight: 60,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(8),
+    gap: scale(8),
+    minHeight: verticalScale(60),
   },
   tab: {
     position: 'relative',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(8),
+    borderRadius: scale(20),
     overflow: 'hidden',
-    minHeight: 36,
+    minHeight: verticalScale(36),
     justifyContent: 'center',
   },
   tabActive: {
@@ -108,7 +110,7 @@ const styles = StyleSheet.create({
   tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: scale(8),
     justifyContent: 'center',
   },
   tabContentActive: {
@@ -116,21 +118,22 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: '#8A8A96',
-    letterSpacing: 0.3,
+    letterSpacing: scale(0.3),
   },
   tabTextActive: {
     color: '#F0F0F2',
   },
   activePip: {
     position: 'absolute',
-    bottom: 6,
+    bottom: verticalScale(6),
     alignSelf: 'center',
-    width: 16,
-    height: 3,
-    borderRadius: 1.5,
+    width: scale(16),
+    height: verticalScale(3),
+    borderRadius: scale(1.5),
     backgroundColor: '#B87B5A',
   },
 });
+

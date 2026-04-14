@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "react-native-testing": {
+      "source": "callstack/react-native-testing-library",
+      "sourceType": "github",
+      "computedHash": "e6beef7078f84b041306394c89141344e7a88f83b06b53e26a0ea8615ca2a703"
+    }
+  }
+}

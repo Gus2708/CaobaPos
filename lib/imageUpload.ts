@@ -46,7 +46,7 @@ export async function uploadProductImage(uri: string, productId: string): Promis
     const arrayBuffer = await blobToArrayBuffer(blob);
 
     const { data, error } = await supabase.storage
-      .from('product-images')
+      .from('products')
       .upload(filename, arrayBuffer, {
         contentType: 'image/jpeg',
         upsert: true,
@@ -58,13 +58,34 @@ export async function uploadProductImage(uri: string, productId: string): Promis
     }
 
     const { data: urlData } = supabase.storage
-      .from('product-images')
+      .from('products')
       .getPublicUrl(data.path);
 
     return urlData.publicUrl;
   } catch (error) {
     console.error('Upload failed:', error);
     return null;
+  }
+}
+
+export async function deleteProductImage(imageUrl: string): Promise<void> {
+  try {
+    // Extract filename from public URL
+    // Format: .../storage/v1/object/public/products/filename.jpg
+    const parts = imageUrl.split('/');
+    const filename = parts[parts.length - 1];
+    
+    if (!filename) return;
+
+    const { error } = await supabase.storage
+      .from('products')
+      .remove([filename]);
+
+    if (error) {
+      console.error('Delete image error:', error);
+    }
+  } catch (error) {
+    console.error('Delete image failed:', error);
   }
 }
 

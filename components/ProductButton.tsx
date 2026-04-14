@@ -1,10 +1,13 @@
 import React, { memo, useRef, useCallback } from 'react';
-import { Text, TouchableOpacity, StyleSheet, Image, View, Animated } from 'react-native';
+import { CachedImage } from './CachedImage';
+import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
+import { Text } from './Text';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Product } from '../store/cartStore';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface ProductButtonProps {
   product: Product;
@@ -62,7 +65,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           {/* Image or placeholder */}
           <View style={styles.cardImageWrapper}>
             {product.image_url ? (
-              <Image source={{ uri: product.image_url }} style={styles.cardImage} />
+              <CachedImage 
+                remoteUri={product.image_url} 
+                style={styles.cardImage} 
+                contentFit="cover"
+              />
             ) : (
               <View style={styles.cardPlaceholder}>
                 <Text style={[styles.placeholderText, isOutOfStock && styles.placeholderTextDisabled]}>
@@ -110,7 +117,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         {/* Left — image or placeholder */}
         <View style={styles.imageWrapper}>
           {product.image_url ? (
-            <Image source={{ uri: product.image_url }} style={styles.image} />
+            <CachedImage 
+              remoteUri={product.image_url} 
+              style={styles.image} 
+              contentFit="cover"
+            />
           ) : (
             <View style={styles.placeholder}>
               <LinearGradient
@@ -190,8 +201,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
-    gap: tokens.spacing.md,
-    minHeight: 76,
+    gap: scale(12),
+    minHeight: verticalScale(76),
   },
   containerDisabled: {
     opacity: 0.45,
@@ -199,8 +210,8 @@ const styles = StyleSheet.create({
   },
   imageWrapper: {
     position: 'relative',
-    width: 52,
-    height: 52,
+    width: scale(52),
+    height: scale(52),
     borderRadius: tokens.radius.chip,
     overflow: 'hidden',
     flexShrink: 0,
@@ -208,7 +219,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   placeholder: {
     width: '100%',
@@ -231,28 +241,28 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    minWidth: 20,
-    height: 18,
+    minWidth: scale(20),
+    height: verticalScale(18),
     borderRadius: tokens.radius.xs,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: scale(4),
   },
   stockText: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 9,
+    fontSize: moderateScale(9),
     fontWeight: tokens.typography.bold,
   },
   info: {
     flex: 1,
-    gap: 4,
+    gap: verticalScale(4),
   },
   name: {
     fontFamily: FontNames.instrumentSans,
     fontSize: tokens.typography.base,
     fontWeight: tokens.typography.semibold,
     color: tokens.colors.text,
-    lineHeight: 19,
+    lineHeight: verticalScale(20),
   },
   nameDisabled: {
     color: tokens.colors.textMuted,
@@ -263,7 +273,7 @@ const styles = StyleSheet.create({
     fontWeight: tokens.typography.semibold,
     color: tokens.colors.amber,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: scale(0.5),
   },
   rightSection: {
     alignItems: 'flex-end',
@@ -280,8 +290,8 @@ const styles = StyleSheet.create({
     color: tokens.colors.textDim,
   },
   addBtn: {
-    width: 28,
-    height: 28,
+    width: scale(28),
+    height: scale(28),
     borderRadius: tokens.radius.pill,
     backgroundColor: tokens.colors.mahoganyDim,
     borderWidth: 1,
@@ -307,7 +317,6 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
   },
   cardPlaceholder: {
     width: '100%',
@@ -325,7 +334,7 @@ const styles = StyleSheet.create({
     fontSize: tokens.typography.sm,
     fontWeight: tokens.typography.semibold,
     color: tokens.colors.text,
-    lineHeight: 17,
+    lineHeight: verticalScale(17),
   },
   cardPrice: {
     fontFamily: FontNames.jetBrainsMono,

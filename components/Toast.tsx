@@ -1,7 +1,9 @@
-import React, { useEffect, useState, createContext, useContext, useCallback, memo, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 interface Toast {
   id: string;
@@ -168,66 +170,69 @@ export const ToastProvider = memo(function ToastProvider({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 100,
-    left: 16,
-    right: 16,
+    bottom: verticalScale(100),
+    left: scale(16),
+    right: scale(16),
     zIndex: 9999,
-    gap: 8,
+    gap: verticalScale(8),
     alignItems: 'stretch',
   },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(20, 20, 26, 0.97)',
-    borderRadius: tokens.radius.card,
+    borderRadius: scale(tokens.radius.card),
     borderWidth: 1,
     borderColor: tokens.colors.border,
     overflow: 'hidden',
-    minHeight: 60,
+    minHeight: verticalScale(60),
   },
   accentBar: {
-    width: 4,
+    width: scale(4),
     alignSelf: 'stretch',
   },
   iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: tokens.spacing.md,
-    marginRight: tokens.spacing.sm,
+    marginLeft: scale(tokens.spacing.md),
+    marginRight: scale(tokens.spacing.sm),
   },
   iconText: {
-    fontSize: tokens.typography.md,
+    fontSize: moderateScale(tokens.typography.md),
     fontWeight: tokens.typography.bold,
   },
   content: {
     flex: 1,
-    paddingVertical: tokens.spacing.md,
-    paddingRight: tokens.spacing.md,
-    gap: 2,
+    paddingVertical: verticalScale(tokens.spacing.md),
+    paddingRight: scale(tokens.spacing.md),
+    gap: verticalScale(2),
   },
   label: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography.xs,
+    fontSize: moderateScale(tokens.typography.xs),
     fontWeight: tokens.typography.bold,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: scale(0.8),
   },
   message: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography.base,
+    fontSize: moderateScale(tokens.typography.base),
     fontWeight: tokens.typography.medium,
     color: tokens.colors.text,
-    lineHeight: 20,
+    lineHeight: verticalScale(20),
   },
   progressBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 2,
+    height: verticalScale(2),
+    // transformOrigin is web-only, but keeping for compatibility if using react-native-web
+    // @ts-ignore
     transformOrigin: 'left',
   },
 });
+

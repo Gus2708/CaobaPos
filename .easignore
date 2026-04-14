@@ -1,0 +1,28 @@
+# Agent internal folders (contain symlinks that break EAS upload)
+.agents/
+.claude/
+.antigravity/
+.gemini/
+.trae/
+skills/
+skills-lock.json
+
+# IDE and System folders
+.idea/
+.vscode/
+.DS_Store
+
+# Version control
+.git/
+
+# Dependencies
+node_modules/
+
+# Environment
+.env*
+!.env.example
+
+# Temporary/Cache
+.expo/
+dist/
+web-build/

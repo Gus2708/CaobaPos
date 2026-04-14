@@ -1,4 +1,7 @@
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Text } from '../components/Text';
+import { Image } from 'expo-image';
 import { useState, useMemo, useCallback, memo, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProducts, Category } from '../hooks/useProducts';
@@ -13,8 +16,11 @@ import { Product } from '../store/cartStore';
 import { useToast } from '../components/Toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { prefetchImages } from '../lib/imageCache';
+import { tokens } from '../lib/designTokens';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
-const ITEM_HEIGHT = 200; // Slightly increased for breathing room
+const ITEM_HEIGHT = verticalScale(200); // Slightly increased for breathing room
 const LOW_STOCK_THRESHOLD = 10;
 
 const ProductItem = memo(function ProductItem({ 
@@ -43,6 +49,7 @@ export function POSScreen() {
   const barcodeInputRef = useRef<TextInput>(null);
   const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const numColumns = isMobile ? 1 : 3;
@@ -65,6 +72,38 @@ export function POSScreen() {
     },
   });
 
+  // O(1) Lookup Map for Barcodes [js-index-maps]
+  const barcodeMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    if (allProducts) {
+      allProducts.forEach(p => {
+        if (p.barcode) map.set(p.barcode, p);
+      });
+    }
+    return map;
+  }, [allProducts]);
+
+  // Prefetch images for better POS performance
+  useEffect(() => {
+    if (products) {
+      const urls = products.map(p => p.image_url).filter(Boolean) as string[];
+      if (urls.length > 0) {
+        Image.prefetch(urls);
+        prefetchImages(urls); // Aggressive local cache
+      }
+    }
+  }, [products]);
+
+  useEffect(() => {
+    if (allProducts) {
+      const urls = allProducts.map(p => p.image_url).filter(Boolean) as string[];
+      if (urls.length > 0) {
+        Image.prefetch(urls);
+        prefetchImages(urls); // Aggressive local cache
+      }
+    }
+  }, [allProducts]);
+
   const checkLowStock = useCallback((product: Product) => {
     if (product.stock_quantity <= 0) {
       showToast(`${product.name} sin stock`, 'error');
@@ -73,6 +112,23 @@ export function POSScreen() {
     // Low stock warning removed by user request
     return true;
   }, [showToast]);
+
+  useEffect(() => {
+    // Focus barcode input after short delay to allow UI to settle
+    const timer = setTimeout(() => {
+      barcodeInputRef.current?.focus();
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleBarcodeBlur = useCallback(() => {
+    // Only refocus if not searching and not processing a sale
+    if (!searchQuery && !items.length === 0) {
+      setTimeout(() => {
+        barcodeInputRef.current?.focus();
+      }, 500);
+    }
+  }, [searchQuery, items.length]);
 
   const handleBarcodeBuffer = useCallback((text: string) => {
     setBarcodeBuffer(text);
@@ -84,7 +140,7 @@ export function POSScreen() {
     if (text.includes('\n') || text.includes('\r')) {
       const barcode = text.replace(/[\n\r]/g, '').trim();
       if (barcode) {
-        const product = allProducts?.find(p => p.barcode === barcode);
+        const product = barcodeMap.get(barcode);
         if (product) {
           if (checkLowStock(product)) {
             addItem(product);
@@ -102,7 +158,7 @@ export function POSScreen() {
       if (barcodeBuffer.length > 0) {
         const barcode = barcodeBuffer.trim();
         if (barcode.length >= 3) {
-          const product = allProducts?.find(p => p.barcode === barcode);
+          const product = barcodeMap.get(barcode);
           if (product) {
             if (checkLowStock(product)) {
               addItem(product);
@@ -115,7 +171,7 @@ export function POSScreen() {
         setBarcodeBuffer('');
       }
     }, 500);
-  }, [allProducts, addItem, showToast, barcodeBuffer, checkLowStock]);
+  }, [addItem, showToast, barcodeBuffer, checkLowStock, barcodeMap]);
 
   useEffect(() => {
     return () => {
@@ -170,23 +226,25 @@ export function POSScreen() {
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
-
-
-  const ListEmptyComponent = useCallback(() => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIcon}>
-        <Icon name="search-plus" size={48} color="rgba(184, 123, 90, 0.3)" />
-      </View>
-      <Text style={styles.emptyText}>
-        {searchQuery ? 'Sin resultados' : 'No hay productos'}
-      </Text>
-      {searchQuery && (
-        <Text style={styles.emptySubtext}>
-          No se encontró "{searchQuery}"
+  // [rerender-memo] Extract to memoized component
+  const ListEmptyComponent = useMemo(() => {
+    if (isLoading) return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIcon}>
+          <Icon name="search-plus" size={48} color={tokens.colors.mahoganyDim} />
+        </View>
+        <Text style={styles.emptyText}>
+          {searchQuery ? 'Sin resultados' : 'No hay productos'}
         </Text>
-      )}
-    </View>
-  ), [searchQuery]);
+        {searchQuery && (
+          <Text style={styles.emptySubtext}>
+            No se encontró "{searchQuery}"
+          </Text>
+        )}
+      </View>
+    );
+  }, [searchQuery, isLoading]);
 
   return (
     <View style={[styles.main, isMobile && { flexDirection: 'column' }]}>
@@ -197,6 +255,9 @@ export function POSScreen() {
         style={styles.hiddenInput}
         value={barcodeBuffer}
         onChangeText={handleBarcodeBuffer}
+        onBlur={handleBarcodeBlur}
+        autoFocus
+        showSoftInputOnFocus={false}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="default"
@@ -213,11 +274,11 @@ export function POSScreen() {
 
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-            <Icon name="search" size={16} color="#8A8A96" />
+            <Icon name="search" size={16} color={tokens.colors.textMuted} />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar producto..."
-              placeholderTextColor="#8A8A96"
+              placeholderTextColor={tokens.colors.textDim}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -232,7 +293,7 @@ export function POSScreen() {
         <View style={styles.productsContainer}>
           {isLoading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#B87B5A" />
+              <ActivityIndicator size="large" color={tokens.colors.mahogany} />
               <Text style={styles.loadingText}>Cargando productos...</Text>
             </View>
           ) : (
@@ -242,19 +303,22 @@ export function POSScreen() {
               numColumns={numColumns}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
-              contentContainerStyle={styles.productGrid}
+              contentContainerStyle={[
+                styles.productGrid, 
+                isMobile && items.length > 0 && { paddingBottom: verticalScale(96) + insets.bottom }
+              ]}
               showsVerticalScrollIndicator={false}
-              removeClippedSubviews={false}
-              maxToRenderPerBatch={12}
-              windowSize={5}
-              initialNumToRender={12}
-              updateCellsBatchingPeriod={50}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={20}
+              windowSize={11}
+              initialNumToRender={20}
+              updateCellsBatchingPeriod={30}
               refreshControl={
                 <RefreshControl
                   refreshing={false}
                   onRefresh={refetch}
-                  tintColor="#B87B5A"
-                  progressBackgroundColor="rgba(10, 10, 12, 0.8)"
+                  tintColor={tokens.colors.mahogany}
+                  progressBackgroundColor={tokens.colors.glass.heavy}
                 />
               }
               ListEmptyComponent={ListEmptyComponent}
@@ -262,30 +326,42 @@ export function POSScreen() {
           )}
         </View>
         
-        <View style={[styles.actionsContainer, isMobile && items.length > 0 && { paddingBottom: 86 }]}>
-          <QuickActions 
-            onClear={handleClearCart} 
-            hasItems={items.length > 0}
-          />
-        </View>
+        {!isMobile && (
+          <View style={styles.actionsContainer}>
+            <QuickActions 
+              onClear={handleClearCart} 
+              hasItems={items.length > 0}
+            />
+          </View>
+        )}
 
         {isMobile && items.length > 0 && (
-          <TouchableOpacity 
-            style={styles.mobileFab} 
-            onPress={() => setShowMobileCart(true)}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
+          <View style={[styles.mobileActionBar, { bottom: verticalScale(10) + insets.bottom }]}>
+            <QuickActions 
+              onClear={handleClearCart} 
+              hasItems={items.length > 0}
+              compact
             />
-            <Icon name="shopping-cart" size={20} color="#F0F0F2" />
-            <Text style={styles.mobileFabText}>Ver Carrito ({items.length})</Text>
-            <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.mobileCheckoutBtn} 
+              onPress={() => setShowMobileCart(true)}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.checkoutBtnContent}>
+                <Icon name="shopping-cart" size={20} color="#F0F0F2" />
+                <Text style={styles.mobileFabText}>Ver Carrito ({items.length})</Text>
+                <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         )}
+
       </View>
       
       {isMobile ? (
@@ -329,51 +405,51 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.07)',
+    borderBottomColor: tokens.colors.border,
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingHorizontal: scale(16),
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(8),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 10, 12, 0.6)',
+    backgroundColor: tokens.colors.glass.bg,
     borderRadius: 999,
-    paddingHorizontal: 16,
+    paddingHorizontal: scale(16),
     paddingVertical: 0,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    gap: 10,
-    height: 44,
+    borderColor: tokens.colors.glass.border,
+    gap: scale(10),
+    height: verticalScale(44),
   },
   searchInput: {
     flex: 1,
-    color: '#F0F0F2',
-    paddingVertical: 12,
+    color: tokens.colors.text,
+    paddingVertical: verticalScale(12),
     fontFamily: FontNames.instrumentSans,
-    fontSize: 15,
+    fontSize: moderateScale(15),
   },
   searchCount: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 12,
-    color: '#B87B5A',
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    fontSize: moderateScale(12),
+    color: tokens.colors.mahogany,
+    backgroundColor: tokens.colors.mahoganyDim,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: scale(8),
   },
   productsContainer: {
     flex: 1,
   },
   actionsContainer: {
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: verticalScale(8),
+    paddingBottom: verticalScale(8),
   },
   rightPanel: {
     flex: 0.25,
-    minWidth: 240,
+    minWidth: scale(240),
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(184, 123, 90, 0.15)',
     position: 'relative',
@@ -382,74 +458,82 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: scale(12),
   },
   loadingText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
-    color: '#8A8A96',
+    fontSize: moderateScale(14),
+    color: tokens.colors.textMuted,
   },
   productGrid: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(8),
   },
   productItem: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(4),
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 100,
-    gap: 12,
+    paddingTop: verticalScale(100),
+    gap: scale(12),
   },
   emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+    width: scale(80),
+    height: scale(80),
+    borderRadius: scale(24),
     backgroundColor: 'rgba(184, 123, 90, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '600',
     color: '#8A8A96',
   },
   emptySubtext: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#666',
   },
-  mobileFab: {
+  mobileActionBar: {
     position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    height: 56,
-    borderRadius: 999,
+    left: scale(20),
+    right: scale(20),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  mobileCheckoutBtn: {
+    flex: 1,
+    height: verticalScale(56),
+    borderRadius: scale(18),
+    overflow: 'hidden',
+  },
+  checkoutBtnContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    overflow: 'hidden',
+    paddingHorizontal: scale(20),
   },
   mobileFabText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: moderateScale(15),
+    fontWeight: '700',
     color: '#F0F0F2',
   },
   mobileFabTotal: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: moderateScale(17),
+    fontWeight: '800',
     color: '#F0F0F2',
   },
   mobileCartOverlay: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: tokens.colors.bg,
   },
 });
