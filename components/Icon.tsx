@@ -33,6 +33,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; lib
   'list': { lib: 'fontawesome', component: FontAwesome, libraryName: 'list' },
   'th-list': { lib: 'fontawesome', component: FontAwesome, libraryName: 'th-list' },
   'shopping-cart': { lib: 'fontawesome', component: FontAwesome, libraryName: 'shopping-cart' },
+  'shopping-bag': { lib: 'fontawesome', component: FontAwesome, libraryName: 'shopping-bag' },
   'scan': { lib: 'fontawesome', component: FontAwesome, libraryName: 'barcode' },
   'bars': { lib: 'fontawesome', component: FontAwesome, libraryName: 'bars' },
   'receipt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'file-invoice-dollar' },
@@ -49,6 +50,12 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; lib
   'user': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user' },
   'users': { lib: 'fontawesome', component: FontAwesome, libraryName: 'users' },
   'user-plus': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user-plus' },
+  'wallet': { lib: 'fontawesome', component: FontAwesome, libraryName: 'wallet' },
+  'phone': { lib: 'fontawesome', component: FontAwesome, libraryName: 'phone' },
+  'money-bill-wave': { lib: 'fontawesome', component: FontAwesome, libraryName: 'money-bill-wave' },
+  'exchange-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exchange-alt' },
+  'exclamation-circle': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exclamation-circle' },
+  'loader': { lib: 'fontawesome', component: FontAwesome, libraryName: 'spinner' },
   // EvilIcons
   'search': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
   'search-plus': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
@@ -62,6 +69,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; lib
   'cart': { lib: 'evil', component: EvilIcons, libraryName: 'cart' },
   'chevron-down': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-down' },
   'chevron-up': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-up' },
+  'chevron-right': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-right' },
   'times': { lib: 'evil', component: EvilIcons, libraryName: 'close' },
 };
 

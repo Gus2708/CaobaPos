@@ -1,7 +1,11 @@
-import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
+import { SkeletonItem } from '../components/SkeletonItem';
+import { Badge } from '../components/Badge';
 import { Text } from '../components/Text';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
@@ -26,10 +30,13 @@ interface Sale {
   total_amount: number;
   payment_method: string;
   created_at: string;
+  iva_enabled?: boolean;
+  tax_amount?: number;
+  client_id?: string;
   sale_items?: SaleItem[];
 }
 
-const SaleCard = memo(function SaleCard({ 
+const SaleCard = React.memo(function SaleCard({ 
   item, 
   onView, 
   onDelete 
@@ -38,6 +45,8 @@ const SaleCard = memo(function SaleCard({
   onView: () => void; 
   onDelete: () => void;
 }) {
+  const insets = useSafeAreaInsets();
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-MX', {
@@ -58,64 +67,85 @@ const SaleCard = memo(function SaleCard({
     return labels[method] || method;
   };
 
+  const getPaymentIcon = (method: string) => {
+    switch (method) {
+      case 'cash': return 'money-bill';
+      case 'card': return 'credit-card';
+      case 'transfer': return 'mobile-alt';
+      case 'credito': return 'user';
+      default: return 'receipt';
+    }
+  };
+
   return (
-    <View style={styles.saleCard}>
+    <TouchableOpacity 
+      style={styles.saleCard} 
+      onPress={onView} 
+      activeOpacity={0.7}
+      onLongPress={onDelete}
+    >
       <LinearGradient
-        colors={['rgba(10, 10, 12, 0.5)', 'rgba(10, 10, 12, 0.3)']}
+        colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.topBorder} />
       
-      <View style={styles.saleHeader}>
+      <View style={styles.saleContent}>
+        <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
+          <Icon name={getPaymentIcon(item.payment_method)} size={20} color={tokens.colors.mahogany} />
+        </View>
+
         <View style={styles.saleInfo}>
-          <View style={styles.idContainer}>
-            <Text style={styles.saleId}>#{item.id.slice(0, 8).toUpperCase()}</Text>
-          </View>
+          <Text style={styles.saleTotal} numberOfLines={1} adjustsFontSizeToFit>${Number(item.total_amount).toFixed(2)}</Text>
           <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
         </View>
-        <View style={styles.totalContainer}>
-          <Text style={styles.saleTotal}>${Number(item.total_amount).toFixed(2)}</Text>
+
+        <View style={styles.saleChevron}>
+          <Icon name="chevron-right" size={22} color={tokens.colors.textDim} />
         </View>
       </View>
-      
-      <View style={styles.saleFooter}>
-        <View style={styles.paymentBadge}>
-          <Icon name="credit-card" size={14} color={tokens.colors.mahogany} />
-          <Text style={styles.paymentText}>{getPaymentLabel(item.payment_method)}</Text>
-        </View>
-        <View style={styles.saleActions}>
-          <TouchableOpacity style={styles.viewBtn} onPress={onView} activeOpacity={0.7}>
-            <Text style={styles.btnText}>Ver</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.7}>
-            <Icon name="trash" size={14} color={tokens.colors.coral} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 });
 
-export const HistoryPanel = memo(function HistoryPanel() {
+export const HistoryPanel = React.memo(function HistoryPanel() {
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const { showToast } = useToast();
 
-  const { data: sales, isLoading, refetch, isRefetching } = useQuery<Sale[]>({
+  const PAGE_SIZE = 20;
+
+  const { 
+    data, 
+    isLoading, 
+    refetch, 
+    isRefetching, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useInfiniteQuery({
     queryKey: ['sales-history'],
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+        
       if (error) throw error;
       return data ?? [];
     },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
+    },
   });
+
+  const sales = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   const filteredSales = useMemo(() => {
     if (!sales) return [];
@@ -302,7 +332,10 @@ export const HistoryPanel = memo(function HistoryPanel() {
   ), [handleView, handleDelete]);
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      { paddingTop: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight || 0) + verticalScale(8) : insets.top }
+    ]}>
       <LinearGradient
         colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
         start={{ x: 0, y: 0 }}
@@ -312,19 +345,19 @@ export const HistoryPanel = memo(function HistoryPanel() {
       
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <View style={styles.titleIcon}>
-            <Icon name="document" size={20} color="#B87B5A" />
+          <View style={styles.headerIconCircle}>
+            <Icon name="history" size={24} color={tokens.colors.mahogany} />
           </View>
           <Text style={styles.title}>Historial</Text>
         </View>
-        <View style={styles.countBadge}>
-          <Text style={styles.count}>{filteredSales.length} ventas</Text>
-        </View>
+        <Badge variant="mahogany">
+          {filteredSales.length} ventas
+        </Badge>
       </View>
 
       <View style={styles.searchRow}>
         <View style={styles.searchInputContainer}>
-          <Icon name="search" size={18} color="#8A8A96" />
+          <Icon name="search" size={22} color="#8A8A96" />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por folio o método..."
@@ -335,22 +368,37 @@ export const HistoryPanel = memo(function HistoryPanel() {
         </View>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-          <Text style={styles.loadingText}>Cargando ventas...</Text>
-        </View>
-      ) : (
-        <FlatList
+        <FlashList
           data={filteredSales}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
+          // @ts-ignore
+          estimatedItemSize={scale(120)}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Icon name="document" size={48} color="rgba(184, 123, 90, 0.3)" />
-              <Text style={styles.empty}>Sin ventas registradas</Text>
-            </View>
+            isLoading ? (
+              <View style={{ gap: verticalScale(12) }}>
+                <SkeletonItem layout="row" count={8} />
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Icon name="document" size={64} color="rgba(184, 123, 90, 0.3)" />
+                <Text style={styles.empty}>Sin ventas registradas</Text>
+              </View>
+            )
+          }
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={() => 
+            isFetchingNextPage ? (
+              <View style={{ paddingVertical: verticalScale(20) }}>
+                <ActivityIndicator color={tokens.colors.mahogany} />
+              </View>
+            ) : null
           }
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -362,7 +410,6 @@ export const HistoryPanel = memo(function HistoryPanel() {
             />
           }
         />
-      )}
 
       {selectedSale && (
         <SaleDetailModal
@@ -385,221 +432,123 @@ export const HistoryPanel = memo(function HistoryPanel() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    position: 'relative',
     backgroundColor: tokens.colors.bg,
-    padding: scale(16),
   },
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: verticalScale(16),
+    marginBottom: verticalScale(24),
+    paddingHorizontal: scale(20),
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
+    gap: scale(14),
   },
-  titleIcon: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(12),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+  headerIconCircle: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.mahogany,
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(22), 
+    fontSize: moderateScale(28), 
     color: tokens.colors.text, 
-    fontWeight: '700', 
-    letterSpacing: scale(1),
-  },
-  countBadge: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(8),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
-  },
-  count: { 
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(13), 
-    color: tokens.colors.mahogany,
-    fontWeight: '600',
+    fontWeight: '800',
+    lineHeight: moderateScale(34),
   },
   searchRow: { 
-    marginBottom: verticalScale(16),
+    marginBottom: verticalScale(24),
+    paddingHorizontal: scale(20),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(14),
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(4),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.pill,
+    paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.15)',
-    gap: scale(10),
+    borderColor: tokens.colors.borderLight,
+    gap: scale(12),
+    height: verticalScale(48),
   },
   searchInput: { 
     flex: 1,
     color: tokens.colors.text, 
-    paddingVertical: verticalScale(14), 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(15),
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: verticalScale(12),
-  },
-  loadingText: {
-    fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: tokens.colors.textMuted,
+    fontWeight: '600',
+    height: '100%',
   },
   list: { 
-    paddingBottom: verticalScale(20),
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(32),
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: verticalScale(80),
-    gap: verticalScale(12),
+    paddingTop: verticalScale(100),
+    gap: verticalScale(16),
   },
   empty: { 
     color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center', 
-    marginTop: verticalScale(8) 
   },
   saleCard: {
     position: 'relative',
-    backgroundColor: tokens.colors.bg,
-    padding: scale(16), 
-    borderRadius: scale(20), 
-    marginBottom: verticalScale(12), 
+    borderRadius: tokens.radius.xl, 
+    marginBottom: verticalScale(16), 
     borderWidth: 1, 
-    borderColor: 'rgba(184, 123, 90, 0.12)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
+    minHeight: verticalScale(84),
+    justifyContent: 'center',
   },
-  topBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  saleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: scale(16),
+    gap: scale(14),
   },
-  saleHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-start', 
-    marginBottom: verticalScale(12),
+  methodIconCircle: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   saleInfo: {
     flex: 1,
+    gap: verticalScale(4),
   },
-  idContainer: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: scale(8),
-    alignSelf: 'flex-start',
-    marginBottom: verticalScale(6),
-  },
-  saleId: { 
+  saleTotal: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: moderateScale(13), 
-    color: tokens.colors.mahogany, 
-    fontWeight: '600',
-    letterSpacing: scale(0.5),
+    fontSize: moderateScale(18), 
+    color: tokens.colors.text, 
+    fontWeight: '800',
+    lineHeight: moderateScale(22),
   },
   saleDate: { 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(12), 
     color: tokens.colors.textMuted,
-  },
-  totalContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(8),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  saleTotal: { 
-    fontFamily: FontNames.jetBrainsMono, 
-    fontSize: moderateScale(20), 
-    color: tokens.colors.text, 
-    fontWeight: '700',
-  },
-  saleFooter: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-  },
-  paymentBadge: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(184, 123, 90, 0.15)', 
-    paddingHorizontal: scale(12), 
-    paddingVertical: verticalScale(8), 
-    borderRadius: scale(10), 
-    borderWidth: 1, 
-    borderColor: 'rgba(184, 123, 90, 0.2)',
-    gap: scale(6),
-  },
-  paymentText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(12), 
-    color: tokens.colors.mahogany, 
     fontWeight: '600',
   },
-  saleActions: { 
-    flexDirection: 'row',
-    gap: scale(8),
-  },
-  viewBtn: { 
-    backgroundColor: 'rgba(184, 123, 90, 0.8)', 
-    paddingHorizontal: scale(18), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12),
-    minWidth: scale(70),
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.4)',
-  },
-  deleteBtn: { 
-    backgroundColor: 'rgba(201, 107, 107, 0.2)', 
-    paddingHorizontal: scale(14), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12), 
-    minWidth: scale(44),
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(201, 107, 107, 0.3)',
-  },
-  btnText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(13), 
-    fontWeight: '600', 
-    color: tokens.colors.text, 
-    textAlign: 'center' 
+  saleChevron: {
+    marginLeft: scale(4),
   },
 });
 

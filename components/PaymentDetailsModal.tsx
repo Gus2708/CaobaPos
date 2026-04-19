@@ -1,6 +1,7 @@
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
-import { BlurView } from 'expo-blur';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { generatePaymentMethodReport } from '../lib/pdfReportGenerator';
@@ -74,12 +75,17 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.container}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.iconContainer}>
-                <Icon name={method ? methodIcons[method] || 'receipt' : 'receipt'} size={20} color="#B87B5A" />
+                <Icon name={method ? methodIcons[method] || 'receipt' : 'receipt'} size={26} color={tokens.colors.mahogany} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>{method ? methodLabels[method] || method : 'Ventas'}</Text>
@@ -88,11 +94,11 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
             </View>
             <View style={styles.headerRight}>
               <TouchableOpacity onPress={handleDownload} style={styles.downloadBtn}>
-                <Icon name="file-pdf" size={18} color="#B87B5A" />
+                 <Icon name="file-pdf" size={24} color={tokens.colors.mahogany} />
                 <Text style={styles.downloadBtnText}>PDF</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Icon name="times" size={20} color="#8A8A96" />
+                 <Icon name="times" size={26} color={tokens.colors.textSecondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -130,21 +136,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 10, 12, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: scale(20),
   },
   container: {
     width: '100%',
-    maxHeight: '80%',
-    backgroundColor: 'rgba(15, 15, 18, 0.95)',
-    borderRadius: scale(24),
+    maxHeight: '92%',
+    backgroundColor: tokens.colors.bg,
+    borderRadius: tokens.radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderAccent,
     padding: scale(20),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: verticalScale(10) },
-    shadowOpacity: 0.5,
-    shadowRadius: scale(20),
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
     elevation: 10,
   },
   header: {
@@ -162,25 +168,25 @@ const styles = StyleSheet.create({
     marginRight: scale(8),
   },
   iconContainer: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(12),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: tokens.radius.sm,
+    backgroundColor: `${tokens.colors.mahogany}15`,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: `${tokens.colors.mahogany}25`,
   },
   title: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(20),
+    fontSize: moderateScale(16),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   subtitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(13),
-    color: '#8A8A96',
+    fontSize: moderateScale(12),
+    color: tokens.colors.textSecondary,
     marginTop: verticalScale(2),
   },
   headerRight: {
@@ -193,42 +199,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(4),
-    height: moderateScale(34),
-    paddingHorizontal: scale(10),
-    borderRadius: scale(10),
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    height: verticalScale(34),
+    paddingHorizontal: scale(12),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.mahogany,
     justifyContent: 'center',
   },
   downloadBtnText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(10),
     fontWeight: '700',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
     textTransform: 'uppercase',
   },
   closeBtn: {
-    width: moderateScale(34),
-    height: moderateScale(34),
-    borderRadius: moderateScale(17),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    width: verticalScale(34),
+    height: verticalScale(34),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
   },
   totalContainer: {
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
-    borderRadius: scale(16),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.card,
     padding: scale(16),
     marginBottom: verticalScale(20),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.border,
   },
   totalLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(13),
-    color: '#8A8A96',
+    fontSize: moderateScale(12),
+    color: tokens.colors.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: scale(0.5),
     marginBottom: verticalScale(4),
@@ -237,7 +245,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(28),
     fontWeight: '800',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
   },
   list: {
     maxHeight: verticalScale(400),
@@ -248,7 +256,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: verticalScale(14),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: tokens.colors.border,
   },
   saleLeft: {
     gap: verticalScale(4),
@@ -257,7 +265,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   saleRight: {
     alignItems: 'flex-end',
@@ -266,17 +274,17 @@ const styles = StyleSheet.create({
   saleDate: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(13),
-    color: '#F0F0F2',
+    color: tokens.colors.textSecondary,
   },
   saleTime: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(11),
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
   },
   empty: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
     textAlign: 'center',
     marginTop: verticalScale(20),
     marginBottom: verticalScale(20),

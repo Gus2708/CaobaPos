@@ -1,9 +1,12 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
 import { View, TextInput, TouchableOpacity, Modal, StyleSheet, Keyboard } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BarcodeInputModalProps {
   visible: boolean;
@@ -16,9 +19,10 @@ export function BarcodeInputModal({
   visible, 
   onClose, 
   onBarcodeSubmit, 
-  title = 'Escanear Codigo' 
+  title = 'Escanear Código' 
 }: BarcodeInputModalProps) {
   const [barcode, setBarcode] = useState('');
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
@@ -48,11 +52,17 @@ export function BarcodeInputModal({
         onPress={onClose}
       >
         <View style={styles.modal}>
+          <LinearGradient
+            colors={[tokens.colors.glass.heavy, tokens.colors.glass.bg]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <TouchableOpacity activeOpacity={1}>
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
               <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-                <Icon name="close" size={20} color="#8A8A96" />
+                <Icon name="close" size={26} color={tokens.colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -63,7 +73,7 @@ export function BarcodeInputModal({
                 value={barcode}
                 onChangeText={setBarcode}
                 placeholder="Escanea o escribe..."
-                placeholderTextColor="#6A6A72"
+                placeholderTextColor={tokens.colors.textDim}
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="done"
@@ -92,20 +102,25 @@ export function BarcodeInputModal({
 
 const styles = StyleSheet.create({
   overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(5, 5, 7, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(20),
   },
   modal: {
-    backgroundColor: 'rgba(30, 30, 40, 0.98)',
-    borderRadius: scale(20),
-    padding: scale(20),
+    backgroundColor: tokens.colors.bg,
+    borderRadius: tokens.radius.xl,
+    padding: scale(24),
     width: '100%',
-    maxWidth: scale(360),
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    maxWidth: scale(380),
+    borderWidth: 1.5,
+    borderColor: tokens.colors.borderAccent,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   header: {
     flexDirection: 'row',
@@ -133,10 +148,10 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(10),
   },
   inputContainer: {
-    backgroundColor: 'rgba(20, 20, 26, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: scale(12),
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderLight,
     marginBottom: verticalScale(10),
   },
   input: {
@@ -147,23 +162,29 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(14),
   },
   hint: {
-    color: '#6A6A72',
+    color: tokens.colors.textMuted,
     fontSize: moderateScale(12),
     marginBottom: verticalScale(20),
   },
   submitBtn: {
-    backgroundColor: '#B87B5A',
-    borderRadius: scale(12),
-    paddingVertical: verticalScale(14),
+    backgroundColor: tokens.colors.mahogany,
+    borderRadius: tokens.radius.pill,
+    paddingVertical: verticalScale(16),
     alignItems: 'center',
+    marginTop: verticalScale(10),
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 123, 90, 0.3)',
   },
   submitBtnDisabled: {
-    backgroundColor: 'rgba(184, 123, 90, 0.3)',
+    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    borderColor: 'rgba(184, 123, 90, 0.05)',
   },
   submitBtnText: {
     color: '#F0F0F2',
     fontSize: moderateScale(16),
-    fontWeight: '600',
+    fontWeight: '800',
+    fontFamily: FontNames.instrumentSans,
   },
 });
 

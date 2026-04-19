@@ -11,28 +11,36 @@ export function useProducts(category: Category = 'todos') {
   return useQuery({
     queryKey: ['products', category],
     queryFn: async (): Promise<Product[]> => {
+      // Always fetch all active products — category filter is applied client-side
       const { data, error } = await supabase
         .from(PRODUCTS_TABLE)
         .select('*, product_categories(categories(name))')
         .eq('is_active', true)
         .order('name');
-      
+
       if (error) throw error;
-      
+
       const productsWithCategories = (data ?? []).map((p: any) => ({
         ...p,
-        categories: p.product_categories?.map((pc: any) => pc.categories?.name).filter(Boolean) || []
+        categories:
+          p.product_categories
+            ?.map((pc: any) => pc.categories?.name)
+            .filter(Boolean) ?? [],
       }));
-      
-      if (category !== 'todos' && category !== 'todos') {
-        return productsWithCategories.filter((p: Product) => 
+
+      // Client-side category filter (reliable)
+      if (category !== 'todos') {
+        return productsWithCategories.filter((p: Product) =>
           p.categories?.includes(category)
         );
       }
-      
+
       return productsWithCategories;
     },
-    staleTime: 1000 * 60,
+    // 5 minutes — products don't change mid-shift; prevents redundant refetches
+    staleTime: 1000 * 60 * 5,
+    // Keep previous data visible while new category loads (no flash)
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -46,6 +54,8 @@ export function useCreateSale() {
       paymentMethod,
       items,
       clientId,
+      ivaEnabled,
+      taxAmount,
     }: {
       totalAmount: number;
       paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
@@ -57,6 +67,8 @@ export function useCreateSale() {
         subtotal: number;
       }>;
       clientId?: string;
+      ivaEnabled?: boolean;
+      taxAmount?: number;
     }) => {
       // 1. Pre-checkout Stock Validation
       const productIds = items.map(i => i.product_id);
@@ -87,6 +99,8 @@ export function useCreateSale() {
           payment_method: paymentMethod,
           client_id: clientId || null,
           status,
+          iva_enabled: ivaEnabled || false,
+          tax_amount: taxAmount || 0,
         })
         .select()
         .single();

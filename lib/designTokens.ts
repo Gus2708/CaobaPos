@@ -1,4 +1,4 @@
-// CaobaPOS Design Tokens — 2026 System
+// CaobaPOS Design Tokens — Standard 2026
 // All spacing, colors, radii and typography scales derived from here.
 import { scale, moderateScale } from './responsive';
 
@@ -7,11 +7,15 @@ export const GLOBAL_BG = '#0A0A0C';
 export const tokens = {
   radius: {
     pill: 999,
-    card: scale(20),
-    chip: scale(12),
-    btn: scale(14),
+    xl: scale(24),      // Contenedores grandes / Stats
+    modal: scale(24),   // Modales premium
+    lg: scale(20),      // Cards estándar
+    card: scale(20),    // Alias para cards estándar
+    btn: scale(14),     // Botones principales
+    chip: scale(12),    // Categorías y badges
+    md: scale(12),      // Alias para inputs y botones secundarios
     icon: scale(10),
-    sm: scale(8),
+    sm: scale(8),       // Micro-etiquetas
     xs: scale(6),
   },
   spacing: {
@@ -23,53 +27,56 @@ export const tokens = {
     xxl: scale(32),
   },
   colors: {
-    // Backgrounds
-    bg: GLOBAL_BG,
-    bgWarm: GLOBAL_BG,
-    surface: GLOBAL_BG,
-    surfaceElevated: GLOBAL_BG,
-    surfaceWarm: GLOBAL_BG,
+    // Backgrounds — layered depth system
+    bg: GLOBAL_BG,                    // Deepest layer
+    surface: '#141417',               // Card surface (1st elevation)
+    surfaceElevated: '#1C1C1F',       // Modal / elevated card (2nd elevation)
+    surfaceHover: '#222228',          // Hover / pressed states
+    surfaceWarm: '#1A1814',           // Warm-tinted surface for placeholders
 
-    // Borders
-    border: 'rgba(255,255,255,0.06)',
-    borderLight: 'rgba(255,255,255,0.04)',
-    borderAccent: 'rgba(184,123,90,0.2)',
-    borderAccentBright: 'rgba(184,123,90,0.35)',
+    // Borders — minimal, functional
+    border: 'rgba(255, 255, 255, 0.06)',
+    borderLight: 'rgba(255, 255, 255, 0.04)',
+    borderMedium: 'rgba(255, 255, 255, 0.10)',
+    borderAccent: 'rgba(184, 123, 90, 0.18)',
+    borderAccentBright: 'rgba(184, 123, 90, 0.30)',
 
     // Brand — Mahogany
     mahogany: '#B87B5A',
     mahoganyBright: '#D4956E',
     mahoganyDark: '#8B5A3C',
-    mahoganyDim: 'rgba(184,123,90,0.15)',
-    mahoganyGlow: 'rgba(184,123,90,0.08)',
+    mahoganyDim: 'rgba(184, 123, 90, 0.12)',
+    mahoganyGlow: 'rgba(184, 123, 90, 0.06)',
 
     // Status — Sage (success)
     sage: '#6DB88A',
-    sageDim: 'rgba(109,184,138,0.15)',
-    sageGlow: 'rgba(109,184,138,0.08)',
+    sageDim: 'rgba(109, 184, 138, 0.12)',
+    sageGlow: 'rgba(109, 184, 138, 0.06)',
 
-    // Status — Coral (error/warning)
+
+
+    // Status — Coral (error/warning/low stock)
     coral: '#C96B6B',
-    coralDim: 'rgba(201,107,107,0.15)',
-    coralGlow: 'rgba(201,107,107,0.08)',
+    coralDim: 'rgba(201, 107, 107, 0.12)',
+    coralGlow: 'rgba(201, 107, 107, 0.06)',
 
-    // Status — Amber (warning)
+    // Status — Amber (critical warning)
     amber: '#E8B560',
-    amberDim: 'rgba(232,181,96,0.15)',
+    amberDim: 'rgba(232, 181, 96, 0.12)',
 
-    // Text
+    // Text — cleaner hierarchy
     text: '#F0F0F2',
-    textSecondary: '#C8C8CC',
-    textMuted: '#8A8A96',
-    textDim: '#666672',
+    textSecondary: '#B0B0B8',
+    textMuted: '#7A7A86',
+    textDim: '#55555E',
 
-    // Glass/Transparency Effects
+    // Glass/Transparency Effects — simplified
     glass: {
-      bg: 'rgba(10, 10, 12, 0.65)',
+      bg: 'rgba(20, 20, 23, 0.85)',
       border: 'rgba(255, 255, 255, 0.08)',
-      accent: 'rgba(184, 123, 90, 0.15)',
-      heavy: 'rgba(10, 10, 12, 0.85)',
-      light: 'rgba(255, 255, 255, 0.04)',
+      accent: 'rgba(184, 123, 90, 0.12)',
+      heavy: 'rgba(14, 14, 17, 0.94)',
+      light: 'rgba(255, 255, 255, 0.05)',
     }
   },
   typography: {

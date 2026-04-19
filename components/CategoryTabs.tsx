@@ -5,6 +5,7 @@ import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
 import { useSettingsStore } from '../store/cartStore';
 import { Icon } from './Icon';
+import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
@@ -31,55 +32,43 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
   const storeCategories = useSettingsStore((state) => state.categories);
   const categories = storeCategories.length > 0 ? storeCategories : DEFAULT_CATEGORIES;
 
+  const renderTab = (key: string, label: string, iconName: string) => {
+    const isActive = selected === key;
+    return (
+      <TouchableOpacity
+        key={key}
+        style={[styles.tab, isActive && styles.tabActive]}
+        onPress={() => onSelect(key as Category)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ selected: isActive }}
+      >
+        <Icon 
+          name={iconName} 
+          size={20} 
+          color={isActive ? tokens.colors.text : tokens.colors.textMuted} 
+        />
+        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <ScrollView 
       horizontal 
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      <TouchableOpacity
-        style={[styles.tab, selected === 'todos' && styles.tabActive]}
-        onPress={() => onSelect('todos')}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityState={{ selected: selected === 'todos' }}
-      >
-
-        <View style={[styles.tabContent, selected === 'todos' && styles.tabContentActive]}>
-          <Icon 
-            name="filter" 
-            size={14} 
-            color={selected === 'todos' ? '#F0F0F2' : '#8A8A96'} 
-          />
-          <Text style={[styles.tabText, selected === 'todos' && styles.tabTextActive]}>
-            Todos
-          </Text>
-        </View>
-      </TouchableOpacity>
-      
-      {categories.map((cat) => (
-        <TouchableOpacity
-          key={cat}
-          style={[styles.tab, selected === cat && styles.tabActive]}
-          onPress={() => onSelect(cat as Category)}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selected === cat }}
-        >
-
-          <View style={[styles.tabContent, selected === cat && styles.tabContentActive]}>
-            <Icon 
-              name={CATEGORY_ICONS[cat.toLowerCase()] || 'folder'} 
-              size={14} 
-              color={selected === cat ? '#F0F0F2' : '#8A8A96'} 
-            />
-            <Text style={[styles.tabText, selected === cat && styles.tabTextActive]}>
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Text>
-          </View>
-          {selected === cat && <View style={styles.activePip} />}
-        </TouchableOpacity>
-      ))}
+      {renderTab('todos', 'Todos', 'filter')}
+      {categories.map((cat) =>
+        renderTab(
+          cat,
+          cat.charAt(0).toUpperCase() + cat.slice(1),
+          CATEGORY_ICONS[cat.toLowerCase()] || 'folder'
+        )
+      )}
     </ScrollView>
   );
 }
@@ -91,49 +80,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(8),
+    paddingVertical: verticalScale(10),
     gap: scale(8),
-    minHeight: verticalScale(60),
+    minHeight: verticalScale(52),
   },
   tab: {
-    position: 'relative',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(8),
-    borderRadius: scale(20),
-    overflow: 'hidden',
-    minHeight: verticalScale(36),
-    justifyContent: 'center',
-  },
-  tabActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-  },
-  tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
-    justifyContent: 'center',
-  },
-  tabContentActive: {
+    gap: scale(6),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
     backgroundColor: 'transparent',
+  },
+  tabActive: {
+    backgroundColor: tokens.colors.surfaceElevated,
+    borderColor: tokens.colors.borderMedium,
   },
   tabText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(13),
-    fontWeight: '600',
-    color: '#8A8A96',
-    letterSpacing: scale(0.3),
+    fontWeight: '500',
+    color: tokens.colors.textMuted,
   },
   tabTextActive: {
-    color: '#F0F0F2',
-  },
-  activePip: {
-    position: 'absolute',
-    bottom: verticalScale(6),
-    alignSelf: 'center',
-    width: scale(16),
-    height: verticalScale(3),
-    borderRadius: scale(1.5),
-    backgroundColor: '#B87B5A',
+    color: tokens.colors.text,
+    fontWeight: '600',
   },
 });
-

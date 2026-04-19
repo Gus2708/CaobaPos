@@ -1,6 +1,6 @@
 {
   "name": "caobapos",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -15,10 +15,12 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-vector-icons/evil-icons": "^13.0.0",
     "@react-native-vector-icons/fontawesome-free-solid": "^1.0.0",
+    "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.102.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.96.2",
     "babel-preset-expo": "^55.0.16",
+    "base64-arraybuffer": "^1.0.2",
     "expo": "~54.0.33",
     "expo-blur": "~15.0.8",
     "expo-crypto": "~15.0.8",

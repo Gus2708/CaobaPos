@@ -1,8 +1,10 @@
 import { Modal, View, TouchableOpacity, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -16,11 +18,17 @@ export function ImagePickerModal({ visible, onClose, onSelectCamera, onSelectGal
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.modal}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <Text style={styles.title}>Seleccionar Imagen</Text>
           
           <TouchableOpacity style={styles.option} onPress={() => { onSelectCamera(); onClose(); }}>
             <View style={styles.iconContainer}>
-              <Icon name="camera" size={24} color="#B87B5A" />
+              <Icon name="camera" size={30} color={tokens.colors.mahogany} />
             </View>
             <View style={styles.optionText}>
               <Text style={styles.optionTitle}>Cámara</Text>
@@ -30,7 +38,7 @@ export function ImagePickerModal({ visible, onClose, onSelectCamera, onSelectGal
           
           <TouchableOpacity style={styles.option} onPress={() => { onSelectGallery(); onClose(); }}>
             <View style={styles.iconContainer}>
-              <Icon name="image" size={24} color="#B87B5A" />
+              <Icon name="image" size={30} color={tokens.colors.mahogany} />
             </View>
             <View style={styles.optionText}>
               <Text style={styles.optionTitle}>Galería</Text>
@@ -50,19 +58,20 @@ export function ImagePickerModal({ visible, onClose, onSelectCamera, onSelectGal
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(5, 5, 7, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(20),
   },
   modal: {
-    backgroundColor: 'rgba(10, 10, 12, 0.95)',
-    borderRadius: scale(24),
+    backgroundColor: tokens.colors.bg,
+    borderRadius: scale(32),
     padding: scale(24),
     width: '100%',
     maxWidth: scale(340),
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderAccent,
+    overflow: 'hidden',
   },
   title: {
     fontFamily: FontNames.instrumentSans,
@@ -116,6 +125,6 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(16),
     fontWeight: '600',
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
   },
 });

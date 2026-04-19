@@ -15,7 +15,6 @@ type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
 export default function MainApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -25,8 +24,7 @@ export default function MainApp() {
         return <DashboardPanel />;
       case 'inventory':
         return <InventoryPanel 
-          readOnly={mode === 'view'} 
-          onSuccess={() => setMode('view')}
+          readOnly={false} 
         />;
       case 'history':
         return <HistoryPanel />;
@@ -44,8 +42,6 @@ export default function MainApp() {
         <Navbar
           current={currentScreen}
           onNavigate={setCurrentScreen}
-          mode={mode}
-          onToggleMode={setMode}
         />
         <View style={styles.content}>
           {renderScreen()}
@@ -59,8 +55,6 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: tokens.colors.bg,
-    paddingTop: tokens.spacing.sm,
-    paddingBottom: tokens.spacing.sm,
   },
   content: {
     flex: 1,
