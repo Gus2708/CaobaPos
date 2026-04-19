@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -9,6 +10,8 @@ import { Icon } from './Icon';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
+import { Badge } from './Badge';
 
 interface SaleItem {
   id: string;
@@ -25,6 +28,9 @@ interface Sale {
   total_amount: number;
   payment_method: string;
   created_at: string;
+  iva_enabled?: boolean;
+  tax_amount?: number;
+  client_id?: string;
   sale_items?: SaleItem[];
 }
 
@@ -33,12 +39,13 @@ interface SaleDetailModalProps {
   sale: Sale;
   onClose: () => void;
   onDelete: () => void;
-  onUpdate: (items: SaleItem[], total: number) => void;
+  onUpdate: (items: any[], total: number, ivaEnabled: boolean, taxAmount: number) => void;
   isDeleting: boolean;
   isUpdating: boolean;
+  readOnly?: boolean;
 }
 
-export function SaleDetailModal({
+export const SaleDetailModal = memo(function SaleDetailModal({
   visible,
   sale,
   onClose,
@@ -46,14 +53,15 @@ export function SaleDetailModal({
   onUpdate,
   isDeleting,
   isUpdating,
+  readOnly = false,
 }: SaleDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItems, setEditedItems] = useState<SaleItem[]>([]);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-
+  const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? true);
+  
   const { data: productsData } = useQuery<Product[]>({
-    queryKey: ['inventory-products'],
+    queryKey: ['sale-detail-all-products'],
     queryFn: async () => {
       const { data, error } = await supabase.from('products').select('*');
       if (error) throw error;
@@ -61,14 +69,14 @@ export function SaleDetailModal({
     },
   });
 
-  useEffect(() => {
-    if (productsData) setProducts(productsData);
-  }, [productsData]);
+  const products = productsData || [];
+
 
   useEffect(() => {
     if (sale.sale_items) {
       setEditedItems([...sale.sale_items]);
     }
+    setIvaEnabled(sale.iva_enabled ?? true);
   }, [sale]);
 
   const formatDate = (dateString: string) => {
@@ -87,13 +95,14 @@ export function SaleDetailModal({
       cash: 'Efectivo',
       card: 'Tarjeta',
       transfer: 'Transferencia',
+      credito: 'Crédito',
     };
     return labels[method] || method;
   };
 
   const calculateTotals = () => {
     const subtotal = editedItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const tax = subtotal * 0.16;
+    const tax = ivaEnabled ? (subtotal * 0.16) : 0;
     const total = subtotal + tax;
     return { subtotal, tax, total };
   };
@@ -184,10 +193,12 @@ export function SaleDetailModal({
               <span>Subtotal:</span>
               <span>$${subtotal.toFixed(2)}</span>
             </div>
+            ${ivaEnabled ? `
             <div style="display: flex; justify-content: space-between;">
               <span>IVA (16%):</span>
               <span>$${tax.toFixed(2)}</span>
             </div>
+            ` : ''}
             <div class="total-row">
               <span>TOTAL:</span>
               <span>$${total.toFixed(2)}</span>
@@ -236,7 +247,8 @@ export function SaleDetailModal({
       Alert.alert('Error', 'Debe haber al menos un producto');
       return;
     }
-    onUpdate(editedItems, total);
+    // Pass back updated values including IVA
+    onUpdate(editedItems, total, ivaEnabled, tax);
     setIsEditing(false);
   };
 
@@ -257,21 +269,50 @@ export function SaleDetailModal({
     );
   };
 
-  const availableProducts = products.filter(
+  const availableProducts = (products || []).filter(
     (p) => !editedItems.some((item) => item.product_id === p.id && p.id !== '')
   );
+
+  const getMethodIcon = (method: string) => {
+    switch (method) {
+      case 'cash': return 'money-bill-wave';
+      case 'card': return 'credit-card';
+      case 'transfer': return 'exchange-alt';
+      default: return 'receipt';
+    }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.header}>
-            <View>
-              <Text style={styles.headerTitle}>Venta #{sale.id.slice(0, 8).toUpperCase()}</Text>
-              <Text style={styles.headerDate}>{formatDate(sale.created_at)}</Text>
+            <View style={styles.headerTop}>
+              <View style={styles.methodCircle}>
+                 <Icon name={getMethodIcon(sale.payment_method)} size={20} color={tokens.colors.mahogany} />
+              </View>
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitle} numberOfLines={1}>Venta {sale.id.slice(0, 8).toUpperCase()}</Text>
+                <Text style={styles.headerDate}>{formatDate(sale.created_at)}</Text>
+              </View>
+              <TouchableOpacity style={styles.closeIconButton} onPress={handleClose} activeOpacity={0.7}>
+                <Icon name="close" size={24} color={tokens.colors.textDim} />
+              </TouchableOpacity>
             </View>
-            <View style={styles.paymentBadge}>
-              <Text style={styles.paymentText}>{getPaymentLabel(sale.payment_method)}</Text>
+            
+            <View style={styles.headerBadges}>
+              <Badge variant={ivaEnabled ? "mahogany" : "neutral"}>
+                {ivaEnabled ? "Con IVA" : "Sin IVA"}
+              </Badge>
+              <Badge variant="mahogany">
+                {getPaymentLabel(sale.payment_method)}
+              </Badge>
             </View>
           </View>
 
@@ -280,9 +321,14 @@ export function SaleDetailModal({
             
             {editedItems.map((item, index) => (
               <View key={item.id} style={styles.itemRow}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.product_name}</Text>
-                  <Text style={styles.itemPrice}>${item.unit_price.toFixed(2)} c/u</Text>
+                <View style={styles.itemIconCircle}>
+                   <Text style={{ fontSize: moderateScale(14), fontWeight: '700', color: tokens.colors.textMuted }}>
+                      {item.product_name.charAt(0).toUpperCase()}
+                   </Text>
+                </View>
+                <View style={styles.itemMain}>
+                  <Text style={styles.itemName} numberOfLines={1}>{item.product_name}</Text>
+                  <Text style={styles.itemMeta}>${item.unit_price.toFixed(2)} c/u</Text>
                 </View>
                 {isEditing ? (
                   <View style={styles.qtyControls}>
@@ -290,18 +336,18 @@ export function SaleDetailModal({
                       style={styles.qtyBtn}
                       onPress={() => updateItemQuantity(index, item.quantity - 1)}
                     >
-                      <Text style={styles.qtyBtnText}>-</Text>
+                      <Icon name="minus" size={12} color={tokens.colors.text} />
                     </TouchableOpacity>
                     <Text style={styles.qtyValue}>{item.quantity}</Text>
                     <TouchableOpacity
                       style={styles.qtyBtn}
                       onPress={() => updateItemQuantity(index, item.quantity + 1)}
                     >
-                      <Text style={styles.qtyBtnText}>+</Text>
+                      <Icon name="plus" size={12} color={tokens.colors.text} />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={styles.itemQty}>x{item.quantity}</Text>
+                  <Text style={[styles.itemMeta, { marginRight: scale(12) }]}>x{item.quantity}</Text>
                 )}
                 <Text style={styles.itemSubtotal}>${item.subtotal.toFixed(2)}</Text>
               </View>
@@ -309,7 +355,7 @@ export function SaleDetailModal({
 
             {isEditing && availableProducts.length > 0 && (
               <View style={styles.addSection}>
-                <Text style={styles.addSectionTitle}>Agregar producto</Text>
+                <Text style={styles.sectionTitle}>Agregar producto</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {availableProducts.map((product) => (
                     <TouchableOpacity
@@ -326,268 +372,389 @@ export function SaleDetailModal({
 
             <View style={styles.divider} />
 
-            <View style={styles.totalsSection}>
+            <View style={styles.summaryCard}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
                 <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
               </View>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>IVA (16%)</Text>
-                <Text style={styles.totalValue}>${tax.toFixed(2)}</Text>
-              </View>
-              <View style={styles.totalRow}>
+              
+              <TouchableOpacity 
+                style={styles.totalRow}
+                onPress={() => isEditing && setIvaEnabled(!ivaEnabled)}
+                activeOpacity={isEditing ? 0.7 : 1}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
+                  {isEditing && (
+                    <View style={[styles.miniCheckbox, ivaEnabled && styles.miniCheckboxActive]}>
+                       {ivaEnabled && <Icon name="check" size={10} color="#FFF" />}
+                    </View>
+                  )}
+                  <Text style={styles.totalLabel}>IVA (16%)</Text>
+                </View>
+                <Text style={[styles.totalValue, ivaEnabled && { color: tokens.colors.mahogany }]}>
+                  ${tax.toFixed(2)}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>Total</Text>
-                <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+                <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>${total.toFixed(2)}</Text>
               </View>
             </View>
           </ScrollView>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.pdfBtn} onPress={sharePDF} disabled={loadingPdf}>
+            <TouchableOpacity style={styles.pdfBtn} onPress={sharePDF} disabled={loadingPdf} activeOpacity={0.8}>
               {loadingPdf ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <View style={styles.btnIcon}>
-                    <Icon name="file-pdf" size={18} color="#FFFFFF" />
-                  </View>
+                  <Icon name="file-pdf" size={22} color="#FFFFFF" />
                   <Text style={styles.btnText}>Descargar PDF</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <View style={styles.actionRow}>
-              {isEditing ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => {
-                      setIsEditing(false);
-                      setEditedItems(sale.sale_items || []);
-                    }}
-                  >
-                    <Text style={styles.cancelBtnText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.saveBtn}
-                    onPress={handleSave}
-                    disabled={isUpdating}
-                  >
-                    {isUpdating ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Guardar</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={isDeleting}>
-                    {isDeleting ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <View style={styles.btnIcon}>
-                          <Icon name="trash-alt" size={16} color="#FFFFFF" />
-                        </View>
-                        <Text style={styles.btnText}>Eliminar</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.editBtn} onPress={() => setIsEditing(true)}>
-                    <>
-                      <View style={styles.btnIcon}>
-                        <Icon name="edit" size={16} color="#FFFFFF" />
-                      </View>
-                      <Text style={styles.btnText}>Editar</Text>
-                    </>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
+            {!readOnly && (
+              <View style={styles.actionRow}>
+                {isEditing ? (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.mainActionBtn, styles.cancelBtn]}
+                      onPress={() => {
+                        setIsEditing(false);
+                        setEditedItems(sale.sale_items || []);
+                      }}
+                    >
+                      <Text style={[styles.btnText, styles.btnTextMuted]}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.mainActionBtn, styles.saveBtn]}
+                      onPress={handleSave}
+                      disabled={isUpdating}
+                    >
+                      {isUpdating ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.btnText}>Guardar</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity style={[styles.mainActionBtn, styles.deleteBtn]} onPress={handleDelete} disabled={isDeleting}>
+                      {isDeleting ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Icon name="trash" size={18} color="#FFFFFF" />
+                          <Text style={styles.btnText}>Eliminar</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.mainActionBtn, styles.editBtn]} onPress={() => setIsEditing(true)}>
+                      <Icon name="edit" size={18} color={tokens.colors.mahogany} />
+                      <Text style={[styles.btnText, { color: tokens.colors.mahogany }]}>Editar</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
           </View>
 
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Text style={styles.closeButtonText}>Cerrar</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
-}
+});
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(5, 5, 7, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(20),
   },
   modal: {
-    backgroundColor: '#1E1E24',
-    borderRadius: scale(20),
     width: '100%',
     maxWidth: scale(420),
     maxHeight: '90%',
+    borderRadius: tokens.radius.modal,
+    backgroundColor: tokens.colors.bg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
   },
   header: {
-    backgroundColor: '#18181C',
     padding: scale(20),
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: tokens.colors.borderLight,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: verticalScale(16),
+  },
+  headerBadges: {
+    flexDirection: 'row',
+    gap: scale(8),
+  },
+  closeIconButton: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  methodCircle: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: tokens.colors.mahoganyDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: scale(12),
+  },
+  headerInfo: {
+    flex: 1,
   },
   headerTitle: {
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#B87B5A',
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(18),
+    fontWeight: '800',
+    color: tokens.colors.text,
   },
   headerDate: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    color: '#8A8A96',
-    marginTop: verticalScale(2),
-  },
-  paymentBadge: {
-    backgroundColor: 'rgba(184, 123, 90, 0.2)',
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(8),
-    borderRadius: scale(10),
-  },
-  paymentText: {
-    fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(13),
-    color: '#B87B5A',
-    fontWeight: '600',
+    color: tokens.colors.textMuted,
+    marginTop: verticalScale(1),
   },
   content: {
     padding: scale(20),
-    maxHeight: verticalScale(400),
+    maxHeight: verticalScale(380),
   },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
-    fontWeight: '600',
-    color: '#8A8A96',
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: scale(0.5),
-    marginBottom: verticalScale(12),
+    letterSpacing: scale(0.8),
+    marginBottom: verticalScale(16),
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(16),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: tokens.colors.borderLight,
   },
-  itemInfo: { flex: 1 },
+  itemIconCircle: {
+     width: scale(38),
+     height: scale(38),
+     borderRadius: scale(11),
+     backgroundColor: tokens.colors.surface,
+     justifyContent: 'center',
+     alignItems: 'center',
+     marginRight: scale(12),
+     borderWidth: 1,
+     borderColor: tokens.colors.borderLight,
+  },
+  itemMain: { flex: 1 },
   itemName: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#F0F0F2',
+    fontWeight: '600',
+    color: tokens.colors.text,
   },
-  itemPrice: {
+  itemMeta: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(11),
-    color: '#8A8A96',
+    fontSize: moderateScale(12),
+    color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
-  },
-  itemQty: {
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(14),
-    color: '#8A8A96',
-    marginHorizontal: scale(12),
   },
   itemSubtotal: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(14),
-    color: '#B87B5A',
-    fontWeight: '600',
-    minWidth: scale(70),
+    fontWeight: '700',
+    color: tokens.colors.text,
     textAlign: 'right',
+    minWidth: scale(70),
   },
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: scale(12),
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: tokens.radius.pill,
+    padding: scale(2),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    marginRight: scale(8),
   },
   qtyBtn: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(8),
-    backgroundColor: '#2a2a2e',
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  qtyBtnText: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(18),
-    color: '#F0F0F2',
-    fontWeight: '600',
-  },
   qtyValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(16),
-    color: '#F0F0F2',
-    marginHorizontal: scale(12),
-    minWidth: scale(30),
-    textAlign: 'center',
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    color: tokens.colors.text,
+    marginHorizontal: scale(8),
   },
-  addSection: { marginTop: verticalScale(16) },
-  addSectionTitle: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    color: '#8A8A96',
-    marginBottom: verticalScale(8),
-    textTransform: 'uppercase',
+  addSection: { 
+    marginTop: verticalScale(20),
+    paddingBottom: verticalScale(10),
   },
   addProductBtn: {
-    backgroundColor: 'rgba(109, 184, 138, 0.2)',
+    backgroundColor: tokens.colors.mahoganyDim,
     paddingHorizontal: scale(14),
     paddingVertical: verticalScale(8),
-    borderRadius: scale(8),
+    borderRadius: tokens.radius.pill,
     marginRight: scale(8),
     borderWidth: 1,
-    borderColor: 'rgba(109, 184, 138, 0.3)',
+    borderColor: tokens.colors.mahogany,
   },
   addProductText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(12),
-    color: '#6DB88A',
-    fontWeight: '600',
+    color: tokens.colors.mahogany,
+    fontWeight: '700',
   },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: verticalScale(16) },
-  totalsSection: { marginTop: verticalScale(8) },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: verticalScale(8) },
-  totalLabel: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(14), color: '#8A8A96' },
-  totalValue: { fontFamily: FontNames.jetBrainsMono, fontSize: moderateScale(14), color: '#F0F0F2' },
-  grandTotalLabel: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(18), fontWeight: '700', color: '#F0F0F2' },
-  grandTotalValue: { fontFamily: FontNames.jetBrainsMono, fontSize: moderateScale(20), fontWeight: '700', color: '#B87B5A' },
-  actions: { paddingHorizontal: scale(20) },
+  divider: { 
+    height: 1, 
+    backgroundColor: tokens.colors.borderLight, 
+    marginVertical: verticalScale(20) 
+  },
+  summaryCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: tokens.radius.lg,
+    padding: scale(16),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    marginBottom: verticalScale(20),
+  },
+  totalRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginBottom: verticalScale(10) 
+  },
+  totalLabel: { 
+    fontFamily: FontNames.instrumentSans, 
+    fontSize: moderateScale(14), 
+    color: tokens.colors.textSecondary 
+  },
+  totalValue: { 
+    fontFamily: FontNames.jetBrainsMono, 
+    fontSize: moderateScale(14), 
+    color: tokens.colors.text 
+  },
+  grandTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: verticalScale(4),
+    paddingTop: verticalScale(12),
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.borderLight,
+  },
+  grandTotalLabel: { 
+    fontFamily: FontNames.instrumentSans, 
+    fontSize: moderateScale(17), 
+    fontWeight: '700', 
+    color: tokens.colors.text 
+  },
+  grandTotalValue: { 
+    fontFamily: FontNames.jetBrainsMono, 
+    fontSize: moderateScale(22), 
+    fontWeight: '800', 
+    color: tokens.colors.mahogany,
+    lineHeight: moderateScale(28),
+  },
+  actions: { 
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(20),
+  },
   pdfBtn: {
-    backgroundColor: '#B87B5A',
-    borderRadius: scale(12),
-    paddingVertical: verticalScale(14),
+    backgroundColor: tokens.colors.mahogany,
+    borderRadius: tokens.radius.pill,
+    height: verticalScale(54),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: verticalScale(12),
     flexDirection: 'row',
+    gap: scale(10),
   },
-  actionRow: { flexDirection: 'row' },
-  editBtn: { flex: 1, backgroundColor: '#2a2a2e', borderRadius: scale(12), paddingVertical: verticalScale(14), alignItems: 'center', justifyContent: 'center', marginLeft: scale(8), flexDirection: 'row' },
-  deleteBtn: { flex: 1, backgroundColor: 'rgba(201,107,107,0.3)', borderRadius: scale(12), paddingVertical: verticalScale(14), alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
-  saveBtn: { flex: 1, backgroundColor: '#6DB88A', borderRadius: scale(12), paddingVertical: verticalScale(14), alignItems: 'center', justifyContent: 'center', marginLeft: scale(8) },
-  cancelBtn: { flex: 1, backgroundColor: '#2a2a2e', borderRadius: scale(12), paddingVertical: verticalScale(14), alignItems: 'center', justifyContent: 'center' },
-  saveBtnText: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(15), fontWeight: '600', color: '#FFFFFF' },
-  cancelBtnText: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(15), fontWeight: '600', color: '#8A8A96' },
-  btnText: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(14), fontWeight: '600', color: '#FFFFFF' },
-  btnIcon: { marginRight: scale(8) },
-  closeButton: { backgroundColor: '#141418', paddingVertical: verticalScale(16), alignItems: 'center', marginTop: verticalScale(12) },
-  closeButtonText: { fontFamily: FontNames.instrumentSans, fontSize: moderateScale(15), fontWeight: '600', color: '#8A8A96' },
+  actionRow: { 
+    flexDirection: 'row', 
+    gap: scale(12) 
+  },
+  mainActionBtn: {
+    flex: 1,
+    height: verticalScale(54),
+    borderRadius: tokens.radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    borderWidth: 1,
+  },
+  editBtn: { 
+    backgroundColor: tokens.colors.surface, 
+    borderColor: tokens.colors.borderLight,
+  },
+  deleteBtn: { 
+    backgroundColor: tokens.colors.coralDim, 
+    borderColor: tokens.colors.coral,
+  },
+  saveBtn: { 
+    backgroundColor: tokens.colors.sage, 
+    borderColor: tokens.colors.sage,
+  },
+  cancelBtn: { 
+    backgroundColor: tokens.colors.surface, 
+    borderColor: tokens.colors.borderLight,
+  },
+  btnText: { 
+    fontFamily: FontNames.instrumentSans, 
+    fontSize: moderateScale(14), 
+    fontWeight: '700', 
+    color: '#FFFFFF' 
+  },
+  btnTextMuted: {
+    color: tokens.colors.textMuted,
+  },
+  closeButton: { 
+    paddingVertical: verticalScale(16), 
+    alignItems: 'center',
+  },
+  closeButtonText: { 
+    fontFamily: FontNames.instrumentSans, 
+    fontSize: moderateScale(14), 
+    fontWeight: '700', 
+    color: tokens.colors.textDim 
+  },
+  miniCheckbox: {
+    width: scale(18),
+    height: scale(18),
+    borderRadius: scale(4),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniCheckboxActive: {
+    backgroundColor: tokens.colors.mahogany,
+    borderColor: tokens.colors.mahogany,
+  },
 });
 

@@ -1,7 +1,7 @@
-import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
-import { useState, memo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCartStore, CartItem, useSettingsStore } from '../store/cartStore';
 import { useCreateSale } from '../hooks/useProducts';
@@ -38,7 +38,7 @@ interface CheckoutPanelProps {
   onCloseMobile?: () => void;
 }
 
-export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: CheckoutPanelProps) {
+export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }: CheckoutPanelProps) {
   const items = useCartStore((state) => state.items);
   const getTotal = useCartStore((state) => state.getTotal);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -75,6 +75,8 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
         paymentMethod: selectedPayment!,
         items: saleItems,
         clientId: selectedClient?.id,
+        ivaEnabled,
+        taxAmount: tax,
       });
 
       setCompletedSale({
@@ -138,13 +140,23 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
       style={{ flex: 1 }} 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.container, { paddingBottom: insets.bottom + verticalScale(8) }]}>
+      <View style={[
+        styles.container, 
+        { paddingBottom: insets.bottom + verticalScale(8) }
+      ]}>
   
-        <View style={[styles.header, { paddingTop: insets.top + (onCloseMobile ? verticalScale(14) : verticalScale(10)) }]}>
+        <View style={[
+          styles.header, 
+          { 
+            paddingTop: Platform.OS === 'android' 
+              ? Math.max(insets.top, StatusBar.currentHeight || 0) + (onCloseMobile ? verticalScale(14) : verticalScale(10))
+              : insets.top + (onCloseMobile ? verticalScale(14) : verticalScale(10))
+          }
+        ]}>
         <View style={styles.headerContent}>
           <View style={styles.titleRow}>
             <View style={styles.iconContainer}>
-              <Icon name="shopping-cart" size={18} color={tokens.colors.mahogany} />
+              <Icon name="shopping-cart" size={20} color={tokens.colors.mahogany} />
             </View>
             <Text style={styles.title}>Carrito</Text>
           </View>
@@ -154,7 +166,7 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
             </View>
             {onCloseMobile && (
               <TouchableOpacity onPress={onCloseMobile} style={styles.closeButton}>
-                <Icon name="close" size={20} color={tokens.colors.text} />
+                <Icon name="close" size={24} color={tokens.colors.text} />
               </TouchableOpacity>
             )}
           </View>
@@ -169,7 +181,7 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
         {items.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
-              <Icon name="cart" size={32} color="rgba(184, 123, 90, 0.6)" />
+              <Icon name="cart" size={48} color="rgba(184, 123, 90, 0.6)" />
             </View>
             <Text style={styles.emptyText}>Carrito vacío</Text>
             <Text style={styles.emptySubtext}>Toca un producto para agregarlo</Text>
@@ -180,7 +192,13 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
       </ScrollView>
 
       <View style={styles.summary}>
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, { borderRadius: tokens.radius.xl }]}>
+          <LinearGradient
+            colors={['rgba(26, 26, 26, 0.8)', 'rgba(12, 12, 12, 0.5)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
@@ -192,7 +210,7 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
           >
             <View style={styles.ivaLabelContainer}>
               <View style={[styles.checkbox, ivaEnabled && styles.checkboxActive]}>
-                {ivaEnabled && <Icon name="check" size={12} color="#FFFFFF" />}
+                {ivaEnabled && <Icon name="check" size={16} color="#FFFFFF" />}
               </View>
               <Text style={styles.ivaLabel}>IVA (16%)</Text>
             </View>
@@ -203,8 +221,8 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
           <View style={styles.totalRow}>
             <View style={styles.totalLabelContainer}>
               <Text style={styles.totalLabel}>Total</Text>
-              <View style={styles.totalBadge}>
-                <Text style={styles.totalBadgeText}>
+              <View style={[styles.totalBadge, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                <Text style={[styles.totalBadgeText, { color: tokens.colors.mahogany }]}>
                   {ivaEnabled ? 'IVA incl.' : 'Sin IVA'}
                 </Text>
               </View>
@@ -226,7 +244,16 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
                 onPress={() => setSelectedPayment(method.key)}
                 activeOpacity={0.7}
               >
-                <Icon name={method.icon} size={14} color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} />
+                <View style={[
+                  styles.paymentChipIconCircle,
+                  isActive && { backgroundColor: 'rgba(184, 123, 90, 0.2)' }
+                ]}>
+                  <Icon 
+                    name={method.icon} 
+                    size={18} 
+                    color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
+                  />
+                </View>
                 <Text style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
                   {method.label}
                 </Text>
@@ -240,7 +267,7 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
             {selectedClient ? (
               <View style={styles.selectedClientRow}>
                 <View style={styles.selectedClientInfo}>
-                  <Icon name="user" size={14} color={tokens.colors.text} />
+                  <Icon name="user" size={20} color={tokens.colors.text} />
                   <Text style={styles.selectedClientName}>{selectedClient.name}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn}>
@@ -249,7 +276,7 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
               </View>
             ) : (
               <TouchableOpacity style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)}>
-                <Icon name="user-plus" size={16} color="#B87B5A" />
+                <Icon name="user-plus" size={22} color="#B87B5A" />
                 <Text style={styles.selectClientText}>Seleccionar Cliente</Text>
               </TouchableOpacity>
             )}
@@ -266,16 +293,11 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
         disabled={!selectedPayment || items.length === 0 || createSale.isPending}
         activeOpacity={0.85}
       >
-        <LinearGradient
-          colors={(!selectedPayment || items.length === 0) 
-            ? ['rgba(184, 123, 90, 0.45)', 'rgba(184, 123, 90, 0.35)']
-            : ['#C48B68', '#8B5A3C']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.checkoutGradient}
-        />
-        <View style={styles.checkoutContent}>
-          <Icon name="check" size={18} color="#F0F0F2" />
+        <View style={[
+          styles.checkoutContent, 
+          (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
+        ]}>
+          <Icon name="check" size={22} color="#F0F0F2" />
           <Text style={styles.checkoutText}>
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
           </Text>
@@ -315,17 +337,14 @@ export const CheckoutPanel = memo(function CheckoutPanel({ onCloseMobile }: Chec
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative',
     backgroundColor: tokens.colors.bg,
-    paddingBottom: Platform.OS === 'android' ? verticalScale(40) : verticalScale(34),
   },
-  leftBorder: {},
-  topGlow: {},
   header: {
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(14),
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(16),
     borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.border,
+    borderBottomColor: tokens.colors.borderLight,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   headerContent: {
     flexDirection: 'row',
@@ -335,272 +354,289 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
+    gap: scale(12),
   },
   iconContainer: {
     width: scale(36),
     height: scale(36),
-    borderRadius: scale(10),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    borderRadius: scale(18),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.mahogany,
   },
   title: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(18),
-    fontWeight: '700',
+    fontWeight: '800',
     color: tokens.colors.text,
-    letterSpacing: scale(0.5),
   },
   itemCountBadge: {
-    backgroundColor: 'rgba(184, 123, 90, 0.2)',
-    paddingHorizontal: scale(12),
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: scale(10),
     paddingVertical: verticalScale(4),
-    borderRadius: scale(12),
+    borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderLight,
   },
   itemCount: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(14),
-    fontWeight: '700',
-    color: '#B87B5A',
+    fontSize: moderateScale(13),
+    fontWeight: '800',
+    color: tokens.colors.textDim,
   },
   closeButton: {
     width: scale(36),
     height: scale(36),
-    borderRadius: scale(10),
+    borderRadius: scale(18),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: tokens.colors.border,
+    borderColor: tokens.colors.borderLight,
   },
   itemsList: {
     flex: 1,
   },
   itemsContent: {
-    paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(8),
+    padding: scale(12),
+    paddingBottom: verticalScale(20),
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: verticalScale(60),
-    gap: scale(10),
   },
   emptyIconCircle: {
-    width: scale(72),
-    height: scale(72),
-    borderRadius: scale(36),
-    backgroundColor: 'rgba(184,123,90,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(184,123,90,0.15)',
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(32),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: verticalScale(4),
+    marginBottom: verticalScale(16),
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
   },
   emptyText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(16),
-    fontWeight: '600',
-    color: tokens.colors.textMuted,
+    fontWeight: '700',
+    color: tokens.colors.textDim,
   },
   emptySubtext: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(13),
-    color: '#666',
+    color: tokens.colors.textMuted,
+    marginTop: verticalScale(4),
   },
   summary: {
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    padding: scale(16),
   },
   summaryCard: {
-    backgroundColor: tokens.colors.glass.bg,
-    borderRadius: scale(16),
-    padding: scale(14),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.xl,
+    padding: scale(20),
     borderWidth: 1,
-    borderColor: tokens.colors.glass.border,
+    borderColor: tokens.colors.borderLight,
+    overflow: 'hidden',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(8),
+    marginBottom: verticalScale(10),
   },
   summaryLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    fontWeight: '600',
+    color: tokens.colors.textDim,
   },
   summaryValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontSize: moderateScale(15),
+    fontWeight: '700',
     color: tokens.colors.text,
-  },
-  taxValue: {
-    color: tokens.colors.mahogany,
   },
   ivaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(8),
-    paddingVertical: verticalScale(6),
+    marginBottom: verticalScale(10),
+    paddingVertical: verticalScale(4),
   },
   ivaLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
+    gap: scale(12),
   },
   checkbox: {
     width: scale(22),
     height: scale(22),
     borderRadius: scale(6),
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   checkboxActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.8)',
-    borderColor: 'rgba(184, 123, 90, 0.6)',
+    backgroundColor: tokens.colors.mahogany,
+    borderColor: tokens.colors.mahogany,
   },
   ivaLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    fontWeight: '600',
+    color: tokens.colors.textDim,
+  },
+  taxValue: {
+    color: tokens.colors.mahogany,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: verticalScale(10),
-    paddingTop: verticalScale(12),
+    marginTop: verticalScale(12),
+    paddingTop: verticalScale(16),
     borderTopWidth: 1,
-    borderTopColor: 'rgba(184, 123, 90, 0.15)',
+    borderTopColor: tokens.colors.borderLight,
   },
   totalLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(10),
   },
   totalLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(18),
-    fontWeight: '700',
-    color: '#F0F0F2',
+    fontWeight: '800',
+    color: tokens.colors.text,
   },
   totalBadge: {
-    backgroundColor: 'rgba(109, 184, 138, 0.15)',
+    backgroundColor: 'rgba(109, 184, 138, 0.1)',
     paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(6),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(109, 184, 138, 0.2)',
   },
   totalBadgeText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(10),
-    fontWeight: '600',
-    color: '#6DB88A',
+    fontWeight: '800',
+    color: tokens.colors.sage,
   },
   paymentSection: {
-    paddingHorizontal: scale(16),
-    paddingBottom: verticalScale(12),
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(20),
   },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(11),
-    fontWeight: '600',
-    color: '#8A8A96',
-    marginBottom: verticalScale(10),
+    fontSize: moderateScale(12),
+    fontWeight: '800',
+    color: tokens.colors.textDim,
+    marginBottom: verticalScale(14),
     textTransform: 'uppercase',
-    letterSpacing: scale(0.8),
+    letterSpacing: 1,
   },
   paymentChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: scale(8),
+    gap: scale(10),
   },
   paymentChip: {
-    flexGrow: 1,
-    flexBasis: '47%', 
+    flex: 1,
+    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: scale(8),
-    height: verticalScale(44),
-    borderRadius: scale(14),
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    gap: scale(12),
+    height: verticalScale(54),
+    borderRadius: tokens.radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
+    paddingHorizontal: scale(12),
   },
   paymentChipActive: {
-    backgroundColor: 'rgba(184,123,90,0.15)',
-    borderColor: 'rgba(184,123,90,0.4)',
+    backgroundColor: tokens.colors.mahoganyDim,
+    borderColor: tokens.colors.mahogany,
+  },
+  paymentChipIconCircle: {
+     width: scale(32),
+     height: scale(32),
+     borderRadius: scale(16),
+     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+     justifyContent: 'center',
+     alignItems: 'center',
+     borderWidth: 1,
+     borderColor: tokens.colors.borderLight,
   },
   paymentChipText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    fontWeight: '600',
-    color: '#8A8A96',
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    color: tokens.colors.textDim,
   },
   paymentChipTextActive: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   checkoutButton: {
-    position: 'relative',
-    marginHorizontal: scale(16),
-    marginTop: verticalScale(8),
-    marginBottom: verticalScale(16),
-    borderRadius: 999,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-  checkoutGradient: {
-    ...StyleSheet.absoluteFillObject,
+    marginHorizontal: scale(20),
+    marginBottom: verticalScale(20),
   },
   checkoutContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: scale(10),
-    paddingVertical: verticalScale(16),
+    gap: scale(12),
+    height: verticalScale(56),
+    borderRadius: tokens.radius.pill,
+  },
+  checkoutContentActive: {
+    backgroundColor: tokens.colors.mahogany,
+    shadowColor: tokens.colors.mahogany,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+  },
+  checkoutContentDisabled: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   checkoutButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   checkoutText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#F0F0F2',
-    letterSpacing: scale(0.5),
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   clientSelectionBox: {
-    marginTop: verticalScale(12),
+    marginTop: verticalScale(16),
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: scale(12),
+    borderRadius: tokens.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     padding: scale(12),
   },
   selectClientBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: scale(8),
-    paddingVertical: verticalScale(8),
+    gap: scale(10),
+    height: verticalScale(40),
   },
   selectClientText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    fontWeight: '600',
-    color: '#B87B5A',
+    fontWeight: '700',
+    color: tokens.colors.mahogany,
   },
   selectedClientRow: {
     flexDirection: 'row',
@@ -610,23 +646,26 @@ const styles = StyleSheet.create({
   selectedClientInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(10),
   },
   selectedClientName: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    fontWeight: '600',
-    color: '#F0F0F2',
+    fontWeight: '700',
+    color: tokens.colors.text,
   },
   changeClientBtn: {
     backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: scale(6),
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(6),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   changeClientText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(12),
-    color: '#F0F0F2',
+    fontWeight: '700',
+    color: tokens.colors.text,
   },
 });

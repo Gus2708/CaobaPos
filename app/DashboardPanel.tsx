@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
@@ -19,6 +19,9 @@ interface Sale {
   total_amount: number;
   payment_method: string;
   created_at: string;
+  iva_enabled?: boolean;
+  tax_amount?: number;
+  client_id?: string;
 }
 
 interface SaleItem {
@@ -52,57 +55,108 @@ interface StatCardProps {
   variant?: 'default' | 'accent' | 'success' | 'warning' | 'profit';
   icon: string;
   subtitle?: string;
+  onPress?: () => void;
+  style?: any;
 }
 
-const StatCard = memo(function StatCard({ label, value, variant = 'default', icon, subtitle }: StatCardProps) {
+const StatCard = React.memo(function StatCard({ label, value, variant = 'default', icon, subtitle, onPress, style }: StatCardProps) {
   const bgColors = {
-    default: { bg: tokens.colors.bg, accent: '#B87B5A' },
-    accent: { bg: tokens.colors.bg, accent: '#B87B5A' },
-    success: { bg: tokens.colors.bg, accent: '#6DB88A' },
-    warning: { bg: tokens.colors.bg, accent: '#C96B6B' },
-    profit: { bg: tokens.colors.bg, accent: '#6DB88A' },
+    default: { surface: tokens.colors.surface, accent: tokens.colors.mahogany },
+    accent: { surface: tokens.colors.surface, accent: tokens.colors.mahogany },
+    success: { surface: tokens.colors.surface, accent: tokens.colors.sage },
+    warning: { surface: tokens.colors.surface, accent: tokens.colors.coral },
+    profit: { surface: tokens.colors.surface, accent: tokens.colors.sage },
   };
   const c = bgColors[variant];
 
+  const Container = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={[styles.statCard, { backgroundColor: c.bg }]}>
-      {/* Top accent stripe */}
-      <View style={[styles.statAccentBar, { backgroundColor: c.accent }]} />
-      <View style={styles.statBorder} />
-      <View style={styles.statHeader}>
-        <View style={[styles.statIconContainer, { backgroundColor: `${c.accent}22` }]}>
-          <Icon name={icon} size={16} color={c.accent} />
+    <Container 
+      style={[styles.statCard, style]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.01)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.statContent}>
+        <View style={[styles.statIconCircle, { backgroundColor: `${c.accent}08`, borderColor: `${c.accent}15` }]}>
+          <Icon name={icon} size={20} color={c.accent} />
         </View>
-        <Text style={styles.statLabel} numberOfLines={2}>{label}</Text>
+        <View style={styles.statInfo}>
+          <Text style={styles.statLabel} numberOfLines={2} adjustsFontSizeToFit>{label}</Text>
+          <Text 
+            style={styles.statValue} 
+            numberOfLines={1} 
+            adjustsFontSizeToFit 
+            minimumFontScale={0.7}
+          >
+            {value}
+          </Text>
+          {subtitle && (
+            <Text style={styles.statSubtitle} numberOfLines={2}>{subtitle}</Text>
+          )}
+        </View>
+        {onPress && (
+          <View style={styles.statChevron}>
+            <Icon name="chevron-right" size={22} color={tokens.colors.textDim} />
+          </View>
+        )}
       </View>
-      <Text style={[styles.statValue, { color: c.accent }]}>{value}</Text>
-      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-    </View>
+    </Container>
   );
 });
 
-export const DashboardPanel = memo(function DashboardPanel() {
+export const DashboardPanel = React.memo(function DashboardPanel() {
   const [period, setPeriod] = useState<DashboardPeriod>('dia');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [methodModalVisible, setMethodModalVisible] = useState(false);
+  const { today, weekAgo, monthAgo } = useMemo(() => {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const w = new Date(); w.setDate(w.getDate() - 7); w.setHours(0, 0, 0, 0);
+    const m = new Date(); m.setMonth(m.getMonth() - 1); m.setHours(0, 0, 0, 0);
+    return { today: t.toISOString(), weekAgo: w.toISOString(), monthAgo: m.toISOString() };
+  }, []);
+
+  const limitDate = useMemo(() => {
+    if (period === 'dia') return today;
+    if (period === 'semana') return weekAgo;
+    if (period === 'mes') return monthAgo;
+    return null;
+  }, [period, today, weekAgo, monthAgo]);
+
   const { data: sales, isLoading: loadingSales } = useQuery<Sale[]>({
-    queryKey: ['dashboard', 'sales'],
+    queryKey: ['dashboard', 'sales', period],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('sales').select('*');
+      if (limitDate) query = query.gte('created_at', limitDate);
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
   const { data: saleItems } = useQuery<SaleItem[]>({
-    queryKey: ['dashboard', 'sale_items'],
+    queryKey: ['dashboard', 'sale_items', period],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal');
+      let query = supabase.from('sale_items').select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal, sales!inner(created_at)');
+      if (limitDate) query = query.gte('sales.created_at', limitDate);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: allPayments } = useQuery<ClientPayment[]>({
+    queryKey: ['dashboard', 'client_payments', period],
+    queryFn: async () => {
+      let query = supabase.from('client_payments').select('*');
+      if (limitDate) query = query.gte('created_at', limitDate);
+      const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
     },
@@ -119,43 +173,7 @@ export const DashboardPanel = memo(function DashboardPanel() {
     },
   });
 
-  const { data: allPayments } = useQuery<ClientPayment[]>({
-    queryKey: ['dashboard', 'client_payments'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('client_payments')
-        .select('*');
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, []);
-
-  const weekAgo = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, []);
-
-  const monthAgo = useMemo(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, []);
-
-  const filteredSales = useMemo(() => {
-    if (period === 'dia') return (sales ?? []).filter((s) => s.created_at >= today);
-    if (period === 'semana') return (sales ?? []).filter((s) => s.created_at >= weekAgo);
-    if (period === 'mes') return (sales ?? []).filter((s) => s.created_at >= monthAgo);
-    return sales ?? [];
-  }, [sales, period, today, weekAgo, monthAgo]);
+  const filteredSales = useMemo(() => sales ?? [], [sales]);
 
   const periodLabel = period === 'dia' ? 'Hoy' : period === 'semana' ? 'Esta Semana' : 'Este Mes';
   const pdfTitleLabel = period === 'dia' ? 'Resumen Financiero Diario' : period === 'semana' ? 'Resumen Financiero Semanal' : 'Resumen Financiero Mensual';
@@ -171,42 +189,57 @@ export const DashboardPanel = memo(function DashboardPanel() {
       const saleIds = new Set(saleList.map(s => s.id));
       const relevantItems = (saleItems ?? []).filter(item => saleIds.has(item.sale_id));
       
-      const revenue = saleList.reduce((acc, s) => acc + Number(s.total_amount), 0);
+      const rawRevenue = saleList.reduce((acc, s) => acc + Number(s.total_amount), 0);
       
-      // Breakdown by payment readiness
       const pendingCredit = saleList
         .filter(s => s.payment_method === 'credito')
         .reduce((acc, s) => acc + Number(s.total_amount), 0);
       
-      // Real Cash Flow = (Cash from immediate sales) + (Payments received today for past debts)
-      const cashFromSales = revenue - pendingCredit;
-      const totalAbonos = paymentList.reduce((acc, p) => acc + Number(p.amount), 0);
-      
-      const receivedMoney = cashFromSales + totalAbonos;
+      const paidSalesIds = new Set(saleList.filter(s => s.payment_method !== 'credito').map(s => s.id));
+      const paidItems = (saleItems ?? []).filter(item => paidSalesIds.has(item.sale_id));
 
-      // Use persisted cost if available, fallback to current product cost for old items
-      const cost = relevantItems.reduce((acc, item) => {
+      // Separate cash vs electronic for both sales and payments
+      const cashFromSales = saleList
+        .filter(s => s.payment_method === 'cash')
+        .reduce((acc, s) => acc + Number(s.total_amount), 0);
+
+      const electronicSales = saleList
+        .filter(s => s.payment_method === 'card' || s.payment_method === 'transfer')
+        .reduce((acc, s) => acc + Number(s.total_amount), 0);
+      
+      const cashAbonos = paymentList
+        .filter(p => p.payment_method === 'cash')
+        .reduce((acc, p) => acc + Number(p.amount), 0);
+
+      const electronicAbonos = paymentList
+        .filter(p => p.payment_method === 'card' || p.payment_method === 'transfer')
+        .reduce((acc, p) => acc + Number(p.amount), 0);
+      
+      const totalAbonos = cashAbonos + electronicAbonos;
+      const receivedMoney = cashFromSales + cashAbonos;
+      const bsRevenue = electronicSales + electronicAbonos;
+
+      // REVENUE: Only non-credit sales + All Abonos
+      const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
+
+      // COST: Only cost of items in paid sales
+      const costOfPaidSales = paidItems.reduce((acc, item) => {
         const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
         return acc + (itemCost * item.quantity);
       }, 0);
 
-      const profit = revenue - cost;
-      return { revenue, cost, profit, pendingCredit, receivedMoney };
+      // PROFIT: (Paid Sales - Their costs) + All Abonos
+      const profit = (rawRevenue - pendingCredit - costOfPaidSales) + totalAbonos;
+
+      return { revenue: effectiveRevenue, cost: costOfPaidSales, profit, pendingCredit, receivedMoney, bsRevenue };
     };
   }, [saleItems, productMap]);
 
   const currentMetrics = useMemo(() => {
-    const periodPayments = (allPayments ?? []).filter(p => {
-      if (period === 'dia') return p.created_at >= today;
-      if (period === 'semana') return p.created_at >= weekAgo;
-      if (period === 'mes') return p.created_at >= monthAgo;
-      return true;
-    });
-
-    const m = calculateMetricsForSales(filteredSales, periodPayments);
+    const m = calculateMetricsForSales(filteredSales, allPayments ?? []);
     const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
     return { ...m, margin };
-  }, [filteredSales, allPayments, calculateMetricsForSales, period, today, weekAgo, monthAgo]);
+  }, [filteredSales, allPayments, calculateMetricsForSales]);
 
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
@@ -271,13 +304,9 @@ export const DashboardPanel = memo(function DashboardPanel() {
   if (loadingSales) {
     return (
       <View style={styles.loading}>
-        <LinearGradient
-          colors={['rgba(10, 10, 12, 0.8)', 'rgba(10, 10, 12, 0.9)']}
-          style={StyleSheet.absoluteFill}
-        />
         <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#B87B5A" />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
+          <Text style={styles.loadingText}>Cargando panel...</Text>
         </View>
       </View>
     );
@@ -287,21 +316,15 @@ export const DashboardPanel = memo(function DashboardPanel() {
     <ScrollView 
       style={styles.container} 
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.content, { paddingBottom: verticalScale(32) + insets.bottom }]}
+      contentContainerStyle={[styles.content, { paddingBottom: verticalScale(40) + insets.bottom }]}
     >
-      <LinearGradient
-        colors={['rgba(10, 10, 12, 0.95)', 'rgba(10, 10, 12, 0.98)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
       
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.title}>Dashboard</Text>
           <View style={styles.headerBadge}>
             <View style={styles.statusDot} />
-            <Text style={styles.headerBadgeText}>En vivo</Text>
+            <Text style={styles.headerBadgeText}>Live</Text>
           </View>
         </View>
         <TouchableOpacity 
@@ -309,8 +332,8 @@ export const DashboardPanel = memo(function DashboardPanel() {
           onPress={handleDownloadPDF}
           activeOpacity={0.7}
         >
-          <Icon name="file-pdf" size={14} color="#B87B5A" />
-          <Text style={styles.downloadBtnText}>PDF</Text>
+          <Icon name="file-pdf" size={20} color={tokens.colors.mahogany} />
+          <Text style={styles.downloadBtnText}>Reporte PDF</Text>
         </TouchableOpacity>
       </View>
 
@@ -326,23 +349,46 @@ export const DashboardPanel = memo(function DashboardPanel() {
         <StatCard 
           label={`Ganancia (${periodLabel})`} 
           value={`$${currentMetrics.profit.toFixed(2)}`}
-          variant="success"
+          variant="profit"
           icon="trending-up"
           subtitle={`Margen: ${currentMetrics.margin.toFixed(1)}%`}
         />
       </View>
 
+      <View style={styles.statsGrid}>
+        <StatCard 
+          label={`Venta en BS (${periodLabel})`} 
+          value={`$${currentMetrics.bsRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+          variant="default"
+          icon="mobile-alt"
+          subtitle="Ventas y Abonos (T/T)"
+        />
+        <StatCard 
+          label={`Caja Real (${periodLabel})`} 
+          value={`$${currentMetrics.receivedMoney.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+          variant="success"
+          icon="money-bill"
+          subtitle="Ventas y Abonos (Efectivo)"
+        />
+      </View>
+
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <View style={[styles.sectionIcon, { backgroundColor: 'rgba(109, 184, 138, 0.15)' }]}>
-            <Icon name="chart-pie" size={18} color="#6DB88A" />
+           <View style={[styles.sectionIcon, { backgroundColor: `${tokens.colors.sage}15`, borderColor: `${tokens.colors.sage}25` }]}>
+            <Icon name="chart-pie" size={20} color={tokens.colors.sage} />
           </View>
           <Text style={styles.sectionTitle}>Resumen Financiero</Text>
         </View>
         <View style={styles.financialGrid}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
-            <Text style={styles.financialValue}>${currentMetrics.revenue.toFixed(2)}</Text>
+            <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={styles.financialItem}>
             <View style={styles.labelWithBadge}>
@@ -351,86 +397,83 @@ export const DashboardPanel = memo(function DashboardPanel() {
                 <Text style={styles.receivedBadgeText}>Recibido</Text>
               </View>
             </View>
-            <Text style={styles.financialValueReceived}>${currentMetrics.receivedMoney.toFixed(2)}</Text>
+            <Text style={styles.financialValueReceived}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+          </View>
+          <View style={styles.financialItem}>
+            <View style={styles.labelWithBadge}>
+              <Text style={styles.financialLabel}>Tarjeta / Transferencia (BS)</Text>
+              <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: 'rgba(184, 123, 90, 0.2)' }]}>
+                <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
+              </View>
+            </View>
+            <Text style={styles.financialValue}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Crédito Pendiente</Text>
-            <Text style={styles.financialValuePending}>${currentMetrics.pendingCredit.toFixed(2)}</Text>
+            <Text style={styles.financialValuePending}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Costos Totales</Text>
-            <Text style={styles.financialValueCost}>-${currentMetrics.cost.toFixed(2)}</Text>
+            <Text style={styles.financialValueCost}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
           </View>
           <View style={[styles.financialItem, styles.financialItemHighlight]}>
             <Text style={styles.financialLabelHighlight}>Ganancia Estimada</Text>
-            <Text style={styles.financialValueProfit}>${currentMetrics.profit.toFixed(2)}</Text>
+            <Text style={styles.financialValueProfit}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionIcon}>
-            <Icon name="credit-card" size={18} color="#B87B5A" />
+           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+            <Icon name="credit-card" size={20} color={tokens.colors.mahogany} />
           </View>
-          <Text style={styles.sectionTitle}>Metodos de Pago</Text>
+          <Text style={styles.sectionTitle}>Métodos de Pago</Text>
         </View>
-        <View style={styles.paymentMethodsGrid}>
-          <TouchableOpacity 
-            style={styles.paymentMethodItem}
-            activeOpacity={0.7}
+        <View style={styles.statsGrid}>
+          <StatCard 
+            label="Efectivo"
+            value={paymentBreakdown.cash.toString()}
+            icon="money-bill"
             onPress={() => { setSelectedMethod('cash'); setMethodModalVisible(true); }}
-          >
-            <View style={styles.paymentMethodIcon}>
-              <Icon name="money-bill" size={16} color="#B87B5A" />
-            </View>
-            <Text style={styles.paymentMethodLabel}>Efectivo</Text>
-            <Text style={styles.paymentMethodValue}>{paymentBreakdown.cash}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.paymentMethodItem}
-            activeOpacity={0.7}
+          />
+          <StatCard 
+            label="Tarjeta"
+            value={paymentBreakdown.card.toString()}
+            icon="credit-card"
             onPress={() => { setSelectedMethod('card'); setMethodModalVisible(true); }}
-          >
-            <View style={styles.paymentMethodIcon}>
-              <Icon name="credit-card" size={16} color="#B87B5A" />
-            </View>
-            <Text style={styles.paymentMethodLabel}>Tarjeta</Text>
-            <Text style={styles.paymentMethodValue}>{paymentBreakdown.card}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.paymentMethodItem}
-            activeOpacity={0.7}
+          />
+        </View>
+        <View style={styles.statsGrid}>
+          <StatCard 
+            label="Transf."
+            value={paymentBreakdown.transfer.toString()}
+            icon="mobile-alt"
             onPress={() => { setSelectedMethod('transfer'); setMethodModalVisible(true); }}
-          >
-            <View style={styles.paymentMethodIcon}>
-              <Icon name="mobile-alt" size={16} color="#B87B5A" />
-            </View>
-            <Text style={styles.paymentMethodLabel}>Transf.</Text>
-            <Text style={styles.paymentMethodValue}>{paymentBreakdown.transfer}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.paymentMethodItem}
-            activeOpacity={0.7}
+          />
+          <StatCard 
+            label="Créditos"
+            value={paymentBreakdown.credito.toString()}
+            icon="user"
             onPress={() => { setSelectedMethod('credito'); setMethodModalVisible(true); }}
-          >
-            <View style={styles.paymentMethodIcon}>
-              <Icon name="user" size={16} color="#B87B5A" />
-            </View>
-            <Text style={styles.paymentMethodLabel}>Créditos</Text>
-            <Text style={styles.paymentMethodValue}>{paymentBreakdown.credito}</Text>
-          </TouchableOpacity>
+          />
         </View>
       </View>
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionIcon}>
-            <Icon name="cart" size={18} color="#B87B5A" />
+           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+            <Icon name="shopping-bag" size={20} color={tokens.colors.mahogany} />
           </View>
           <Text style={styles.sectionTitle}>Top Productos</Text>
         </View>
         <View style={styles.sectionCard}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {topProducts.length === 0 ? (
             <Text style={styles.empty}>Sin datos</Text>
           ) : (
@@ -454,17 +497,23 @@ export const DashboardPanel = memo(function DashboardPanel() {
       {lowStock.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
-              <Icon name="exclamation-triangle" size={18} color="#C96B6B" />
+             <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.coralDim, borderColor: tokens.colors.coralDim }]}>
+              <Icon name="exclamation-triangle" size={20} color={tokens.colors.coral} />
             </View>
-            <Text style={[styles.sectionTitle, { color: '#C96B6B' }]}>Stock Bajo</Text>
+            <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock Bajo</Text>
           </View>
           <View style={styles.sectionCard}>
+            <LinearGradient
+              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
             {lowStock.map((p, i) => (
               <View key={i} style={styles.listItem}>
                 <View style={styles.listItemLeft}>
-                  <View style={[styles.rankBadge, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
-                    <Icon name="box" size={12} color="#C96B6B" />
+                   <View style={[styles.rankBadge, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
+                    <Icon name="box" size={16} color="#C96B6B" />
                   </View>
                   <Text style={styles.listText}>{p.name}</Text>
                 </View>
@@ -481,16 +530,22 @@ export const DashboardPanel = memo(function DashboardPanel() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionIcon}>
-            <Icon name="clock" size={18} color="#B87B5A" />
+           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+            <Icon name="history" size={20} color={tokens.colors.mahogany} />
           </View>
           <Text style={styles.sectionTitle}>Ventas Recientes</Text>
         </View>
         <View style={styles.sectionCard}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {(sales ?? []).slice(0, 10).map((sale) => (
             <View key={sale.id} style={styles.saleItem}>
               <View style={styles.saleLeft}>
-                <Text style={styles.saleAmount}>${Number(sale.total_amount).toFixed(2)}</Text>
+                <Text style={styles.saleAmount}>${Number(sale.total_amount ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
                 <View style={styles.paymentBadge}>
                   <Text style={styles.saleMethod}>{sale.payment_method}</Text>
                 </View>
@@ -521,18 +576,15 @@ export const DashboardPanel = memo(function DashboardPanel() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    position: 'relative',
     backgroundColor: tokens.colors.bg,
   },
   content: {
     padding: scale(16),
-    paddingBottom: verticalScale(32),
   },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
   loadingContent: {
     alignItems: 'center',
@@ -541,20 +593,19 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(20),
+    marginBottom: verticalScale(24),
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(26), 
-    color: '#F0F0F2', 
+    fontSize: moderateScale(28), 
+    color: tokens.colors.text, 
     fontWeight: '800', 
-    letterSpacing: scale(1),
   },
   headerTitleRow: {
     flex: 1,
@@ -565,41 +616,42 @@ const styles = StyleSheet.create({
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(6),
-    borderRadius: scale(10),
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    gap: scale(8),
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.borderLight,
   },
   downloadBtnText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(12),
     fontWeight: '700',
-    color: '#B87B5A',
-    textTransform: 'uppercase',
+    color: tokens.colors.mahogany,
   },
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(109, 184, 138, 0.1)',
-    paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(8),
-    gap: scale(4),
+    backgroundColor: tokens.colors.sageDim,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: 'rgba(109, 184, 138, 0.2)',
   },
   statusDot: {
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
-    backgroundColor: '#6DB88A',
+    backgroundColor: tokens.colors.sage,
   },
   headerBadgeText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(10),
-    fontWeight: '600',
-    color: '#6DB88A',
+    fontWeight: '800',
+    color: tokens.colors.sage,
     textTransform: 'uppercase',
   },
   statsGrid: { 
@@ -609,323 +661,294 @@ const styles = StyleSheet.create({
   },
   statCard: { 
     flex: 1, 
-    position: 'relative',
-    padding: scale(16),
-    paddingTop: verticalScale(18),
-    borderRadius: scale(20), 
+    padding: scale(12),
+    borderRadius: tokens.radius.xl, 
     borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: tokens.colors.borderLight,
+    justifyContent: 'center',
+    minHeight: verticalScale(90),
     overflow: 'hidden',
   },
-  statAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: verticalScale(3),
-    borderTopLeftRadius: scale(20),
-    borderTopRightRadius: scale(20),
-    opacity: 0.85,
-  },
-  statBorder: {
-    position: 'absolute',
-    top: verticalScale(3),
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  statHeader: {
+  statContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
-    marginBottom: verticalScale(10),
+    gap: scale(8),
   },
-  statIconContainer: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(8),
+  statIconCircle: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+  },
+  statInfo: {
+    flex: 1,
   },
   statLabel: { 
-    flex: 1,
     fontFamily: FontNames.instrumentSans, 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontSize: moderateScale(11), 
-    fontWeight: '600',
+    fontWeight: '800',
     textTransform: 'uppercase', 
-    letterSpacing: scale(0.5),
+    letterSpacing: 0.5,
+    marginBottom: verticalScale(2),
   },
   statValue: { 
     fontFamily: FontNames.jetBrainsMono, 
-    fontSize: moderateScale(22), 
+    fontSize: moderateScale(20), 
     fontWeight: '800',
+    color: tokens.colors.text,
+    lineHeight: moderateScale(24),
   },
   statSubtitle: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(11),
-    color: '#8A8A96',
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
+    lineHeight: moderateScale(14),
     marginTop: verticalScale(4),
   },
-  statGlow: {
-    position: 'absolute',
-    bottom: verticalScale(-20),
-    right: scale(-20),
-    width: scale(60),
-    height: scale(60),
-    borderRadius: scale(30),
-    opacity: 0.05,
+  subtitleContainer: {
+    marginTop: verticalScale(4),
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: scale(4),
+    paddingVertical: verticalScale(1),
+    borderRadius: scale(4),
+    alignSelf: 'stretch',
+  },
+  statChevron: {
+    marginLeft: scale(4),
   },
   section: { 
-    marginTop: verticalScale(20),
+    marginTop: verticalScale(24),
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
-    marginBottom: verticalScale(12),
+    gap: scale(12),
+    marginBottom: verticalScale(16),
   },
   sectionIcon: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(10),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
   },
   sectionTitle: { 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(16), 
-    color: '#F0F0F2', 
-    fontWeight: '700',
+    color: tokens.colors.text, 
+    fontWeight: '800',
   },
   sectionCard: { 
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(20), 
+    borderRadius: tokens.radius.xl, 
     padding: scale(16),
     borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
+    overflow: 'hidden',
   },
   financialGrid: {
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(20),
+    borderRadius: tokens.radius.xl,
     padding: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: verticalScale(12),
+    borderColor: tokens.colors.borderLight,
+    gap: verticalScale(14),
+    overflow: 'hidden',
   },
   financialItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: verticalScale(10),
+    paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   financialItemHighlight: {
-    backgroundColor: 'rgba(109, 184, 138, 0.1)',
+    backgroundColor: 'rgba(109, 184, 138, 0.05)',
     marginHorizontal: scale(-16),
     marginBottom: verticalScale(-16),
     paddingHorizontal: scale(16),
     paddingBottom: verticalScale(16),
     borderBottomWidth: 0,
-    borderBottomLeftRadius: scale(20),
-    borderBottomRightRadius: scale(20),
+    borderBottomLeftRadius: tokens.radius.xl,
+    borderBottomRightRadius: tokens.radius.xl,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(109, 184, 138, 0.1)',
   },
   financialLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
   },
   financialLabelHighlight: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    fontWeight: '600',
-    color: '#6DB88A',
+    fontWeight: '700',
+    color: tokens.colors.sage,
   },
   financialValue: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#F0F0F2',
+    fontWeight: '800',
+    color: tokens.colors.text,
+    lineHeight: moderateScale(20),
   },
   financialValueCost: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#C96B6B',
+    fontWeight: '800',
+    color: tokens.colors.coral,
   },
   financialValueProfit: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(20),
+    fontSize: moderateScale(22),
     fontWeight: '800',
-    color: '#6DB88A',
+    color: tokens.colors.sage,
   },
   financialValueReceived: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontWeight: '800',
     color: tokens.colors.text,
   },
   financialValuePending: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#F59E0B',
+    fontWeight: '800',
+    color: tokens.colors.amber,
+    lineHeight: moderateScale(20),
   },
   labelWithBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(10),
   },
   receivedBadge: {
-    backgroundColor: 'rgba(109, 184, 138, 0.1)',
-    paddingHorizontal: scale(6),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(4),
+    backgroundColor: tokens.colors.sageDim,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(109, 184, 138, 0.2)',
   },
   receivedBadgeText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(9),
-    fontWeight: '700',
-    color: '#6DB88A',
+    fontWeight: '800',
+    color: tokens.colors.sage,
     textTransform: 'uppercase',
   },
   listItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(14),
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   listItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
+    gap: scale(14),
     flex: 1,
   },
   rankBadge: {
-    width: scale(28),
-    height: scale(28),
-    borderRadius: scale(8),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(184, 123, 90, 0.3)',
   },
   rankText: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(12),
-    fontWeight: '700',
+    fontSize: moderateScale(13),
+    fontWeight: '800',
     color: tokens.colors.mahogany,
   },
   listText: { 
     fontFamily: FontNames.instrumentSans, 
     color: tokens.colors.text, 
     fontSize: moderateScale(14),
+    fontWeight: '600',
     flex: 1,
   },
   listValueContainer: {
     backgroundColor: tokens.colors.mahoganyDim,
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: scale(8),
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(6),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(184, 123, 90, 0.2)',
   },
   listValue: { 
     fontFamily: FontNames.jetBrainsMono, 
     color: tokens.colors.mahogany, 
     fontSize: moderateScale(13), 
-    fontWeight: '700',
+    fontWeight: '800',
   },
   saleItem: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    paddingVertical: verticalScale(14),
+    paddingVertical: verticalScale(16),
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   saleLeft: {
-    gap: verticalScale(6),
+    gap: verticalScale(8),
   },
   saleAmount: { 
     fontFamily: FontNames.jetBrainsMono, 
     color: tokens.colors.text, 
     fontSize: moderateScale(16), 
-    fontWeight: '700',
+    fontWeight: '800',
   },
   paymentBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(6),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   saleMethod: { 
     fontFamily: FontNames.instrumentSans, 
     color: tokens.colors.textMuted, 
     fontSize: moderateScale(11),
-    textTransform: 'capitalize',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   saleRight: { 
     alignItems: 'flex-end',
-    gap: verticalScale(4),
+    gap: verticalScale(6),
   },
   saleDate: { 
     fontFamily: FontNames.instrumentSans, 
     color: tokens.colors.text, 
     fontSize: moderateScale(13),
+    fontWeight: '600',
   },
   saleTime: { 
     fontFamily: FontNames.jetBrainsMono, 
     color: tokens.colors.textMuted, 
     fontSize: moderateScale(11),
+    fontWeight: '600',
   },
   empty: { 
     color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(14), 
     textAlign: 'center', 
-    marginTop: verticalScale(16),
-    marginBottom: verticalScale(8),
-  },
-  paymentMethodsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: scale(12),
-  },
-  paymentMethodItem: {
-    flexGrow: 1,
-    minWidth: scale(100),
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(16),
-    padding: scale(16),
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  paymentMethodIcon: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(8),
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: verticalScale(8),
-  },
-  paymentMethodLabel: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    color: '#8A8A96',
-    marginBottom: verticalScale(6),
-    textTransform: 'uppercase',
-    letterSpacing: scale(0.5),
-  },
-  paymentMethodValue: {
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(18),
-    fontWeight: '700',
-    color: tokens.colors.text,
+    marginVertical: verticalScale(24),
+    fontWeight: '600',
   },
 });

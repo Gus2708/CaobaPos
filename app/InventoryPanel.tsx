@@ -1,10 +1,13 @@
-import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { SkeletonItem } from '../components/SkeletonItem';
+import { Badge } from '../components/Badge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Text } from '../components/Text';
 import { CachedImage } from '../components/CachedImage';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { Product, useSettingsStore } from '../store/cartStore';
@@ -57,6 +60,8 @@ export const InventoryPanel = memo(function InventoryPanel({
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isAddingQuickCat, setIsAddingQuickCat] = useState<'new' | 'edit' | null>(null);
+  const [quickCatText, setQuickCatText] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -69,9 +74,20 @@ export const InventoryPanel = memo(function InventoryPanel({
   const addCategory = useSettingsStore((state) => state.addCategory);
   const removeCategory = useSettingsStore((state) => state.removeCategory);
 
-  const { data: products = [], isLoading, isError, refetch } = useQuery<Product[]>({
+  const PAGE_SIZE = 25;
+
+  const { 
+    data, 
+    isLoading, 
+    isError, 
+    refetch, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage 
+  } = useInfiniteQuery({
     queryKey: ['inventory-products'],
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -81,7 +97,8 @@ export const InventoryPanel = memo(function InventoryPanel({
           )
         `)
         .eq('is_active', true)
-        .order('name');
+        .order('name')
+        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
       
       if (error) throw error;
       
@@ -90,7 +107,12 @@ export const InventoryPanel = memo(function InventoryPanel({
         categories: p.product_categories?.map((pc: any) => pc.category.name) || []
       }));
     },
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
+    },
   });
+
+  const products = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -99,7 +121,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(s) ||
-        p.categories.some((c) => c.toLowerCase().includes(s)) ||
+        p.categories.some((c: string) => c.toLowerCase().includes(s)) ||
         p.barcode?.toLowerCase().includes(s)
     );
   }, [products, debouncedSearch]);
@@ -242,12 +264,69 @@ export const InventoryPanel = memo(function InventoryPanel({
     },
   });
 
-  const handleAddCategory = useCallback(() => {
-    if (!newCategoryName.trim()) return;
-    addCategory(newCategoryName.trim());
+  const syncCategoryMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase
+        .from('categories')
+        .upsert({ name: name.toLowerCase() }, { onConflict: 'name' });
+      if (error) throw error;
+    },
+    onError: (err: any) => {
+      console.error('Category sync error:', err);
+      showToast('Error al sincronizar categoría con la base de datos', 'error');
+    }
+  });
+
+  const handleAddCategory = useCallback(async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    
+    // 1. Update local state
+    addCategory(name);
     setNewCategoryName('');
+    
+    // 2. Sync to DB
+    syncCategoryMutation.mutate(name);
+    
     showToast('Categoría agregada', 'success');
-  }, [newCategoryName, addCategory, showToast]);
+  }, [newCategoryName, addCategory, showToast, syncCategoryMutation]);
+
+  const handleQuickAdd = useCallback(async (target: 'new' | 'edit') => {
+    const name = quickCatText.trim();
+    if (!name) {
+      setIsAddingQuickCat(null);
+      return;
+    }
+    
+    if (categories.includes(name)) {
+      // If it exists but not selected, just select it
+      if (target === 'new') {
+        if (!newProduct.categories.includes(name)) {
+          setNewProduct(p => ({ ...p, categories: [...p.categories, name] }));
+        }
+      } else {
+        if (editing && !editing.categories.includes(name)) {
+          setEditing(e => e ? { ...e, categories: [...e.categories, name] } : null);
+        }
+      }
+      setQuickCatText('');
+      setIsAddingQuickCat(null);
+      return;
+    }
+
+    addCategory(name);
+    syncCategoryMutation.mutate(name);
+    
+    if (target === 'new') {
+      setNewProduct(p => ({ ...p, categories: [...p.categories, name] }));
+    } else {
+      setEditing(e => e ? { ...e, categories: [...e.categories, name] } : null);
+    }
+    
+    setQuickCatText('');
+    setIsAddingQuickCat(null);
+    showToast('Categoría creada', 'success');
+  }, [quickCatText, categories, addCategory, syncCategoryMutation, showToast, newProduct.categories, editing]);
 
   const handleDeleteCategory = useCallback((cat: string) => {
     Alert.alert('Eliminar Categoría', `¿Eliminar "${cat}"?`, [
@@ -349,34 +428,47 @@ export const InventoryPanel = memo(function InventoryPanel({
       return (
         <View style={styles.editCard}>
           <LinearGradient
-            colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <View style={styles.imageSection}>
-            {editing.newImageUri || editing.image_url ? (
-              <CachedImage 
-                remoteUri={editing.newImageUri || editing.image_url} 
-                style={styles.previewImage} 
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Icon name="camera" size={32} color="rgba(184, 123, 90, 0.4)" />
-                <Text style={styles.imagePlaceholderText}>Sin imagen</Text>
+          
+          <TouchableOpacity 
+            style={styles.closeEditBtn} 
+            onPress={() => setEditing(null)}
+            activeOpacity={0.7}
+          >
+            <Icon name="close" size={24} color={tokens.colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.imagePickerCard, { marginTop: verticalScale(52) }]} onPress={() => handlePickImage('edit')} activeOpacity={0.85}>
+            <View style={styles.imagePickerThumb}>
+              {editing.newImageUri || editing.image_url ? (
+                <CachedImage
+                  remoteUri={(editing.newImageUri || editing.image_url) as string}
+                  style={styles.imagePickerThumbImg}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.imagePickerThumbEmpty}>
+                  <Icon name="image" size={28} color={tokens.colors.mahogany} />
+                </View>
+              )}
+              <View style={styles.imagePickerCamBadge}>
+                <Icon name="camera" size={12} color="#FFF" />
               </View>
-            )}
-            <TouchableOpacity style={styles.imageButton} onPress={() => handlePickImage('edit')}>
-              <LinearGradient
-                colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <Text style={styles.imageButtonText}>{editing.newImageUri ? 'Cambiar' : 'Agregar'} Imagen</Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+            <View style={styles.imagePickerInfo}>
+              <Text style={styles.imagePickerLabel}>Foto del producto</Text>
+              <Text style={styles.imagePickerSub}>
+                {editing.newImageUri ? 'Nueva foto seleccionada ✓' : editing.image_url ? 'Toca para cambiar imagen' : 'Toca para agregar imagen'}
+              </Text>
+            </View>
+            <View style={styles.imagePickerArrow}>
+              <Icon name="chevron-right" size={18} color={tokens.colors.textMuted} />
+            </View>
+          </TouchableOpacity>
 
           <Text style={styles.inputLabel}>Nombre</Text>
             <TextInput
@@ -451,41 +543,90 @@ export const InventoryPanel = memo(function InventoryPanel({
                 </Text>
               </TouchableOpacity>
             ))}
+            
+            {isAddingQuickCat === 'edit' ? (
+              <View style={styles.quickAddContainer}>
+                <TextInput
+                  style={styles.quickAddInput}
+                  placeholder="Categoría..."
+                  placeholderTextColor={tokens.colors.textDim}
+                  value={quickCatText}
+                  onChangeText={setQuickCatText}
+                  autoFocus
+                  onSubmitEditing={() => handleQuickAdd('edit')}
+                />
+                <TouchableOpacity onPress={() => handleQuickAdd('edit')} style={styles.quickAddActionBtn}>
+                  <Icon name="check" size={18} color={tokens.colors.sage} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsAddingQuickCat(null)} style={styles.quickAddActionBtn}>
+                  <Icon name="close" size={18} color={tokens.colors.coral} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.quickAddToggle} onPress={() => setIsAddingQuickCat('edit')}>
+                <Icon name="plus" size={16} color={tokens.colors.mahogany} />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.editActions}>
-            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit} disabled={updateMutation.isPending}>
+            {/* Primary: Guardar */}
+            <TouchableOpacity
+              style={[styles.saveBtn, updateMutation.isPending && styles.btnDisabled]}
+              onPress={saveEdit}
+              disabled={updateMutation.isPending}
+              activeOpacity={0.8}
+            >
               <LinearGradient
-                colors={['rgba(109, 184, 138, 0.85)', 'rgba(109, 184, 138, 0.7)']}
+                colors={[tokens.colors.mahogany, tokens.colors.mahoganyDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.saveBtnText}>{updateMutation.isPending ? '...' : 'Guardar Cambios'}</Text>
+              <Icon name={updateMutation.isPending ? 'loader' : 'check'} size={18} color="#FFFFFF" />
+              <Text style={styles.saveBtnText}>
+                {updateMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setEditing(null)}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
+
+            {/* Secondary row: Cancelar + Eliminar */}
+            <View style={styles.editSecondaryRow}>
+              <TouchableOpacity
+                style={[styles.cancelBtnOutline, styles.flex1]}
+                onPress={() => setEditing(null)}
+                activeOpacity={0.7}
+              >
+                <Icon name="close" size={16} color={tokens.colors.textMuted} />
+                <Text style={styles.cancelBtnOutlineText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.deleteBtnOutline, styles.flex1]}
+                onPress={() => handleDelete(item.id, item.name, item.image_url)}
+                activeOpacity={0.7}
+              >
+                <Icon name="trash" size={16} color={tokens.colors.coral} />
+                <Text style={styles.deleteBtnOutlineText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       );
     }
 
     return (
-      <View style={styles.listItemWrapper}>
-        <LinearGradient
-          colors={['rgba(10, 10, 12, 0.5)', 'rgba(10, 10, 12, 0.3)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+      <TouchableOpacity 
+        style={styles.listItemWrapper} 
+        onPress={() => startEdit(item)}
+        activeOpacity={0.7}
+      >
         <View style={styles.item}>
           <View style={styles.itemMainRow}>
-            <View style={styles.itemImage}>
+            <View style={styles.itemImageCircle}>
               {item.image_url ? (
                 <CachedImage 
                   remoteUri={item.image_url} 
                   style={styles.thumbImage} 
-                  contentFit="cover"
+                  contentFit="cover" 
                 />
               ) : (
                 <View style={[styles.thumbPlaceholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
@@ -495,60 +636,77 @@ export const InventoryPanel = memo(function InventoryPanel({
                 </View>
               )}
             </View>
+            
             <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={2}>
-                {item.name}
-              </Text>
-              {item.barcode && (
-                <Text style={styles.itemBarcode} numberOfLines={1}>
-                  {item.barcode}
-                </Text>
-              )}
+              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
               <View style={styles.itemMeta}>
                 <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
-                <View style={[styles.stockBadge, item.stock_quantity < 10 && styles.stockLow]}>
-                  <Text style={[styles.stockText, item.stock_quantity < 10 && styles.stockTextLow]}>
-                    {item.stock_quantity} uds
-                  </Text>
+                <View style={[styles.stockDotRow, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)', borderColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.1)' }]}>
+                   <View style={[styles.stockDot, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.sage }]} />
+                   <Text style={[styles.itemStockText, { color: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>{item.stock_quantity} uds</Text>
                 </View>
               </View>
-              <View style={styles.catTags}>
-                {item.categories?.map((cat) => (
-                  <View key={cat} style={styles.catTag}>
-                    <Text style={styles.catTagText} numberOfLines={1}>
-                      {cat}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+            </View>
+
+            <View style={styles.itemChevron}>
+              <Icon name="chevron-right" size={20} color={tokens.colors.textMuted} />
             </View>
           </View>
-          {!readOnly && (
-            <View style={styles.itemActions}>
-              <TouchableOpacity style={styles.editBtn} onPress={() => startEdit(item)}>
-                <Text style={styles.btnText}>Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item.id, item.name, item.image_url)}>
-                <Text style={styles.btnText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   }, [editing, categories, readOnly, updateMutation.isPending, handlePickImage, toggleCategory, startEdit, handleDelete, saveEdit]);
 
   const ListHeader = useMemo(() => (
     <View style={{ marginBottom: verticalScale(16) }}>
+      <View style={styles.inlineHeader}>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.titleMini}>Inventario</Text>
+        </View>
+        <View style={styles.headerButtonsMini}>
+           <TouchableOpacity style={styles.manageCatBtnMini} onPress={() => setShowCategoryManager(!showCategoryManager)}>
+            <Icon name="folder" size={16} color={tokens.colors.text} />
+            <Text style={styles.manageCatBtnTextMini}>Categorías</Text>
+          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity 
+              style={styles.addBtnMini} 
+              onPress={() => setShowAddForm(!showAddForm)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={showAddForm ? [tokens.colors.coral, tokens.colors.coral] : [tokens.colors.mahogany, tokens.colors.mahoganyDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Icon name={showAddForm ? 'close' : 'plus'} size={14} color="#FFF" />
+              <Text style={styles.addBtnTextMini}>{showAddForm ? 'Cerrar' : 'Nuevo'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {showCategoryManager && (
+
         <View style={styles.categoryManager}>
           <LinearGradient
-            colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={styles.categoryManagerTitle}>Gestionar Categorías</Text>
+          <View style={styles.categoryManagerHeader}>
+            <View style={styles.managerTitleRow}>
+              <View style={styles.managerIconCircle}>
+                <Icon name="folder" size={20} color={tokens.colors.mahogany} />
+              </View>
+              <Text style={styles.categoryManagerTitle}>Categorías</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowCategoryManager(false)} style={styles.closeManagerBtn}>
+              <Icon name="close" size={20} color={tokens.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
           <View style={styles.addCategoryRow}>
             <TextInput
               style={styles.addCategoryInput}
@@ -558,64 +716,90 @@ export const InventoryPanel = memo(function InventoryPanel({
               onChangeText={setNewCategoryName}
             />
             <TouchableOpacity style={styles.addCategoryBtn} onPress={handleAddCategory}>
-              <Icon name="plus" size={18} color="#FFFFFF" />
+              <Icon name="plus" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           <View style={styles.catRow}>
             {categories.map((cat) => (
-              <View key={cat} style={styles.catManageItem}>
-                <Text style={styles.catManageText}>{cat}</Text>
-                <TouchableOpacity onPress={() => handleDeleteCategory(cat)}>
-                  <Icon name="close" size={16} color="#C96B6B" />
-                </TouchableOpacity>
-              </View>
+              <Badge 
+                key={cat} 
+                variant="neutral" 
+                style={styles.catManageBadge}
+              >
+                <View style={styles.catManageContent}>
+                  <Text style={styles.catManageText}>{cat}</Text>
+                   <TouchableOpacity onPress={() => handleDeleteCategory(cat)} style={styles.catDeleteBtn}>
+                    <Icon name="close" size={18} color="#C96B6B" />
+                  </TouchableOpacity>
+                </View>
+              </Badge>
             ))}
           </View>
         </View>
       )}
 
       <View style={styles.searchRow}>
-        <View style={styles.searchInputContainer}>
-          <Icon name="search" size={18} color={tokens.colors.textMuted} />
+         <View style={styles.searchInputContainer}>
+          <Icon name="search" size={20} color={tokens.colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar producto..."
+            placeholder="Buscar por nombre, código o categoría..."
             placeholderTextColor={tokens.colors.textDim}
             value={search}
             onChangeText={setSearch}
-            accessibilityLabel="Buscar productos"
-            accessibilityRole="search"
           />
         </View>
-        <Text style={styles.count} accessibilityLabel={`${filteredProducts.length} productos encontrados`}>
-          {filteredProducts.length}
-        </Text>
+        <View style={styles.countContainer}>
+          <Badge variant="mahogany">
+            {filteredProducts.length}
+          </Badge>
+        </View>
       </View>
 
       {showAddForm && !readOnly && (
         <View style={styles.addForm}>
           <LinearGradient
-            colors={['rgba(10, 10, 12, 0.6)', 'rgba(10, 10, 12, 0.4)']}
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={styles.formTitle}>Nuevo Producto</Text>
-          
-          <TouchableOpacity style={styles.addImageSection} onPress={() => handlePickImage('new')}>
-            {newProduct.imageUri ? (
-              <Image 
-                source={{ uri: newProduct.imageUri }} 
-                style={styles.addImagePreview} 
-                transition={200}
-                cachePolicy="disk"
-              />
-            ) : (
-              <View style={styles.addImagePlaceholder}>
-                <Icon name="camera" size={32} color="rgba(184, 123, 90, 0.5)" />
-                <Text style={styles.addImagePlaceholderText}>Agregar Imagen</Text>
+          <View style={styles.addFormHeader}>
+            <View style={styles.addFormTitleRow}>
+              <View style={styles.addFormIconCircle}>
+                <Icon name="plus" size={20} color={tokens.colors.mahogany} />
               </View>
-            )}
+              <Text style={styles.formTitle}>Nuevo Producto</Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity style={styles.imagePickerCard} onPress={() => handlePickImage('new')} activeOpacity={0.85}>
+            <View style={styles.imagePickerThumb}>
+              {newProduct.imageUri ? (
+                <Image
+                  source={{ uri: newProduct.imageUri }}
+                  style={styles.imagePickerThumbImg}
+                  transition={200}
+                  cachePolicy="disk"
+                />
+              ) : (
+                <View style={styles.imagePickerThumbEmpty}>
+                  <Icon name="image" size={28} color={tokens.colors.mahogany} />
+                </View>
+              )}
+              <View style={styles.imagePickerCamBadge}>
+                <Icon name="camera" size={12} color="#FFF" />
+              </View>
+            </View>
+            <View style={styles.imagePickerInfo}>
+              <Text style={styles.imagePickerLabel}>Foto del producto</Text>
+              <Text style={styles.imagePickerSub}>
+                {newProduct.imageUri ? 'Imagen seleccionada ✓' : 'Toca para agregar una imagen'}
+              </Text>
+            </View>
+            <View style={styles.imagePickerArrow}>
+              <Icon name="chevron-right" size={18} color={tokens.colors.textMuted} />
+            </View>
           </TouchableOpacity>
 
           <Text style={styles.inputLabel}>Nombre</Text>
@@ -691,27 +875,65 @@ export const InventoryPanel = memo(function InventoryPanel({
                 </Text>
               </TouchableOpacity>
             ))}
+
+            {isAddingQuickCat === 'new' ? (
+              <View style={styles.quickAddContainer}>
+                <TextInput
+                  style={styles.quickAddInput}
+                  placeholder="Categoría..."
+                  placeholderTextColor={tokens.colors.textDim}
+                  value={quickCatText}
+                  onChangeText={setQuickCatText}
+                  autoFocus
+                  onSubmitEditing={() => handleQuickAdd('new')}
+                />
+                <TouchableOpacity onPress={() => handleQuickAdd('new')} style={styles.quickAddActionBtn}>
+                  <Icon name="check" size={18} color={tokens.colors.sage} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setIsAddingQuickCat(null)} style={styles.quickAddActionBtn}>
+                  <Icon name="close" size={18} color={tokens.colors.coral} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.quickAddToggle} onPress={() => setIsAddingQuickCat('new')}>
+                <Icon name="plus" size={16} color={tokens.colors.mahogany} />
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.addFormActions}>
+            {/* Primary Action: Crear Producto */}
             <TouchableOpacity
-              style={[styles.saveBtn, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0) && styles.btnDisabled]}
+              style={[styles.saveBtn, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0 || createMutation.isPending) && styles.btnDisabled]}
               onPress={() => createMutation.mutate()}
               disabled={!newProduct.name || !newProduct.price || newProduct.categories.length === 0 || createMutation.isPending}
+              activeOpacity={0.8}
             >
               <LinearGradient
-                colors={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0) 
-                  ? ['rgba(109, 184, 138, 0.5)', 'rgba(109, 184, 138, 0.4)']
-                  : ['rgba(109, 184, 138, 0.85)', 'rgba(109, 184, 138, 0.7)']}
+                colors={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0)
+                  ? ['rgba(184, 123, 90, 0.12)', 'rgba(184, 123, 90, 0.06)']
+                  : [tokens.colors.mahogany, tokens.colors.mahoganyDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
-              <Text style={styles.saveBtnText}>
+              <Icon
+                name={createMutation.isPending ? 'loader' : 'plus'}
+                size={18}
+                color={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0) ? tokens.colors.textDim : '#FFFFFF'}
+              />
+              <Text style={[styles.saveBtnText, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0) && { color: tokens.colors.textDim }]}>
                 {createMutation.isPending ? 'Guardando...' : 'Crear Producto'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelAddBtn} onPress={() => setShowAddForm(false)}>
-              <Text style={styles.cancelBtnText}>Cancelar</Text>
+
+            {/* Secondary Action: Cancelar */}
+            <TouchableOpacity
+              style={styles.cancelBtnOutline}
+              onPress={() => setShowAddForm(false)}
+              activeOpacity={0.7}
+            >
+              <Icon name="close" size={16} color={tokens.colors.textMuted} />
+              <Text style={styles.cancelBtnOutlineText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -732,45 +954,24 @@ export const InventoryPanel = memo(function InventoryPanel({
           style={StyleSheet.absoluteFill}
         />
         
-        <View style={styles.header}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.titleIcon}>
-              <Icon name="folder" size={20} color="#B87B5A" />
-            </View>
-            <Text style={styles.title}>Inventario</Text>
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.manageCatBtn} onPress={() => setShowCategoryManager(!showCategoryManager)}>
-              <Icon name="folder" size={14} color="#F0F0F2" />
-              <Text style={styles.manageCatBtnText}>Categorías</Text>
-            </TouchableOpacity>
-            {!readOnly && (
-              <TouchableOpacity 
-                style={styles.addBtn} 
-                onPress={() => setShowAddForm(!showAddForm)}
-                accessibilityLabel={showAddForm ? 'Cerrar formulario de agregar' : 'Agregar nuevo producto'}
-                accessibilityRole="button"
-              >
-                <LinearGradient
-                  colors={showAddForm ? ['rgba(201, 107, 107, 0.8)', 'rgba(201, 107, 107, 0.6)'] : ['rgba(184, 123, 90, 0.85)', 'rgba(139, 90, 60, 0.7)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                <Text style={styles.addBtnText}>{showAddForm ? 'Cerrar' : '+ Agregar'}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
 
-        <FlatList
+
+        <FlashList
           ListHeaderComponent={ListHeader}
           data={filteredProducts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
+          // @ts-ignore
+          estimatedItemSize={scale(96)}
           ListEmptyComponent={() => {
-            if (isLoading) return null;
+            if (isLoading) {
+              return (
+                <View style={{ gap: verticalScale(12) }}>
+                  <SkeletonItem layout="row" count={8} />
+                </View>
+              );
+            }
             if (isError) {
               return (
                 <View style={styles.emptyContainer}>
@@ -789,16 +990,21 @@ export const InventoryPanel = memo(function InventoryPanel({
             }
             return <Text style={styles.empty}>Sin productos</Text>;
           }}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={() => 
+            isFetchingNextPage ? (
+              <View style={{ paddingVertical: verticalScale(20) }}>
+                <ActivityIndicator color={tokens.colors.mahogany} />
+              </View>
+            ) : null
+          }
           showsVerticalScrollIndicator={false}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={Platform.OS === 'android'}
         />
-
-        {isLoading && (
-          <ActivityIndicator size="large" color="#B87B5A" style={styles.loader} />
-        )}
 
         <ImagePickerModal
           visible={showImagePicker}
@@ -814,552 +1020,598 @@ export const InventoryPanel = memo(function InventoryPanel({
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    position: 'relative',
     backgroundColor: tokens.colors.bg,
-    padding: scale(16),
   },
-  header: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap',
-    gap: scale(12),
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
+  inlineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: verticalScale(16),
+    marginTop: verticalScale(8),
   },
   headerTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: scale(12),
+  },
+  titleMini: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(22),
+    color: tokens.colors.text,
+    fontWeight: '800',
+  },
+  headerButtonsMini: {
+    flexDirection: 'row',
+    gap: scale(8),
+  },
+  manageCatBtnMini: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.lg,
+    gap: scale(6),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
-  titleIcon: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(12),
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+  manageCatBtnTextMini: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    fontWeight: '700',
+    color: tokens.colors.text,
+  },
+  addBtnMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.lg,
+    overflow: 'hidden',
+  },
+  addBtnTextMini: {
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '800',
+    fontSize: moderateScale(12),
+    color: '#FFFFFF',
+  },
+  list: { 
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(8),
+  },
+  categoryManager: { 
+    borderRadius: tokens.radius.xl, 
+    padding: scale(20),
+    marginBottom: verticalScale(20), 
+    borderWidth: 1, 
+    borderColor: tokens.colors.borderLight,
+    overflow: 'hidden',
+  },
+  categoryManagerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(16),
+  },
+  managerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+  },
+  managerIconCircle: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.mahogany,
   },
-  title: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(22), 
-    color: '#F0F0F2', 
-    fontWeight: '700', 
-    letterSpacing: scale(1),
-  },
-  headerButtons: { 
-    flexDirection: 'row', 
-    gap: scale(10),
-  },
-  manageCatBtn: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    paddingHorizontal: scale(14), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12), 
-    gap: scale(6), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)',
-    minHeight: verticalScale(44),
-  },
-  manageCatBtnText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(13), 
-    fontWeight: '600', 
-    color: '#F0F0F2',
-  },
-  addBtn: { 
-    position: 'relative',
-    paddingHorizontal: scale(16), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12),
-    minHeight: verticalScale(44),
+  closeManagerBtn: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
-  },
-  addBtnText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600', 
-    fontSize: moderateScale(14), 
-    color: '#F0F0F2',
-  },
-  categoryManager: { 
-    position: 'relative',
-    backgroundColor: 'rgba(10, 10, 12, 0.5)',
-    padding: scale(16), 
-    borderRadius: scale(20), 
-    marginBottom: verticalScale(16), 
-    borderWidth: 1, 
-    borderColor: 'rgba(184, 123, 90, 0.15)',
-    overflow: 'hidden',
+    alignItems: 'center',
   },
   categoryManagerTitle: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(14), 
-    fontWeight: '600', 
-    color: '#F0F0F2', 
-    marginBottom: verticalScale(12),
+    fontSize: moderateScale(16), 
+    fontWeight: '800', 
+    color: tokens.colors.text, 
   },
   addCategoryRow: { 
     flexDirection: 'row', 
     gap: scale(10), 
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(16),
   },
   addCategoryInput: { 
     flex: 1, 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    color: '#F0F0F2', 
+    backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+    color: tokens.colors.text, 
     padding: scale(14), 
-    borderRadius: scale(12), 
+    borderRadius: tokens.radius.lg, 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(14), 
     borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: tokens.colors.borderLight,
   },
   addCategoryBtn: { 
-    backgroundColor: 'rgba(109, 184, 138, 0.8)', 
-    paddingHorizontal: scale(16), 
-    borderRadius: scale(12), 
+    backgroundColor: tokens.colors.sage, 
+    paddingHorizontal: scale(14), 
+    borderRadius: tokens.radius.lg, 
     justifyContent: 'center', 
     alignItems: 'center',
-    minWidth: scale(50),
   },
-  catManageItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    paddingHorizontal: scale(14), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12), 
-    marginRight: scale(8), 
-    marginBottom: verticalScale(8), 
-    minWidth: scale(120),
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  catManageBadge: {
+    marginRight: scale(8),
+    marginBottom: verticalScale(8),
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.pill,
+  },
+  catManageContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  catDeleteBtn: {
+    padding: scale(4),
+    backgroundColor: 'rgba(201, 107, 107, 0.1)',
+    borderRadius: scale(6),
   },
   catManageText: { 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(13), 
-    color: '#F0F0F2',
+    fontWeight: '700',
+    color: tokens.colors.text,
   },
   searchRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginBottom: verticalScale(16),
+    marginBottom: verticalScale(20),
     gap: scale(12),
   },
   searchInputContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(14),
-    paddingHorizontal: scale(14),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.pill,
+    paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.15)',
-    gap: scale(10),
+    borderColor: tokens.colors.borderLight,
+    gap: scale(12),
   },
   searchInput: { 
     flex: 1,
-    backgroundColor: 'transparent',
-    color: '#F0F0F2', 
+    color: tokens.colors.text, 
     paddingVertical: verticalScale(14), 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(15),
-  },
-  count: { 
-    color: '#B87B5A', 
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(14),
     fontWeight: '600',
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: scale(8),
   },
-  loader: { marginTop: verticalScale(40) },
+  countContainer: {
+    marginLeft: scale(4),
+  },
   addForm: { 
-    position: 'relative',
-    backgroundColor: tokens.colors.bg,
-    padding: scale(22), 
-    borderRadius: scale(24), 
-    marginBottom: verticalScale(16), 
+    borderRadius: tokens.radius.xl, 
+    padding: scale(20),
+    marginBottom: verticalScale(24), 
     borderWidth: 1, 
-    borderColor: 'rgba(184, 123, 90, 0.15)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
   },
-  formTitle: { 
-    color: '#F0F0F2', 
-    fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600', 
-    fontSize: moderateScale(20), 
-    marginBottom: verticalScale(20),
-  },
-  input: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    color: '#F0F0F2', 
-    padding: scale(14), 
-    borderRadius: scale(12), 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(15), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)',
+  addFormHeader: {
     marginBottom: verticalScale(16),
   },
-  inputLabel: { 
-    color: '#B0B0B8', 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(12), 
-    marginBottom: verticalScale(8), 
-    fontWeight: '600', 
-    textTransform: 'uppercase', 
-    letterSpacing: scale(0.5),
+  addFormTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
   },
-  row: { flexDirection: 'row', marginHorizontal: scale(-6), flexWrap: 'wrap' },
-  flex1: { flex: 1, flexGrow: 1, marginHorizontal: scale(6), minWidth: scale(130) },
-  formSection: { marginBottom: verticalScale(4) },
-  catRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: verticalScale(20), marginTop: verticalScale(4) },
+  addFormIconCircle: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: tokens.colors.mahoganyDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
+  },
+  addFormActions: {
+    marginTop: verticalScale(24),
+  },
+  formTitle: { 
+    color: tokens.colors.text, 
+    fontFamily: FontNames.instrumentSans, 
+    fontWeight: '800', 
+    fontSize: moderateScale(18), 
+  },
+  inputLabel: { 
+    color: tokens.colors.textMuted, 
+    fontFamily: FontNames.instrumentSans, 
+    fontSize: moderateScale(11), 
+    marginBottom: verticalScale(4), 
+    fontWeight: '800', 
+    textTransform: 'uppercase', 
+    letterSpacing: 1,
+  },
+  input: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+    color: tokens.colors.text, 
+    padding: scale(14),
+    borderRadius: tokens.radius.lg,
+    marginBottom: verticalScale(16),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '600',
+  },
+  row: { 
+    flexDirection: 'row', 
+    marginHorizontal: scale(-6), 
+    flexWrap: 'wrap' 
+  },
+  flex1: { 
+    flex: 1, 
+    marginHorizontal: scale(6), 
+    minWidth: scale(100) 
+  },
+  formSection: { 
+    marginBottom: verticalScale(4) 
+  },
+  catRow: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginBottom: verticalScale(20), 
+    marginTop: verticalScale(4),
+    gap: scale(8),
+  },
   catBtn: { 
-    position: 'relative',
-    paddingHorizontal: scale(16), 
+    paddingHorizontal: scale(14), 
     paddingVertical: verticalScale(10), 
-    borderRadius: scale(14), 
+    borderRadius: tokens.radius.lg, 
     backgroundColor: 'rgba(255, 255, 255, 0.03)', 
     borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.06)', 
-    marginRight: scale(10), 
-    marginBottom: verticalScale(8),
+    borderColor: tokens.colors.borderLight, 
     overflow: 'hidden',
-    minHeight: verticalScale(44),
+    minHeight: verticalScale(42),
     justifyContent: 'center',
   },
   catActive: { 
     backgroundColor: 'transparent',
-    borderColor: 'rgba(184, 123, 90, 0.4)',
+    borderColor: tokens.colors.mahogany,
+  },
+  quickAddToggle: {
+    width: verticalScale(42),
+    height: verticalScale(42),
+    borderRadius: tokens.radius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickAddContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
+    paddingRight: scale(4),
+    height: verticalScale(42),
+    minWidth: scale(180),
+    flexGrow: 1,
+  },
+  quickAddInput: {
+    flex: 1,
+    paddingHorizontal: scale(14),
+    color: tokens.colors.text,
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    height: '100%',
+  },
+  quickAddActionBtn: {
+    padding: scale(6),
+    marginLeft: scale(4),
   },
   catText: { 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(13), 
-    color: '#8A8A96',
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
   },
   catTextActive: { 
-    fontWeight: '600', 
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   saveBtn: { 
-    position: 'relative',
-    padding: scale(16), 
-    borderRadius: scale(14), 
-    alignItems: 'center', 
-    borderWidth: 1,
-    borderColor: 'rgba(109, 184, 138, 0.4)',
-    overflow: 'hidden',
-    minHeight: verticalScale(52),
+    height: verticalScale(50),
+    borderRadius: tokens.radius.lg, 
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: scale(8),
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   btnDisabled: { 
     opacity: 0.5,
   },
   saveBtnText: { 
     fontFamily: FontNames.instrumentSans, 
-    fontWeight: '700', 
-    fontSize: moderateScale(15), 
+    fontWeight: '800', 
+    fontSize: moderateScale(16), 
     color: '#FFFFFF',
   },
-  list: { paddingBottom: verticalScale(20) },
   listItemWrapper: { 
-    position: 'relative',
-    marginBottom: verticalScale(10),
-    borderRadius: scale(18),
-    overflow: 'hidden',
+    marginBottom: verticalScale(12),
+    borderRadius: tokens.radius.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: tokens.colors.borderLight,
+    overflow: 'hidden',
   },
   item: { 
-    backgroundColor: tokens.colors.bg,
-    padding: scale(14), 
-    borderRadius: scale(18),
-    flexDirection: 'column', 
+    padding: scale(16), 
   },
   itemMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    gap: scale(14),
   },
-  itemImage: { 
-    width: scale(64), 
-    height: scale(64), 
-    marginRight: scale(14), 
-    borderRadius: scale(14), 
+  itemImageCircle: { 
+    width: scale(56), 
+    height: scale(56), 
+    borderRadius: scale(28), 
     overflow: 'hidden', 
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)' 
+    borderColor: tokens.colors.borderLight,
   },
   thumbImage: { width: '100%', height: '100%' },
   thumbPlaceholder: { 
-    width: '100%', 
-    height: '100%', 
+    flex: 1,
     justifyContent: 'center', 
     alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
   },
   thumbPlaceholderText: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(26), 
-    color: tokens.colors.mahogany, 
-    fontWeight: '700',
+    fontSize: moderateScale(20), 
+    fontWeight: '800',
   },
   itemInfo: { flex: 1 },
   itemName: { 
     fontFamily: FontNames.instrumentSans, 
     color: tokens.colors.text, 
-    fontSize: moderateScale(15), 
-    fontWeight: '600', 
-    marginBottom: verticalScale(2) 
-  },
-  itemBarcode: { 
-    fontFamily: FontNames.jetBrainsMono, 
-    color: tokens.colors.textMuted, 
-    fontSize: moderateScale(11), 
+    fontSize: moderateScale(16), 
+    fontWeight: '700', 
     marginBottom: verticalScale(4) 
   },
-  itemMeta: { flexDirection: 'row', alignItems: 'center', marginTop: verticalScale(4) },
+  itemMeta: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: scale(12),
+  },
   itemPrice: { 
     fontFamily: FontNames.jetBrainsMono, 
     color: tokens.colors.mahogany, 
     fontSize: moderateScale(15),
-    marginRight: scale(10),
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  stockBadge: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    paddingHorizontal: scale(10), 
-    paddingVertical: verticalScale(4), 
-    borderRadius: scale(8), 
-    marginRight: scale(10), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.06)' 
-  },
-  stockLow: { 
-    backgroundColor: 'rgba(201,107,107,0.2)', 
-    borderColor: 'rgba(201,107,107,0.3)' 
-  },
-  stockText: { 
-    fontFamily: FontNames.jetBrainsMono, 
-    color: '#8A8A96', 
-    fontSize: moderateScale(12),
-  },
-  stockTextLow: { color: '#C96B6B' },
-  catTags: { flexDirection: 'row', flexWrap: 'wrap', marginTop: verticalScale(6) },
-  catTag: { 
-    backgroundColor: 'rgba(184, 123, 90, 0.15)', 
-    paddingHorizontal: scale(8), 
-    paddingVertical: verticalScale(3), 
-    borderRadius: scale(6), 
-    marginRight: scale(6),
-    borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
-  },
-  catTagText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(10), 
-    color: tokens.colors.mahogany, 
-    textTransform: 'capitalize' 
-  },
-  itemActions: { 
+  stockDotRow: {
     flexDirection: 'row',
-    marginTop: verticalScale(12),
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
-    paddingTop: verticalScale(12),
-    justifyContent: 'flex-end',
-    width: '100%',
-  },
-  editBtn: { 
-    backgroundColor: 'rgba(184, 123, 90, 0.8)', 
-    paddingHorizontal: scale(14), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12), 
-    marginRight: scale(8), 
-    minWidth: scale(85), 
     alignItems: 'center',
+    gap: scale(6),
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.4)',
-    flex: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  delBtn: { 
-    backgroundColor: 'rgba(201, 107, 107, 0.2)', 
-    paddingHorizontal: scale(14), 
-    paddingVertical: verticalScale(10), 
-    borderRadius: scale(12), 
-    minWidth: scale(85), 
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(201, 107, 107, 0.3)',
-    flex: 1,
+  stockDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
   },
-  btnText: { 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(14), 
-    fontWeight: '600', 
-    color: '#F0F0F2', 
-    textAlign: 'center' 
+  itemStockText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    fontWeight: '800',
+    color: tokens.colors.textSecondary,
+  },
+  itemChevron: {
+    marginLeft: scale(4),
   },
   editCard: { 
-    position: 'relative',
-    backgroundColor: 'rgba(10, 10, 12, 0.6)',
-    padding: scale(22), 
-    borderRadius: scale(24), 
-    borderWidth: 1.5, 
-    borderColor: 'rgba(184, 123, 90, 0.3)', 
-    marginTop: verticalScale(12), 
+    borderRadius: tokens.radius.xl, 
+    padding: scale(20),
     marginBottom: verticalScale(24),
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    borderWidth: 1.5, 
+    borderColor: tokens.colors.mahogany, 
     overflow: 'hidden',
   },
-  imageSection: { alignItems: 'center', marginBottom: verticalScale(18) },
-  previewImage: { 
-    width: scale(100), 
-    height: scale(100), 
-    borderRadius: scale(18), 
-    marginBottom: verticalScale(10), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)' 
+  closeEditBtn: {
+    position: 'absolute',
+    top: scale(16),
+    right: scale(16),
+    zIndex: 10,
+    padding: scale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: tokens.radius.pill,
   },
-  imagePlaceholder: { 
-    width: scale(100), 
-    height: scale(100), 
-    borderRadius: scale(18), 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: verticalScale(10), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.08)',
-    gap: scale(8),
-  },
-  imagePlaceholderText: { 
-    color: '#8A8A96', 
-    fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(12) 
-  },
-  imageButton: { 
-    position: 'relative',
-    backgroundColor: 'rgba(184, 123, 90, 0.2)',
-    paddingHorizontal: scale(18), 
-    paddingVertical: verticalScale(12), 
-    borderRadius: scale(12), 
+  // --- Compact image picker card (shared by edit + new) ---
+  imagePickerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderLight,
+    padding: scale(12),
+    marginBottom: verticalScale(18),
+    gap: scale(14),
+  },
+  imagePickerThumb: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: scale(12),
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  imagePickerThumbImg: {
+    width: '100%',
+    height: '100%',
+  },
+  imagePickerThumbEmpty: {
+    flex: 1,
+    backgroundColor: tokens.colors.mahoganyDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePickerCamBadge: {
+    position: 'absolute',
+    bottom: scale(4),
+    right: scale(4),
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(11),
+    backgroundColor: tokens.colors.mahogany,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePickerInfo: {
+    flex: 1,
+    gap: verticalScale(4),
+  },
+  imagePickerLabel: {
+    color: tokens.colors.text,
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+  },
+  imagePickerSub: {
+    color: tokens.colors.textMuted,
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    fontWeight: '500',
+  },
+  imagePickerArrow: {
+    padding: scale(4),
+  },
+  editActions: { 
+    marginTop: verticalScale(24),
+    gap: verticalScale(16),
+  },
+  editSecondaryRow: {
+    flexDirection: 'row',
+    gap: scale(16),
+  },
+  cancelBtnOutline: {
+    height: verticalScale(44),
+    borderRadius: tokens.radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  cancelBtnOutlineText: {
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '700',
+    fontSize: moderateScale(13),
+    color: tokens.colors.textMuted,
+  },
+  deleteBtnOutline: {
+    height: verticalScale(44),
+    borderRadius: tokens.radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: 'rgba(201, 107, 107, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 107, 107, 0.35)',
+  },
+  deleteBtnOutlineText: {
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '700',
+    fontSize: moderateScale(13),
+    color: tokens.colors.coral,
+  },
+  // Legacy (kept for safety, unused)
+  deleteBtnInline: {
+    height: verticalScale(48),
+    borderRadius: tokens.radius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(10),
     overflow: 'hidden',
   },
-  imageButtonText: { 
-    color: '#B87B5A', 
-    fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600', 
-    fontSize: moderateScale(13) 
+  deleteBtnTextInline: {
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '800',
+    fontSize: moderateScale(14),
+    color: '#FFFFFF',
   },
-  editActions: { marginTop: verticalScale(18) },
   cancelBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    padding: scale(16), 
-    borderRadius: scale(14), 
+    height: verticalScale(48),
     alignItems: 'center', 
-    marginTop: verticalScale(12), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)',
-    minHeight: verticalScale(48),
+    justifyContent: 'center',
+    marginTop: verticalScale(12),
   },
   cancelBtnText: { 
-    color: '#A0A0A8', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600', 
+    fontWeight: '700', 
     fontSize: moderateScale(15) 
   },
-  addImageSection: { marginBottom: verticalScale(18), alignItems: 'center' },
-  addImagePreview: { 
-    width: scale(100), 
-    height: scale(100), 
-    borderRadius: scale(18), 
-    marginBottom: verticalScale(10), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)' 
-  },
-  addImagePlaceholder: { 
-    width: scale(100), 
-    height: scale(100), 
-    borderRadius: scale(18), 
-    borderWidth: 2, 
-    borderColor: 'rgba(184, 123, 90, 0.4)', 
-    borderStyle: 'dashed', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: verticalScale(10), 
-    gap: scale(8),
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-  },
-  addImagePlaceholderText: { 
-    color: '#B87B5A', 
-    fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600', 
-    fontSize: moderateScale(11), 
-    marginTop: verticalScale(4) 
-  },
+  // (addImageSection styles merged into imagePickerCard above)
   empty: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
     textAlign: 'center', 
-    marginTop: verticalScale(40) 
+    marginTop: verticalScale(60),
+    fontWeight: '700',
   },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingTop: verticalScale(8), paddingBottom: verticalScale(32) },
-  addFormActions: { 
-    marginTop: verticalScale(18),
+  retryBtn: {
+    backgroundColor: tokens.colors.coralDim,
+    paddingHorizontal: scale(24),
+    paddingVertical: verticalScale(12),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.coral,
+    marginTop: verticalScale(16),
   },
-  cancelAddBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)', 
-    padding: scale(16), 
-    borderRadius: scale(14), 
-    alignItems: 'center', 
-    marginTop: verticalScale(12), 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.1)',
-    minHeight: verticalScale(48),
+  retryBtnText: {
+    color: tokens.colors.coral,
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '800',
+    fontSize: moderateScale(14),
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: verticalScale(60),
+    marginTop: verticalScale(40),
+  },
+  addFormActions: { 
+    marginTop: verticalScale(24),
     gap: verticalScale(16),
   },
-  retryBtn: {
-    backgroundColor: 'rgba(201, 107, 107, 0.15)',
-    paddingHorizontal: scale(24),
-    paddingVertical: verticalScale(12),
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(201, 107, 107, 0.3)',
-  },
-  retryBtnText: {
-    color: '#C96B6B',
-    fontFamily: FontNames.instrumentSans,
-    fontWeight: '600',
-    fontSize: moderateScale(14),
+  cancelAddBtn: { 
+    height: verticalScale(48),
+    alignItems: 'center', 
+    justifyContent: 'center',
   },
 });
 

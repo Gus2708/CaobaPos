@@ -1,5 +1,7 @@
+import React from 'react';
 import { View, ViewProps, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { tokens } from '../lib/designTokens';
 import { scale } from '../lib/responsive';
 
 interface GlassCardProps extends ViewProps {
@@ -8,45 +10,10 @@ interface GlassCardProps extends ViewProps {
   variant?: 'default' | 'elevated' | 'inset';
 }
 
-const INTENSITY_CONFIG = {
-  subtle: {
-    backgroundColor: 'rgba(10, 10, 12, 0.4)',
-    borderOpacity: 0.06,
-    blurIntensity: 10,
-  },
-  medium: {
-    backgroundColor: 'rgba(10, 10, 12, 0.6)',
-    borderOpacity: 0.1,
-    blurIntensity: 20,
-  },
-  strong: {
-    backgroundColor: 'rgba(10, 10, 12, 0.8)',
-    borderOpacity: 0.15,
-    blurIntensity: 30,
-  },
-};
-
-const VARIANT_CONFIG = {
-  default: {
-    borderRadius: scale(24),
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  elevated: {
-    borderRadius: scale(28),
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 16 },
-  },
-  inset: {
-    borderRadius: scale(20),
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-};
-
+/**
+ * Clean dark card component with layered depth.
+ * Optimized for 2026 aesthetics: Glassmorphism gradients + refined borders.
+ */
 export function GlassCard({ 
   children, 
   intensity = 'medium', 
@@ -54,51 +21,80 @@ export function GlassCard({
   style, 
   ...props 
 }: GlassCardProps) {
-  const intensityStyle = INTENSITY_CONFIG[intensity];
-  const variantStyle = VARIANT_CONFIG[variant];
+  const gradientColors = intensity === 'strong' 
+    ? ['rgba(40, 40, 48, 0.7)', 'rgba(25, 25, 32, 0.4)'] as const
+    : ['rgba(30, 30, 36, 0.6)', 'rgba(20, 20, 26, 0.3)'] as const;
 
   return (
     <View
       style={[
-        styles.container,
-        {
-          backgroundColor: intensityStyle.backgroundColor,
-          borderRadius: variantStyle.borderRadius,
-          borderWidth: 1,
-          borderColor: `rgba(184, 123, 90, ${intensityStyle.borderOpacity})`,
-          shadowColor: '#000',
-          shadowOffset: variantStyle.shadowOffset,
-          shadowOpacity: variantStyle.shadowOpacity,
-          shadowRadius: variantStyle.shadowRadius,
-          elevation: variant === 'elevated' ? 12 : 6,
-        },
+        styles.base,
+        intensityStyles[intensity],
+        variantStyles[variant],
         style,
       ]}
       {...props}
     >
       <LinearGradient
-        colors={['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.02)']}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.highlight} />
+      <View style={styles.innerBorder} />
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  base: {
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 1,
   },
-  highlight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  innerBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    opacity: 0.5,
   },
 });
+
+const intensityStyles = StyleSheet.create({
+  subtle: {
+    backgroundColor: 'transparent',
+    borderColor: tokens.colors.border,
+  },
+  medium: {
+    backgroundColor: 'transparent',
+    borderColor: tokens.colors.borderMedium,
+  },
+  strong: {
+    backgroundColor: 'transparent',
+    borderColor: tokens.colors.borderMedium,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+});
+
+const variantStyles = StyleSheet.create({
+  default: {
+    borderRadius: tokens.radius.card,
+  },
+  elevated: {
+    borderRadius: tokens.radius.card,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  inset: {
+    borderRadius: tokens.radius.chip,
+  },
+});
+

@@ -64,13 +64,19 @@ export function ChangeCalculatorModal({
             style={styles.keyboardView}
           >
             <View style={styles.modal}>
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
               <View style={styles.header}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(184, 123, 90, 0.1)' }]}>
-                  <Icon name="calculator" size={20} color="#B87B5A" />
+                <View style={styles.iconCircle}>
+                  <Icon name="calculator" size={22} color={tokens.colors.mahogany} />
                 </View>
                 <Text style={styles.headerTitle}>Calculadora de Cambio</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <Icon name="close" size={20} color="#808080" />
+                  <Icon name="close" size={18} color={tokens.colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
@@ -91,11 +97,11 @@ export function ChangeCalculatorModal({
                       ref={inputRef}
                       style={styles.input}
                       placeholder="0.00"
-                      placeholderTextColor="rgba(255,255,255,0.2)"
+                      placeholderTextColor={tokens.colors.textDim}
                       keyboardType="numeric"
                       value={receivedAmount}
                       onChangeText={setReceivedAmount}
-                      selectionColor="#B87B5A"
+                      selectionColor={tokens.colors.mahogany}
                     />
                   </View>
                   <View style={styles.errorSpace}>
@@ -111,13 +117,6 @@ export function ChangeCalculatorModal({
                     styles.changeContainer,
                     received >= total && total > 0 && styles.changeContainerActive
                   ]}>
-                    <LinearGradient
-                      colors={received >= total && total > 0 
-                        ? ['rgba(109, 184, 138, 0.15)', 'rgba(109, 184, 138, 0.05)'] 
-                        : ['rgba(255, 255, 255, 0.03)', 'transparent']
-                      }
-                      style={StyleSheet.absoluteFill}
-                    />
                     <PriceDisplay 
                       amount={change} 
                       size="xl" 
@@ -140,14 +139,7 @@ export function ChangeCalculatorModal({
                   disabled={received < total || received === 0}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={received < total ? ['#333', '#222'] : ['#C48B68', '#8B5A3C']}
-                    style={styles.confirmGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Text style={styles.confirmText}>Completar Venta</Text>
-                  </LinearGradient>
+                  <Text style={styles.confirmText}>Completar Venta</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -161,7 +153,7 @@ export function ChangeCalculatorModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -171,98 +163,100 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modal: {
-    backgroundColor: tokens.colors.bg,
-    borderRadius: scale(24),
     width: '90%',
     maxWidth: scale(400),
+    borderRadius: tokens.radius.modal,
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: verticalScale(10) },
-    shadowOpacity: 0.5,
-    shadowRadius: scale(20),
-    elevation: 10,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: scale(20),
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: tokens.colors.borderLight,
   },
-  iconContainer: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(12),
+  iconCircle: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: scale(12),
+    marginRight: scale(14),
   },
   headerTitle: {
     flex: 1,
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(17),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   closeButton: {
-    padding: scale(4),
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: scale(24),
-    gap: verticalScale(24),
+    gap: verticalScale(20),
   },
   infoCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.card,
     padding: scale(16),
+    borderRadius: tokens.radius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: tokens.colors.borderLight,
     alignItems: 'center',
   },
   infoLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(13),
-    color: '#8A8A96',
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
     marginBottom: verticalScale(4),
     textTransform: 'uppercase',
     letterSpacing: scale(1),
   },
   totalPrice: {
-    fontSize: moderateScale(32),
-    color: '#F0F0F2',
+    fontSize: moderateScale(36),
+    color: tokens.colors.text,
   },
   inputSection: {
-    gap: verticalScale(8),
-    marginTop: verticalScale(10),
+    gap: verticalScale(10),
   },
   inputLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
     fontWeight: '600',
-    color: '#F0F0F2',
+    color: tokens.colors.textSecondary,
     marginLeft: scale(4),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: tokens.radius.card,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
-    paddingHorizontal: scale(16),
+    borderColor: tokens.colors.borderAccent,
+    paddingHorizontal: scale(20),
     height: verticalScale(64),
   },
   inputContainerError: {
-    borderColor: '#C96B6B',
-    backgroundColor: 'rgba(201, 107, 107, 0.05)',
+    borderColor: tokens.colors.coral,
+    backgroundColor: tokens.colors.coralDim,
   },
   currencyPrefix: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(24),
     fontWeight: '700',
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
     marginRight: scale(8),
   },
   input: {
@@ -270,17 +264,16 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(28),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     padding: 0,
   },
   errorSpace: {
-    height: verticalScale(18),
-    marginTop: verticalScale(4),
+    height: verticalScale(16),
   },
   errorText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(12),
-    color: '#C96B6B',
+    color: tokens.colors.coral,
     marginLeft: scale(4),
   },
   changeSection: {
@@ -290,46 +283,45 @@ const styles = StyleSheet.create({
   changeLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
   },
   changeContainer: {
     width: '100%',
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(16),
     alignItems: 'center',
-    borderRadius: tokens.radius.card,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   changeContainerActive: {
-    backgroundColor: 'rgba(109, 184, 138, 0.08)',
+    backgroundColor: tokens.colors.sageDim,
+    borderColor: tokens.colors.sage,
   },
   changeValue: {
-    fontSize: moderateScale(42),
-    color: '#8A8A96',
+    fontSize: moderateScale(48),
+    color: tokens.colors.textMuted,
   },
   footer: {
     padding: scale(24),
     paddingTop: 0,
   },
   confirmButton: {
-    borderRadius: scale(16),
-    overflow: 'hidden',
-    height: verticalScale(56),
-  },
-  confirmButtonDisabled: {
-    opacity: 0.5,
-  },
-  confirmGradient: {
-    flex: 1,
+    height: verticalScale(58),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.mahogany,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  confirmButtonDisabled: {
+    opacity: 0.4,
   },
   confirmText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#F0F0F2',
+    fontWeight: '800',
+    color: '#FFFFFF',
     letterSpacing: scale(0.5),
   },
 });

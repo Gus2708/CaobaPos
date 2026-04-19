@@ -21,11 +21,9 @@ const TABS: { key: Screen; label: string; icon: string }[] = [
 interface NavbarProps {
   current: Screen;
   onNavigate: (s: Screen) => void;
-  mode: 'view' | 'edit';
-  onToggleMode: (m: 'view' | 'edit') => void;
 }
 
-export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps) {
+export function Navbar({ current, onNavigate }: NavbarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -50,13 +48,13 @@ export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps)
                activeOpacity={0.7}
              >
                 <View style={[styles.tabIcon, styles.tabIconActive]}>
-                  <Icon name={activeTab?.icon || 'bars'} size={16} color={tokens.colors.mahogany} />
+                  <Icon name={activeTab?.icon || 'bars'} size={22} color={tokens.colors.mahogany} />
                 </View>
                 <Text style={[styles.tabText, styles.tabTextActive, { flex: 1 }]}>
                   {activeTab?.label}
                 </Text>
                  <View style={{ marginRight: scale(4) }}>
-                  <Icon name="chevron-down" size={14} color={tokens.colors.textMuted} />
+                  <Icon name="chevron-down" size={20} color={tokens.colors.textMuted} />
                 </View>
              </TouchableOpacity>
 
@@ -74,7 +72,7 @@ export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps)
                        <View style={styles.dropdownHeader}>
                          <Text style={styles.dropdownTitle}>Navegación</Text>
                           <TouchableOpacity onPress={() => setDropdownOpen(false)} activeOpacity={0.7}>
-                            <Icon name="close" size={18} color={tokens.colors.textMuted} />
+                            <Icon name="close" size={24} color={tokens.colors.textMuted} />
                           </TouchableOpacity>
                        </View>
                        {TABS.map((tab) => {
@@ -90,12 +88,12 @@ export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps)
                              activeOpacity={0.7}
                            >
                              <View style={[styles.dropdownIcon, isActive && styles.dropdownIconActive]}>
-                               <Icon name={tab.icon} size={16} color={isActive ? '#B87B5A' : '#8A8A96'} />
+                               <Icon name={tab.icon} size={22} color={isActive ? '#B87B5A' : '#8A8A96'} />
                              </View>
                              <Text style={[styles.dropdownItemText, isActive && styles.dropdownItemTextActive]}>
                                {tab.label}
                              </Text>
-                             {isActive && <Icon name="check" size={14} color="#B87B5A" />}
+                             {isActive && <Icon name="check" size={20} color="#B87B5A" />}
                            </TouchableOpacity>
                          );
                        })}
@@ -108,88 +106,45 @@ export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps)
         ) : (
           <View style={styles.tabsContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsWrapper}>
-              {TABS.map((tab) => {
-                const isActive = current === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    onPress={() => onNavigate(tab.key)}
-                    style={[styles.tab, isActive && styles.tabActive]}
-                    activeOpacity={0.7}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isActive }}
-                  >
-                    {isActive && (
-                      <LinearGradient
-                        colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.1)']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.tabGradient}
-                      />
-                    )}
-                    <View style={styles.tabContent}>
-                      <View style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-                        <Icon 
-                          name={tab.icon} 
-                          size={16} 
-                          color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
+                {TABS.map((tab) => {
+                  const isActive = current === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      onPress={() => onNavigate(tab.key)}
+                      style={[styles.tab, isActive && styles.tabActive]}
+                      activeOpacity={0.7}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: isActive }}
+                    >
+                      {isActive && (
+                        <LinearGradient
+                          colors={[tokens.colors.mahoganyDim, 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFill}
                         />
+                      )}
+                      <View style={styles.tabContent}>
+                        <View style={[styles.tabIcon, isActive && styles.tabIconActive]}>
+                          <Icon 
+                            name={tab.icon} 
+                            size={20} 
+                            color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
+                          />
+                        </View>
+                        <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
+                          {tab.label}
+                        </Text>
                       </View>
-                      <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
-                        {tab.label}
-                      </Text>
-                    </View>
-                    {isActive && <View style={styles.activeIndicator} />}
-                  </TouchableOpacity>
-                );
-              })}
+                      {isActive && <View style={styles.activeIndicator} />}
+                    </TouchableOpacity>
+                  );
+                })}
             </ScrollView>
           </View>
         )}
         
-        {current === 'inventory' && (
-          <View style={[styles.modeContainer, isMobile && styles.modeContainerMobile]}>
-            <View style={styles.modeInner}>
-              <Text style={styles.modeLabel}>Modo:</Text>
-              <View style={[styles.modeButtons, isMobile && { flex: 1 }]}>
-                <TouchableOpacity
-                  style={[styles.modeBtn, mode === 'view' && styles.modeBtnActive, isMobile && { flex: 1 }]}
-                  onPress={() => onToggleMode('view')}
-                  activeOpacity={0.7}
-                >
-                  {mode === 'view' && (
-                    <LinearGradient
-                      colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  )}
-                  <Text style={[styles.modeBtnText, mode === 'view' && styles.modeBtnTextActive]}>
-                    Ver
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modeBtn, mode === 'edit' && styles.modeBtnActive, isMobile && { flex: 1 }]}
-                  onPress={() => onToggleMode('edit')}
-                  activeOpacity={0.7}
-                >
-                  {mode === 'edit' && (
-                    <LinearGradient
-                      colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={StyleSheet.absoluteFill}
-                    />
-                  )}
-                  <Text style={[styles.modeBtnText, mode === 'edit' && styles.modeBtnTextActive]}>
-                    Editar
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -197,209 +152,200 @@ export function Navbar({ current, onNavigate, mode, onToggleMode }: NavbarProps)
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
     backgroundColor: tokens.colors.bg,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.borderLight,
   },
-  topEdge: {},
   content: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(10),
-    gap: scale(12),
+    flexWrap: 'wrap',
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(12),
+    gap: scale(16),
   },
   tabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    gap: scale(8),
   },
   tabsWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
+    gap: scale(8),
   },
   tab: {
-    position: 'relative',
-    paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(8),
-    borderRadius: scale(12),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(10),
+    borderRadius: tokens.radius.pill,
     overflow: 'hidden',
-    minHeight: verticalScale(36),
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   tabActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.12)',
+    borderColor: tokens.colors.mahogany,
   },
   tabGradient: {
-    borderRadius: scale(14),
+    borderRadius: tokens.radius.pill,
   },
   tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
+    gap: scale(10),
   },
   tabIcon: {
-    width: scale(24),
-    height: scale(24),
-    borderRadius: scale(6),
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   tabIconActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   tabText: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans, 
-    fontWeight: '600',
-    fontSize: moderateScale(13),
+    fontWeight: '700',
+    fontSize: moderateScale(14),
   },
   tabTextActive: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: verticalScale(4),
+    bottom: 0,
     left: '50%',
-    marginLeft: scale(-10),
-    width: scale(20),
-    height: verticalScale(3),
-    borderRadius: scale(1.5),
-    backgroundColor: tokens.colors.mahogany,
+    width: 0,
+    height: 0,
   },
   modeContainer: { 
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255, 255, 255, 0.06)',
-    paddingLeft: scale(12),
+    borderLeftColor: tokens.colors.borderLight,
+    paddingLeft: scale(16),
   },
   modeContainerMobile: {
     borderLeftWidth: 0,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    borderTopColor: tokens.colors.borderLight,
     paddingLeft: 0,
-    paddingTop: verticalScale(10),
+    paddingTop: verticalScale(12),
     width: '100%',
   },
   modeInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(10),
   },
   modeLabel: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    fontWeight: '500',
+    fontSize: moderateScale(13),
+    fontWeight: '700',
   },
   modeButtons: {
     flexDirection: 'row',
-    gap: scale(6),
+    gap: scale(8),
   },
   modeBtn: { 
-    position: 'relative',
-    paddingHorizontal: scale(12),
+    paddingHorizontal: scale(14),
     paddingVertical: verticalScale(8),
-    borderRadius: scale(10),
+    borderRadius: tokens.radius.pill,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
-    minWidth: scale(70),
+    minWidth: scale(80),
     alignItems: 'center',
     justifyContent: 'center',
   },
   modeBtnActive: { 
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.mahogany,
   },
   modeBtnText: { 
-    color: '#8A8A96', 
+    color: tokens.colors.textMuted, 
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
-    fontWeight: '600',
+    fontSize: moderateScale(13),
+    fontWeight: '700',
   },
   modeBtnTextActive: { 
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   mobileDropdownBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(9),
-    borderRadius: scale(12),
-    backgroundColor: 'rgba(184, 123, 90, 0.08)',
-    flex: 1,
+    gap: scale(12),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(10),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.mahoganyDim,
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
   },
   dropdownOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(10, 10, 12, 0.85)',
+    backgroundColor: 'rgba(10, 10, 12, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(24),
   },
   dropdownMenu: {
     width: '100%',
-    maxWidth: scale(320),
-    borderRadius: scale(20),
+    maxWidth: scale(340),
+    borderRadius: tokens.radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
-    paddingBottom: verticalScale(8),
+    paddingBottom: verticalScale(12),
   },
   dropdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(16),
+    padding: scale(20),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: tokens.colors.borderLight,
     marginBottom: verticalScale(8),
   },
   dropdownTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#F0F0F2',
-    letterSpacing: scale(0.5),
+    fontSize: moderateScale(18),
+    fontWeight: '800',
+    color: tokens.colors.text,
   },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
+    gap: scale(14),
     paddingHorizontal: scale(16),
     paddingVertical: verticalScale(14),
-    borderRadius: scale(14),
-    marginHorizontal: scale(8),
-    marginBottom: verticalScale(4),
+    borderRadius: tokens.radius.lg,
+    marginHorizontal: scale(12),
+    marginBottom: verticalScale(6),
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   dropdownIcon: {
-    width: scale(36),
-    height: scale(36),
+    width: scale(40),
+    height: scale(40),
     borderRadius: scale(10),
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   dropdownIconActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   dropdownItemText: {
     flex: 1,
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(15),
-    fontWeight: '500',
-    color: '#8A8A96',
+    fontSize: moderateScale(16),
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
   },
   dropdownItemTextActive: {
-    color: '#F0F0F2',
-    fontWeight: '700',
+    color: tokens.colors.text,
   },
 });

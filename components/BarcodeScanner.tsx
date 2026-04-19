@@ -6,6 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
+import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
 
 interface ScannedItem {
   barcode: string;
@@ -246,7 +248,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
             </TouchableOpacity>
           </View>
           <Text style={localStyles.inputHint}>
-            Usa el lector Bluetooth o escribe el codigo manualmente
+            Usa el lector Bluetooth o escribe el código manualmente
           </Text>
         </View>
 
@@ -278,7 +280,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
           }
         />
 
-        <View style={localStyles.footer}>
+        <View style={[localStyles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <View style={localStyles.summary}>
             <View style={localStyles.summaryRow}>
               <Text style={localStyles.summaryLabel}>Articulos:</Text>
@@ -315,132 +317,146 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
 const localStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: tokens.colors.bg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(16),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: tokens.colors.borderLight,
   },
   closeBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   headerTitle: {
-    color: '#F0F0F2',
-    fontSize: 18,
-    fontWeight: '600',
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.text,
+    fontSize: moderateScale(18),
+    fontWeight: '700',
   },
   placeholder: {
-    width: 44,
+    width: scale(44),
   },
   inputSection: {
-    padding: 20,
+    padding: scale(20),
   },
   inputLabel: {
-    color: '#F0F0F2',
-    fontSize: 15,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textSecondary,
+    fontSize: moderateScale(15),
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: verticalScale(12),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(40, 40, 50, 0.8)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
   },
   input: {
     flex: 1,
-    color: '#F0F0F2',
-    fontSize: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    color: tokens.colors.text,
+    fontSize: moderateScale(16),
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
     fontFamily: FontNames.jetBrainsMono,
   },
   addBtn: {
-    backgroundColor: '#B87B5A',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: tokens.colors.mahogany,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(14),
     justifyContent: 'center',
     alignItems: 'center',
   },
   addBtnDisabled: {
-    backgroundColor: 'rgba(184, 123, 90, 0.3)',
+    backgroundColor: tokens.colors.mahoganyDim,
+    opacity: 0.5,
   },
   inputHint: {
-    color: '#6A6A72',
-    fontSize: 12,
-    marginTop: 8,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textMuted,
+    fontSize: moderateScale(12),
+    marginTop: verticalScale(8),
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: tokens.colors.borderLight,
   },
   itemsHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(12),
   },
   itemsTitle: {
-    color: '#8A8A96',
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textMuted,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   list: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: scale(20),
+    paddingBottom: verticalScale(20),
   },
   itemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(40, 40, 50, 0.6)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: tokens.radius.xl,
+    padding: scale(12),
+    marginBottom: verticalScale(8),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   itemInfo: {
     flex: 1,
   },
   itemName: {
-    color: '#F0F0F2',
-    fontSize: 14,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.text,
+    fontSize: moderateScale(14),
     fontWeight: '600',
-    marginBottom: 2,
+    marginBottom: verticalScale(2),
   },
   itemBarcode: {
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 10,
+    fontSize: moderateScale(10),
   },
   itemControls: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
-    marginHorizontal: 8,
+    borderRadius: tokens.radius.pill,
+    marginHorizontal: scale(8),
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   qtyBtn: {
-    width: 32,
-    height: 32,
+    width: scale(32),
+    height: scale(32),
     justifyContent: 'center',
     alignItems: 'center',
   },
   qtyInput: {
-    width: 32,
-    height: 32,
-    color: '#F0F0F2',
+    width: scale(32),
+    height: scale(32),
+    color: tokens.colors.text,
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -448,68 +464,71 @@ const localStyles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   itemSubtotal: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: verticalScale(4),
   },
   removeBtn: {
-    padding: 4,
+    padding: scale(4),
   },
   emptyList: {
     alignItems: 'center',
-    paddingVertical: 60,
-    gap: 12,
+    paddingVertical: verticalScale(60),
+    gap: verticalScale(12),
   },
   emptyText: {
-    color: '#8A8A96',
-    fontSize: 16,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textSecondary,
+    fontSize: moderateScale(16),
     fontWeight: '600',
   },
   emptyHint: {
-    color: '#6A6A72',
-    fontSize: 13,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textMuted,
+    fontSize: moderateScale(13),
   },
   footer: {
-    padding: 20,
+    padding: scale(20),
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(20, 20, 26, 0.8)',
+    borderTopColor: tokens.colors.borderLight,
+    backgroundColor: tokens.colors.bg,
   },
   summary: {
-    marginBottom: 16,
+    marginBottom: verticalScale(16),
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: verticalScale(4),
   },
   summaryLabel: {
-    color: '#8A8A96',
-    fontSize: 14,
+    fontFamily: FontNames.instrumentSans,
+    color: tokens.colors.textMuted,
+    fontSize: moderateScale(14),
   },
   summaryValue: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
   },
   summaryTotal: {
-    color: '#B87B5A',
+    color: tokens.colors.mahogany,
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: 28,
+    fontSize: moderateScale(28),
     fontWeight: '800',
   },
   confirmBtn: {
     position: 'relative',
-    borderRadius: 14,
+    borderRadius: tokens.radius.pill,
     overflow: 'hidden',
   },
   confirmBtnGradient: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
+    borderRadius: tokens.radius.pill,
   },
   confirmBtnDisabled: {
     opacity: 0.5,
@@ -518,12 +537,13 @@ const localStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
+    gap: scale(10),
+    paddingVertical: verticalScale(16),
   },
   confirmBtnText: {
+    fontFamily: FontNames.instrumentSans,
     color: '#F0F0F2',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
   },
 });

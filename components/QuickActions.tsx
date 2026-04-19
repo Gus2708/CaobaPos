@@ -1,8 +1,6 @@
 import React, { memo } from 'react';
-import { TouchableOpacity, StyleSheet, Alert, View, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { TouchableOpacity, StyleSheet, Alert, View } from 'react-native';
 import { Text } from './Text';
-import { LinearGradient } from 'expo-linear-gradient';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
@@ -14,6 +12,9 @@ interface QuickActionsProps {
   compact?: boolean;
 }
 
+/**
+ * Modern QuickActions: clean solid buttons without glass/gradient noise.
+ */
 export const QuickActions = memo(function QuickActions({ onClear, hasItems, compact }: QuickActionsProps) {
   const handleClear = () => {
     Alert.alert(
@@ -26,41 +27,39 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
     );
   };
 
+  if (compact) {
+    return (
+      <TouchableOpacity
+        style={[styles.buttonCompact, !hasItems && styles.buttonDisabled]}
+        onPress={handleClear}
+        disabled={!hasItems}
+        activeOpacity={0.7}
+      >
+        <Icon 
+          name="trash" 
+          size={26} 
+          color={hasItems ? tokens.colors.coral : tokens.colors.textDim} 
+        />
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button, 
-        !hasItems && styles.buttonDisabled,
-        compact && styles.buttonCompact
-      ]}
+      style={[styles.button, !hasItems && styles.buttonDisabled]}
       onPress={handleClear}
       disabled={!hasItems}
       activeOpacity={0.7}
     >
-      {compact && Platform.OS !== 'web' && (
-        <BlurView 
-          intensity={25} 
-          tint="dark" 
-          style={StyleSheet.absoluteFill} 
-        />
-      )}
-      <LinearGradient
-        colors={compact 
-          ? [tokens.colors.glass.bg, 'rgba(201, 107, 107, 0.15)']
-          : hasItems 
-            ? ['rgba(201, 107, 107, 0.25)', 'rgba(201, 107, 107, 0.15)'] 
-            : ['rgba(201, 107, 107, 0.1)', 'rgba(201, 107, 107, 0.05)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
       <View style={styles.content}>
-        <Icon name="trash" size={compact ? 22 : 18} color={hasItems ? tokens.colors.coral : tokens.colors.textMuted} />
-        {!compact && (
-          <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
-            Limpiar Carrito
-          </Text>
-        )}
+        <Icon 
+          name="trash" 
+          size={22} 
+          color={hasItems ? tokens.colors.coral : tokens.colors.textDim} 
+        />
+        <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
+          Limpiar Carrito
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -68,33 +67,29 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
 
 const styles = StyleSheet.create({
   button: {
-    position: 'relative',
-    paddingVertical: verticalScale(14),
+    backgroundColor: tokens.colors.surface,
+    paddingVertical: verticalScale(12),
     paddingHorizontal: scale(16),
     marginHorizontal: scale(16),
-    marginBottom: verticalScale(8),
-    borderRadius: scale(14),
+    borderRadius: tokens.radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(201, 107, 107, 0.25)',
-    overflow: 'hidden',
-    minHeight: verticalScale(48),
+    borderColor: tokens.colors.border,
+    minHeight: verticalScale(46),
   },
   buttonCompact: {
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    marginHorizontal: 0,
-    marginBottom: 0,
-    width: verticalScale(56),
-    height: verticalScale(56),
-    borderRadius: scale(16),
-    backgroundColor: 'rgba(201, 107, 107, 0.1)',
-    borderColor: 'rgba(255, 255, 255, 0.18)',
-    borderWidth: 1.5,
+    width: verticalScale(52),
+    height: verticalScale(52),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
+    borderColor: tokens.colors.border,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonDisabled: {
-    borderColor: 'rgba(201, 107, 107, 0.1)',
+    opacity: 0.5,
   },
   content: {
     flexDirection: 'row',
@@ -105,9 +100,9 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
     fontWeight: '600',
-    color: tokens.colors.text,
+    color: tokens.colors.textMuted,
   },
   buttonTextDisabled: {
-    color: tokens.colors.textMuted,
+    color: tokens.colors.textDim,
   },
 });

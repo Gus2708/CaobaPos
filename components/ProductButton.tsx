@@ -1,8 +1,8 @@
 import React, { memo, useRef, useCallback } from 'react';
 import { CachedImage } from './CachedImage';
 import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
-import { Text } from './Text';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Text } from './Text';
 import { Product } from '../store/cartStore';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
@@ -24,14 +24,9 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
     if (isOutOfStock) return;
     Animated.sequence([
       Animated.spring(scaleAnim, {
-        toValue: 0.95,
+        toValue: 0.97,
         useNativeDriver: true,
         ...tokens.animation.spring,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1.03,
-        useNativeDriver: true,
-        ...tokens.animation.springBounce,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
@@ -48,9 +43,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
     ? tokens.colors.amber
     : tokens.colors.sage;
 
-  const gradientColors: [string, string] = isOutOfStock
-    ? ['rgba(100,100,100,0.12)', tokens.colors.surface]
-    : ['rgba(184,123,90,0.1)', tokens.colors.surface];
+  const gradientColors = ['rgba(255, 255, 255, 0.05)', 'transparent'] as const;
 
   if (compact) {
     // Tablet grid mode: vertical card
@@ -62,6 +55,12 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           activeOpacity={0.85}
           disabled={isOutOfStock}
         >
+          <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
           {/* Image or placeholder */}
           <View style={styles.cardImageWrapper}>
             {product.image_url ? (
@@ -77,14 +76,14 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 </Text>
               </View>
             )}
-            <View style={[styles.stockBadge, { backgroundColor: `${stockColor}22` }]}>
+            <View style={[styles.stockBadge, { backgroundColor: `${stockColor}18` }]}>
               <Text style={[styles.stockText, { color: stockColor }]}>
                 {isOutOfStock ? '×' : product.stock_quantity}
               </Text>
             </View>
           </View>
           <View style={styles.cardInfo}>
-            <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2}>
+            <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} adjustsFontSizeToFit>
               {product.name}
             </Text>
             <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
@@ -96,7 +95,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
     );
   }
 
-  // Mobile list mode: horizontal row
+  // Mobile list mode: horizontal row — clean card
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
@@ -113,7 +112,6 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-
         {/* Left — image or placeholder */}
         <View style={styles.imageWrapper}>
           {product.image_url ? (
@@ -123,18 +121,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               contentFit="cover"
             />
           ) : (
-            <View style={styles.placeholder}>
-              <LinearGradient
-                colors={
-                  isOutOfStock
-                    ? ['rgba(100,100,100,0.2)', 'rgba(100,100,100,0.08)']
-                    : ['rgba(184,123,90,0.25)', 'rgba(184,123,90,0.08)']
-                }
-                style={StyleSheet.absoluteFill}
-              />
+            <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
               <Text
                 style={[
                   styles.placeholderText,
+                  { color: tokens.colors.mahogany },
                   isOutOfStock && styles.placeholderTextDisabled,
                 ]}
               >
@@ -142,15 +133,6 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               </Text>
             </View>
           )}
-
-          {/* Stock badge — overlapping bottom-right of image */}
-          <View
-            style={[styles.stockBadge, { backgroundColor: `${stockColor}22` }]}
-          >
-            <Text style={[styles.stockText, { color: stockColor }]}>
-              {isOutOfStock ? '✕' : product.stock_quantity}
-            </Text>
-          </View>
         </View>
 
         {/* Right — info */}
@@ -158,27 +140,36 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           <Text
             style={[styles.name, isOutOfStock && styles.nameDisabled]}
             numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
           >
             {product.name}
           </Text>
-          {isLowStock && !isOutOfStock && (
-            <Text style={styles.lowStockLabel}>Stock bajo</Text>
-          )}
+          <View style={styles.itemMeta}>
+            <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
+              ${product.price.toFixed(2)}
+            </Text>
+            <View style={[
+              styles.stockDotRow, 
+              { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
+            ]}>
+               <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
+               <Text style={[styles.itemStockText, { color: product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>
+                 {product.stock_quantity} uds
+               </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Price + add button */}
-        <View style={styles.rightSection}>
-          <Text
-            style={[styles.price, isOutOfStock && styles.priceDisabled]}
-          >
-            ${product.price.toFixed(2)}
-          </Text>
+        {/* Action Icon */}
+        <View style={styles.actionSection}>
           {!isOutOfStock && (
             <View style={styles.addBtn}>
-              <Icon name="plus" size={14} color={tokens.colors.mahogany} />
+              <Icon name="plus" size={24} color="rgba(255, 255, 255, 0.7)" />
             </View>
           )}
         </View>
+
       </TouchableOpacity>
     </Animated.View>
   );
@@ -188,33 +179,37 @@ export const ProductButton = memo(ProductButtonComponent, (prev, next) =>
   prev.product.id === next.product.id &&
   prev.product.name === next.product.name &&
   prev.product.price === next.product.price &&
-  prev.product.stock_quantity === next.product.stock_quantity
+  prev.product.stock_quantity === next.product.stock_quantity &&
+  prev.product.image_url === next.product.image_url &&
+  prev.compact === next.compact
 );
 
 const styles = StyleSheet.create({
+  // ─── Mobile List Row ───────────────────────────────────────────────
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 10, 12, 0.45)',
-    borderRadius: tokens.radius.card,
-    padding: tokens.spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.xl,
+    padding: scale(14),
     borderWidth: 1,
-    borderColor: tokens.colors.borderAccent,
+    borderColor: tokens.colors.borderLight,
+    gap: scale(14),
+    minHeight: verticalScale(84),
     overflow: 'hidden',
-    gap: scale(12),
-    minHeight: verticalScale(76),
   },
   containerDisabled: {
-    opacity: 0.45,
-    borderColor: tokens.colors.border,
+    opacity: 0.4,
   },
   imageWrapper: {
-    position: 'relative',
-    width: scale(52),
-    height: scale(52),
-    borderRadius: tokens.radius.chip,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
     overflow: 'hidden',
     flexShrink: 0,
+    backgroundColor: tokens.colors.bg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
   },
   image: {
     width: '100%',
@@ -225,86 +220,78 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: tokens.colors.surfaceWarm,
-    position: 'relative',
   },
   placeholderText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography['2xl'],
-    fontWeight: tokens.typography.bold,
-    color: tokens.colors.mahogany,
+    fontSize: moderateScale(20),
+    fontWeight: '800',
   },
   placeholderTextDisabled: {
     color: tokens.colors.textDim,
-  },
-  stockBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    minWidth: scale(20),
-    height: verticalScale(18),
-    borderRadius: tokens.radius.xs,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: scale(4),
-  },
-  stockText: {
-    fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(9),
-    fontWeight: tokens.typography.bold,
   },
   info: {
     flex: 1,
     gap: verticalScale(4),
   },
+  itemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+  },
+  stockDotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  stockDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+  },
+  itemStockText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(11),
+    fontWeight: '800',
+  },
   name: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography.base,
-    fontWeight: tokens.typography.semibold,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
     color: tokens.colors.text,
-    lineHeight: verticalScale(20),
   },
   nameDisabled: {
     color: tokens.colors.textMuted,
   },
-  lowStockLabel: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography.xs,
-    fontWeight: tokens.typography.semibold,
-    color: tokens.colors.amber,
-    textTransform: 'uppercase',
-    letterSpacing: scale(0.5),
-  },
-  rightSection: {
-    alignItems: 'flex-end',
-    gap: tokens.spacing.sm,
-    flexShrink: 0,
+  actionSection: {
+    marginLeft: scale(4),
   },
   price: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: tokens.typography.md,
-    fontWeight: tokens.typography.bold,
+    fontSize: moderateScale(15),
+    fontWeight: '800',
     color: tokens.colors.mahogany,
   },
   priceDisabled: {
     color: tokens.colors.textDim,
   },
   addBtn: {
-    width: scale(28),
-    height: scale(28),
-    borderRadius: tokens.radius.pill,
-    backgroundColor: tokens.colors.mahoganyDim,
-    borderWidth: 1,
-    borderColor: tokens.colors.borderAccent,
+    width: scale(44),
+    height: scale(44),
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   // ─── Compact / Tablet Card (vertical) ──────────────────────────────
   cardContainer: {
-    backgroundColor: 'rgba(10, 10, 12, 0.45)',
-    borderRadius: tokens.radius.card,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.xl,
     borderWidth: 1,
-    borderColor: tokens.colors.borderAccent,
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
     flex: 1,
   },
@@ -313,6 +300,8 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     backgroundColor: tokens.colors.surfaceWarm,
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.borderLight,
   },
   cardImage: {
     width: '100%',
@@ -323,23 +312,42 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: tokens.colors.surfaceWarm,
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   cardInfo: {
-    padding: tokens.spacing.md,
-    gap: tokens.spacing.xs,
+    padding: scale(12),
+    gap: verticalScale(6),
   },
   cardName: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: tokens.typography.sm,
-    fontWeight: tokens.typography.semibold,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
     color: tokens.colors.text,
-    lineHeight: verticalScale(17),
   },
   cardPrice: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: tokens.typography.base,
-    fontWeight: tokens.typography.bold,
+    fontSize: moderateScale(16),
+    fontWeight: '800',
     color: tokens.colors.mahogany,
   },
+  stockBadge: {
+    position: 'absolute',
+    bottom: scale(8),
+    right: scale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  stockText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(10),
+    fontWeight: '800',
+  },
 });
+

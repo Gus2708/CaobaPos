@@ -1,8 +1,7 @@
 import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
-import { Image } from 'expo-image';
-import { useState, useMemo, useCallback, memo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProducts, Category } from '../hooks/useProducts';
 import { useCartStore, useSettingsStore } from '../store/cartStore';
@@ -19,11 +18,15 @@ import { supabase } from '../lib/supabase';
 import { prefetchImages } from '../lib/imageCache';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { FlashList } from '@shopify/flash-list';
+import { SkeletonItem } from '../components/SkeletonItem';
+import { Badge } from '../components/Badge';
 
-const ITEM_HEIGHT = verticalScale(200); // Slightly increased for breathing room
+// Row height = item minHeight (76) + vertical padding (4+4 = 8). Used for getItemLayout.
+const ITEM_HEIGHT = verticalScale(76) + verticalScale(8);
 const LOW_STOCK_THRESHOLD = 10;
 
-const ProductItem = memo(function ProductItem({ 
+const ProductItem = React.memo(function ProductItem({ 
   product, 
   onPress 
 }: { 
@@ -83,26 +86,25 @@ export function POSScreen() {
     return map;
   }, [allProducts]);
 
-  // Prefetch images for better POS performance
+  // Prefetch product images to local cache on first load
+  // Only use our custom prefetchImages (parallel batches) — expo-image handles its own layer
   useEffect(() => {
-    if (products) {
-      const urls = products.map(p => p.image_url).filter(Boolean) as string[];
-      if (urls.length > 0) {
-        Image.prefetch(urls);
-        prefetchImages(urls); // Aggressive local cache
-      }
-    }
-  }, [products]);
-
-  useEffect(() => {
-    if (allProducts) {
+    if (allProducts && allProducts.length > 0) {
       const urls = allProducts.map(p => p.image_url).filter(Boolean) as string[];
-      if (urls.length > 0) {
-        Image.prefetch(urls);
-        prefetchImages(urls); // Aggressive local cache
-      }
+      if (urls.length > 0) prefetchImages(urls);
     }
   }, [allProducts]);
+
+  // Priority prefetch for selected category to ensure smooth scroll
+  useEffect(() => {
+    if (selectedCategory && allProducts) {
+      const categoryUrls = allProducts
+        .filter(p => !selectedCategory || (p.categories && p.categories.includes(selectedCategory)))
+        .map(p => p.image_url)
+        .filter(Boolean) as string[];
+      if (categoryUrls.length > 0) prefetchImages(categoryUrls);
+    }
+  }, [selectedCategory, allProducts]);
 
   const checkLowStock = useCallback((product: Product) => {
     if (product.stock_quantity <= 0) {
@@ -122,8 +124,8 @@ export function POSScreen() {
   }, []);
 
   const handleBarcodeBlur = useCallback(() => {
-    // Only refocus if not searching and not processing a sale
-    if (!searchQuery && !items.length === 0) {
+    // Only refocus if not searching and cart is not empty
+    if (!searchQuery && items.length > 0) {
       setTimeout(() => {
         barcodeInputRef.current?.focus();
       }, 500);
@@ -183,25 +185,16 @@ export function POSScreen() {
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
-    let filtered = products;
-    
-    if (selectedCategory !== 'todos') {
-      filtered = filtered.filter((p) => 
-        p.categories?.includes(selectedCategory)
-      );
-    }
-    
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(query) ||
-          p.barcode?.toLowerCase().includes(query)
-      );
-    }
-    
-    return filtered;
-  }, [products, searchQuery, selectedCategory]);
+    // Category filtering is handled server-side in useProducts
+    // Here we only apply the local search filter
+    if (!searchQuery.trim()) return products;
+    const query = searchQuery.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.barcode?.toLowerCase().includes(query)
+    );
+  }, [products, searchQuery]);
 
   const handleProductPress = useCallback((product: Product) => {
     if (checkLowStock(product)) {
@@ -232,7 +225,7 @@ export function POSScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
-          <Icon name="search-plus" size={48} color={tokens.colors.mahoganyDim} />
+          <Icon name="search-plus" size={64} color={tokens.colors.mahoganyDim} />
         </View>
         <Text style={styles.emptyText}>
           {searchQuery ? 'Sin resultados' : 'No hay productos'}
@@ -274,7 +267,7 @@ export function POSScreen() {
 
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
-            <Icon name="search" size={16} color={tokens.colors.textMuted} />
+            <Icon name="search" size={20} color={tokens.colors.textMuted} />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar producto..."
@@ -283,36 +276,35 @@ export function POSScreen() {
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <Text style={styles.searchCount}>
+              <Badge variant="mahogany">
                 {filteredProducts.length}
-              </Text>
+              </Badge>
             )}
           </View>
         </View>
         
         <View style={styles.productsContainer}>
           {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-              <Text style={styles.loadingText}>Cargando productos...</Text>
+            <View style={styles.productsContainer}>
+              <SkeletonItem 
+                layout={isMobile ? 'row' : 'card'} 
+                count={isMobile ? 8 : 12} 
+              />
             </View>
           ) : (
-            <FlatList
+            <FlashList
               key={`products-grid-${numColumns}`}
               data={filteredProducts}
               numColumns={numColumns}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
+              // @ts-ignore - Property exists at runtime but causes false negative in some TSC versions
+              estimatedItemSize={ITEM_HEIGHT}
               contentContainerStyle={[
-                styles.productGrid, 
-                isMobile && items.length > 0 && { paddingBottom: verticalScale(96) + insets.bottom }
+                styles.productGrid,
+                { paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom }
               ]}
               showsVerticalScrollIndicator={false}
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={20}
-              windowSize={11}
-              initialNumToRender={20}
-              updateCellsBatchingPeriod={30}
               refreshControl={
                 <RefreshControl
                   refreshing={false}
@@ -354,7 +346,7 @@ export function POSScreen() {
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.checkoutBtnContent}>
-                <Icon name="shopping-cart" size={20} color="#F0F0F2" />
+                <Icon name="shopping-cart" size={24} color="#F0F0F2" />
                 <Text style={styles.mobileFabText}>Ver Carrito ({items.length})</Text>
                 <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
               </View>
@@ -415,30 +407,33 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.colors.glass.bg,
-    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.pill,
     paddingHorizontal: scale(16),
-    paddingVertical: 0,
     borderWidth: 1,
-    borderColor: tokens.colors.glass.border,
-    gap: scale(10),
-    height: verticalScale(44),
+    borderColor: tokens.colors.borderLight,
+    gap: scale(12),
+    height: verticalScale(48),
   },
   searchInput: {
     flex: 1,
     color: tokens.colors.text,
-    paddingVertical: verticalScale(12),
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(14),
+    fontWeight: '600',
+    height: '100%',
   },
-  searchCount: {
+  searchCountBadge: {
+    backgroundColor: tokens.colors.mahoganyDim,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+  },
+  searchCountText: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
+    fontWeight: '800',
     color: tokens.colors.mahogany,
-    backgroundColor: tokens.colors.mahoganyDim,
-    paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(8),
   },
   productsContainer: {
     flex: 1,
@@ -449,10 +444,11 @@ const styles = StyleSheet.create({
   },
   rightPanel: {
     flex: 0.25,
-    minWidth: scale(240),
+    minWidth: scale(260),
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(184, 123, 90, 0.15)',
+    borderLeftColor: tokens.colors.border,
     position: 'relative',
+    backgroundColor: tokens.colors.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -483,21 +479,25 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: scale(80),
     height: scale(80),
-    borderRadius: scale(24),
-    backgroundColor: 'rgba(184, 123, 90, 0.08)',
+    borderRadius: scale(40),
+    backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: tokens.colors.mahogany,
+    marginBottom: verticalScale(16),
   },
   emptyText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(18),
-    fontWeight: '600',
-    color: '#8A8A96',
+    fontWeight: '800',
+    color: tokens.colors.text,
   },
   emptySubtext: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(14),
-    color: '#666',
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
   },
   mobileActionBar: {
     position: 'absolute',
@@ -509,9 +509,11 @@ const styles = StyleSheet.create({
   },
   mobileCheckoutBtn: {
     flex: 1,
-    height: verticalScale(56),
-    borderRadius: scale(18),
+    height: verticalScale(60),
+    borderRadius: tokens.radius.xl,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
   },
   checkoutBtnContent: {
     flex: 1,
@@ -523,14 +525,14 @@ const styles = StyleSheet.create({
   mobileFabText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(15),
-    fontWeight: '700',
-    color: '#F0F0F2',
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   mobileFabTotal: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(17),
-    fontWeight: '800',
-    color: '#F0F0F2',
+    fontSize: moderateScale(18),
+    fontWeight: '900',
+    color: '#FFFFFF',
   },
   mobileCartOverlay: {
     flex: 1,

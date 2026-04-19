@@ -32,7 +32,14 @@ export function Header() {
     });
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + verticalScale(8) }]}>
+    <View style={[
+      styles.container, 
+      { 
+        paddingTop: Platform.OS === 'android' 
+          ? Math.max(insets.top, StatusBar.currentHeight || 0) + verticalScale(12)
+          : insets.top + verticalScale(8) 
+      }
+    ]}>
 
 
 
@@ -109,7 +116,7 @@ const styles = StyleSheet.create({
     fontSize: tokens.typography['3xl'],
     fontWeight: tokens.typography.extrabold,
     color: tokens.colors.text,
-    letterSpacing: scale(3),
+    letterSpacing: scale(1.5),
   },
   logoTextSub: {
     fontFamily: FontNames.instrumentSans,
