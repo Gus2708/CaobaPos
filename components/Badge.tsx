@@ -4,6 +4,7 @@ import { Text } from './Text';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
+import { FontNames } from '../lib/fontNames';
 
 export type BadgeVariant = 'neutral' | 'mahogany' | 'sage' | 'coral' | 'amber';
 
@@ -11,6 +12,7 @@ interface BadgeProps {
   children: React.ReactNode;
   variant?: BadgeVariant;
   icon?: string;
+  showChevron?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -23,10 +25,11 @@ export function Badge({
   children, 
   variant = 'neutral', 
   icon, 
+  showChevron,
   style, 
   textStyle 
 }: BadgeProps) {
-  const getVariantStyles = () => {
+  const getValueStyles = () => {
     switch (variant) {
       case 'mahogany':
         return {
@@ -61,7 +64,7 @@ export function Badge({
     }
   };
 
-  const vStyles = getVariantStyles();
+  const vStyles = getValueStyles();
 
   return (
     <View style={[
@@ -81,6 +84,11 @@ export function Badge({
       ]}>
         {children}
       </Text>
+      {showChevron && (
+        <View style={styles.rightIconContainer}>
+          <Icon name="chevron-down" size={10} color={vStyles.text} />
+        </View>
+      )}
     </View>
   );
 }
@@ -89,18 +97,23 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: tokens.radius.chip, // 12px
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(6),
+    borderRadius: tokens.radius.pill,
     borderWidth: 1,
     alignSelf: 'flex-start',
   },
   iconContainer: {
-    marginRight: scale(6),
+    marginRight: scale(8),
+  },
+  rightIconContainer: {
+    marginLeft: scale(6),
   },
   text: {
-    fontSize: moderateScale(12),
-    fontWeight: '600',
-    letterSpacing: scale(0.2),
+    fontSize: moderateScale(11),
+    fontFamily: FontNames.jetBrainsMono,
+    fontWeight: '700',
+    letterSpacing: scale(0.3),
+    textTransform: 'uppercase',
   },
 });

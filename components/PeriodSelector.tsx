@@ -5,7 +5,7 @@ import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 
-export type DashboardPeriod = 'dia' | 'semana' | 'mes';
+export type DashboardPeriod = 'dia' | 'semana' | 'mes' | 'personalizado';
 
 interface PeriodSelectorProps {
   selected: DashboardPeriod;
@@ -16,6 +16,7 @@ const PERIODS: { id: DashboardPeriod; label: string; icon: string }[] = [
   { id: 'dia', label: 'Día', icon: 'calendar-day' },
   { id: 'semana', label: 'Semana', icon: 'calendar-week' },
   { id: 'mes', label: 'Mes', icon: 'calendar-alt' },
+  { id: 'personalizado', label: 'Personalizado', icon: 'calendar-alt' },
 ];
 
 function PeriodSelectorComponent({ selected, onSelect }: PeriodSelectorProps) {
