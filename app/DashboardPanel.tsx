@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast';
 import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 
 interface Sale {
   id: string;
@@ -115,12 +116,23 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const [period, setPeriod] = useState<DashboardPeriod>('dia');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [methodModalVisible, setMethodModalVisible] = useState(false);
-  const { today, weekAgo, monthAgo } = useMemo(() => {
+  const [customModalVisible, setCustomModalVisible] = useState(false);
+
+  const { today, weekAgo, monthAgo, defaultStart } = useMemo(() => {
     const t = new Date(); t.setHours(0, 0, 0, 0);
     const w = new Date(); w.setDate(w.getDate() - 7); w.setHours(0, 0, 0, 0);
     const m = new Date(); m.setMonth(m.getMonth() - 1); m.setHours(0, 0, 0, 0);
-    return { today: t.toISOString(), weekAgo: w.toISOString(), monthAgo: m.toISOString() };
+    const dStart = new Date(); dStart.setDate(dStart.getDate() - 30); dStart.setHours(0, 0, 0, 0);
+    return { 
+      today: t.toISOString(), 
+      weekAgo: w.toISOString(), 
+      monthAgo: m.toISOString(),
+      defaultStart: dStart.toISOString()
+    };
   }, []);
+
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(new Date().toISOString());
 
   const limitDate = useMemo(() => {
     if (period === 'dia') return today;
@@ -129,11 +141,22 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     return null;
   }, [period, today, weekAgo, monthAgo]);
 
+  const dateRange = useMemo(() => {
+    if (period === 'personalizado') {
+      return { start: startDate, end: endDate };
+    }
+    return { start: limitDate, end: null };
+  }, [period, limitDate, startDate, endDate]);
+
   const { data: sales, isLoading: loadingSales } = useQuery<Sale[]>({
-    queryKey: ['dashboard', 'sales', period],
+    queryKey: ['dashboard', 'sales', period, dateRange],
     queryFn: async () => {
       let query = supabase.from('sales').select('*');
-      if (limitDate) query = query.gte('created_at', limitDate);
+      if (period === 'personalizado') {
+        query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
+      } else if (dateRange.start) {
+        query = query.gte('created_at', dateRange.start);
+      }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -141,10 +164,14 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   });
 
   const { data: saleItems } = useQuery<SaleItem[]>({
-    queryKey: ['dashboard', 'sale_items', period],
+    queryKey: ['dashboard', 'sale_items', period, dateRange],
     queryFn: async () => {
       let query = supabase.from('sale_items').select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal, sales!inner(created_at)');
-      if (limitDate) query = query.gte('sales.created_at', limitDate);
+      if (period === 'personalizado') {
+        query = query.gte('sales.created_at', dateRange.start).lte('sales.created_at', dateRange.end);
+      } else if (dateRange.start) {
+        query = query.gte('sales.created_at', dateRange.start);
+      }
       const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
@@ -152,10 +179,14 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   });
 
   const { data: allPayments } = useQuery<ClientPayment[]>({
-    queryKey: ['dashboard', 'client_payments', period],
+    queryKey: ['dashboard', 'client_payments', period, dateRange],
     queryFn: async () => {
       let query = supabase.from('client_payments').select('*');
-      if (limitDate) query = query.gte('created_at', limitDate);
+      if (period === 'personalizado') {
+        query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
+      } else if (dateRange.start) {
+        query = query.gte('created_at', dateRange.start);
+      }
       const { data, error } = await query;
       if (error) throw error;
       return data ?? [];
@@ -175,8 +206,24 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
   const filteredSales = useMemo(() => sales ?? [], [sales]);
 
-  const periodLabel = period === 'dia' ? 'Hoy' : period === 'semana' ? 'Esta Semana' : 'Este Mes';
-  const pdfTitleLabel = period === 'dia' ? 'Resumen Financiero Diario' : period === 'semana' ? 'Resumen Financiero Semanal' : 'Resumen Financiero Mensual';
+  const periodLabel = useMemo(() => {
+    if (period === 'dia') return 'Hoy';
+    if (period === 'semana') return 'Esta Semana';
+    if (period === 'mes') return 'Este Mes';
+    if (period === 'personalizado') {
+      const d1 = new Date(startDate).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+      const d2 = new Date(endDate).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+      return `${d1} - ${d2}`;
+    }
+    return '';
+  }, [period, startDate, endDate]);
+
+  const pdfTitleLabel = useMemo(() => {
+    if (period === 'dia') return 'Resumen Financiero Diario';
+    if (period === 'semana') return 'Resumen Financiero Semanal';
+    if (period === 'mes') return 'Resumen Financiero Mensual';
+    return `Resumen Financiero (${periodLabel})`;
+  }, [period, periodLabel]);
 
   const productMap = useMemo(() => {
     const map: Record<string, Product> = {};
@@ -337,7 +384,16 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </TouchableOpacity>
       </View>
 
-      <PeriodSelector selected={period} onSelect={setPeriod} />
+      <PeriodSelector 
+        selected={period} 
+        onSelect={(p) => {
+          if (p === 'personalizado') {
+            setCustomModalVisible(true);
+          } else {
+            setPeriod(p);
+          }
+        }} 
+      />
 
       <View style={styles.statsGrid}>
         <StatCard 
@@ -568,6 +624,19 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         method={selectedMethod}
         periodLabel={periodLabel}
         sales={filteredSales.filter(s => s.payment_method === selectedMethod)}
+      />
+
+      <CustomDateRangeModal 
+        visible={customModalVisible}
+        onClose={() => setCustomModalVisible(false)}
+        initialStartDate={startDate}
+        initialEndDate={endDate}
+        onConfirm={(s, e) => {
+          setStartDate(s);
+          setEndDate(e);
+          setPeriod('personalizado');
+          setCustomModalVisible(false);
+        }}
       />
     </ScrollView>
   );

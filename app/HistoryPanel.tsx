@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
 import { Text } from '../components/Text';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
@@ -14,6 +14,8 @@ import { Icon } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { DashboardPeriod } from '../components/PeriodSelector';
+import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 
 interface SaleItem {
   id: string;
@@ -45,8 +47,6 @@ const SaleCard = React.memo(function SaleCard({
   onView: () => void; 
   onDelete: () => void;
 }) {
-  const insets = useSafeAreaInsets();
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('es-MX', {
@@ -56,15 +56,6 @@ const SaleCard = React.memo(function SaleCard({
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
-
-  const getPaymentLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: 'Efectivo',
-      card: 'Tarjeta',
-      transfer: 'Transferencia',
-    };
-    return labels[method] || method;
   };
 
   const getPaymentIcon = (method: string) => {
@@ -115,7 +106,62 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const [search, setSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [methodModalVisible, setMethodModalVisible] = useState(false);
+  const [period, setPeriod] = useState<DashboardPeriod | 'todo'>('todo');
+  const [periodModalVisible, setPeriodModalVisible] = useState(false);
+  const [customModalVisible, setCustomModalVisible] = useState(false);
+
+  const { today, weekAgo, monthAgo, defaultStart } = useMemo(() => {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const w = new Date(); w.setDate(w.getDate() - 7); w.setHours(0, 0, 0, 0);
+    const m = new Date(); m.setMonth(m.getMonth() - 1); m.setHours(0, 0, 0, 0);
+    const dStart = new Date(); dStart.setDate(dStart.getDate() - 30); dStart.setHours(0, 0, 0, 0);
+    return { 
+      today: t.toISOString(), 
+      weekAgo: w.toISOString(), 
+      monthAgo: m.toISOString(),
+      defaultStart: dStart.toISOString()
+    };
+  }, []);
+
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(new Date().toISOString());
+
+  const periodLabels: Record<string, string> = {
+    todo: 'Histórico',
+    dia: 'Hoy',
+    semana: 'Semana',
+    mes: 'Mes',
+    personalizado: 'Pers.',
+  };
+
+  const periodOptions = [
+    { value: 'todo', label: 'Todo el tiempo', icon: 'history' },
+    { value: 'dia', label: 'Hoy', icon: 'calendar-day' },
+    { value: 'semana', label: 'Esta Semana', icon: 'calendar-week' },
+    { value: 'mes', label: 'Este Mes', icon: 'calendar-alt' },
+    { value: 'personalizado', label: 'Personalizado', icon: 'cog' },
+  ];
+
+  const dateRange = useMemo(() => {
+    if (period === 'todo') return { start: null, end: null };
+    if (period === 'personalizado') return { start: startDate, end: endDate };
+    if (period === 'dia') return { start: today, end: null };
+    if (period === 'semana') return { start: weekAgo, end: null };
+    if (period === 'mes') return { start: monthAgo, end: null };
+    return { start: null, end: null };
+  }, [period, today, weekAgo, monthAgo, startDate, endDate]);
+
   const { showToast } = useToast();
+
+  const paymentMethods = [
+    { value: null, label: 'Todos', icon: 'list' },
+    { value: 'cash', label: 'Efectivo', icon: 'money-bill' },
+    { value: 'card', label: 'Tarjeta', icon: 'credit-card' },
+    { value: 'transfer', label: 'Transf.', icon: 'mobile-alt' },
+    { value: 'credito', label: 'Crédito', icon: 'user' },
+  ];
 
   const PAGE_SIZE = 20;
 
@@ -128,12 +174,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     hasNextPage, 
     isFetchingNextPage 
   } = useInfiniteQuery({
-    queryKey: ['sales-history'],
+    queryKey: ['sales-history', selectedMethod, period, dateRange],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await supabase
-        .from('sales')
-        .select('*')
+      let query = supabase.from('sales').select('*');
+      
+      if (dateRange.start) {
+        query = query.gte('created_at', dateRange.start);
+      }
+      if (dateRange.end) {
+        query = query.lte('created_at', dateRange.end);
+      }
+      if (selectedMethod) {
+        query = query.eq('payment_method', selectedMethod);
+      }
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
         
@@ -155,6 +211,27 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       s.payment_method.toLowerCase().includes(search.toLowerCase())
     );
   }, [sales, search]);
+
+  const { data: totalSum, isLoading: loadingTotal } = useQuery({
+    queryKey: ['sales-history-total', selectedMethod, period, dateRange],
+    queryFn: async () => {
+      let query = supabase.from('sales').select('total_amount');
+      
+      if (dateRange.start) {
+        query = query.gte('created_at', dateRange.start);
+      }
+      if (dateRange.end) {
+        query = query.lte('created_at', dateRange.end);
+      }
+      if (selectedMethod) {
+        query = query.eq('payment_method', selectedMethod);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data?.reduce((acc, sale) => acc + (sale.total_amount || 0), 0) ?? 0;
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (sale: Sale) => {
@@ -180,15 +257,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .eq('sale_id', sale.id);
       if (deleteError) throw deleteError;
 
-      // 2. Automatically clear any payments associated with this specific sale
-      // link to help keep client balances consistent. This MUST happen before
-      // deleting the sale due to foreign key constraints.
       await supabase
         .from('client_payments')
         .delete()
         .eq('sale_id', sale.id);
 
-      // 3. Delete the sale itself
       const { error: saleError } = await supabase
         .from('sales')
         .delete()
@@ -198,7 +271,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     onSuccess: (_, sale) => {
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Refresh analytics
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); 
       if (sale.payment_method === 'credito') {
         queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
         if (sale.client_id) {
@@ -215,7 +288,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const updateSaleMutation = useMutation({
     mutationFn: async ({ saleId, items, newTotal }: { saleId: string; items: SaleItem[]; newTotal: number }) => {
-      // 1. Recover old items to revert their stock
       const { data: oldItems, error: fetchError } = await supabase
         .from('sale_items')
         .select('product_id, quantity')
@@ -223,7 +295,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       
       if (fetchError) throw fetchError;
 
-      // 2. Revert old stock
       if (oldItems) {
         for (const item of oldItems) {
           await supabase.rpc('increment_stock', {
@@ -233,14 +304,12 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         }
       }
 
-      // 3. Delete old items
       const { error: deleteError } = await supabase
         .from('sale_items')
         .delete()
         .eq('sale_id', saleId);
       if (deleteError) throw deleteError;
 
-      // 4. Pre-check new stock availability
       const productIds = items.map(i => i.product_id);
       const { data: dbProducts, error: stockCheckError } = await supabase
         .from('products')
@@ -256,7 +325,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         }
       }
 
-      // 5. Insert new items and decrement stock
       for (const item of items) {
         const { error: insertError } = await supabase.from('sale_items').insert({
           sale_id: saleId,
@@ -274,7 +342,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         });
       }
 
-      // 5. Update sale total
       const { error: updateError } = await supabase
         .from('sales')
         .update({ total_amount: newTotal })
@@ -348,11 +415,52 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           <View style={styles.headerIconCircle}>
             <Icon name="history" size={24} color={tokens.colors.mahogany} />
           </View>
-          <Text style={styles.title}>Historial</Text>
+          <View style={{ flex: 1, gap: scale(8), flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.title}>Historial</Text>
+            <Badge variant="neutral">
+              {filteredSales.length}
+            </Badge>
+          </View>
+
+          <View style={styles.headerRight}>
+            <View style={styles.headerStats}>
+              <Text style={styles.statsLabel}>Total</Text>
+              {loadingTotal ? (
+                <ActivityIndicator size="small" color={tokens.colors.mahogany} />
+              ) : (
+                <Text style={styles.statsValue}>$ {totalSum?.toLocaleString()}</Text>
+              )}
+            </View>
+          </View>
         </View>
-        <Badge variant="mahogany">
-          {filteredSales.length} ventas
-        </Badge>
+      </View>
+
+      <View style={styles.filterSection}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScroll}
+        >
+          <TouchableOpacity onPress={() => setPeriodModalVisible(true)}>
+            <Badge 
+              variant={period !== 'todo' ? 'mahogany' : 'neutral'} 
+              icon={periodOptions.find(o => o.value === period)?.icon}
+              showChevron={true}
+            >
+              {periodLabels[period]}
+            </Badge>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setMethodModalVisible(true)}>
+            <Badge 
+              variant={selectedMethod ? 'mahogany' : 'neutral'} 
+              icon={paymentMethods.find(m => m.value === selectedMethod)?.icon}
+              showChevron={true}
+            >
+              {paymentMethods.find(m => m.value === selectedMethod)?.label}
+            </Badge>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <View style={styles.searchRow}>
@@ -368,48 +476,47 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         </View>
       </View>
 
-        <FlashList
-          data={filteredSales}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
-          // @ts-ignore
-          estimatedItemSize={scale(120)}
-          ListEmptyComponent={
-            isLoading ? (
-              <View style={{ gap: verticalScale(12) }}>
-                <SkeletonItem layout="row" count={8} />
-              </View>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Icon name="document" size={64} color="rgba(184, 123, 90, 0.3)" />
-                <Text style={styles.empty}>Sin ventas registradas</Text>
-              </View>
-            )
+      <FlashList
+        data={filteredSales}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
+        estimatedItemSize={scale(120)}
+        ListEmptyComponent={
+          isLoading ? (
+            <View style={{ gap: verticalScale(12) }}>
+              <SkeletonItem layout="row" count={8} />
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Icon name="document" size={64} color="rgba(184, 123, 90, 0.3)" />
+              <Text style={styles.empty}>Sin ventas registradas</Text>
+            </View>
+          )
+        }
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
           }
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={() => 
-            isFetchingNextPage ? (
-              <View style={{ paddingVertical: verticalScale(20) }}>
-                <ActivityIndicator color={tokens.colors.mahogany} />
-              </View>
-            ) : null
-          }
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={tokens.colors.mahogany}
-              progressBackgroundColor={tokens.colors.glass.heavy}
-            />
-          }
-        />
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() => 
+          isFetchingNextPage ? (
+            <View style={{ paddingVertical: verticalScale(20) }}>
+              <ActivityIndicator color={tokens.colors.mahogany} />
+            </View>
+          ) : null
+        }
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refetch}
+            tintColor={tokens.colors.mahogany}
+            progressBackgroundColor={tokens.colors.glass.heavy}
+          />
+        }
+      />
 
       {selectedSale && (
         <SaleDetailModal
@@ -425,6 +532,150 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           isUpdating={updateSaleMutation.isPending}
         />
       )}
+
+      <Modal
+        visible={methodModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMethodModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setMethodModalVisible(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            <LinearGradient
+              colors={['rgba(25, 25, 30, 0.98)', 'rgba(15, 15, 20, 0.98)']}
+              style={styles.dropdownGradient}
+            >
+              <View style={styles.dropdownHeader}>
+                <Text style={styles.dropdownTitle}>Filtrar por pago</Text>
+                <TouchableOpacity 
+                  onPress={() => setMethodModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Icon name="times" size={16} color={tokens.colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              {paymentMethods.map((m) => (
+                <TouchableOpacity
+                  key={m.label}
+                  style={[
+                    styles.dropdownItem,
+                    selectedMethod === m.value && styles.dropdownItemActive
+                  ]}
+                  onPress={() => {
+                    setSelectedMethod(m.value);
+                    setMethodModalVisible(false);
+                  }}
+                >
+                  <View style={[
+                    styles.methodIconSmall,
+                    { backgroundColor: selectedMethod === m.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                  ]}>
+                    <Icon 
+                      name={m.icon} 
+                      size={14} 
+                      color={selectedMethod === m.value ? '#FFF' : tokens.colors.textDim} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.dropdownItemText,
+                    selectedMethod === m.value && styles.dropdownItemTextActive
+                  ]}>
+                    {m.label}
+                  </Text>
+                  {selectedMethod === m.value && (
+                    <Icon name="check" size={16} color={tokens.colors.mahogany} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </LinearGradient>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={periodModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPeriodModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setPeriodModalVisible(false)}
+        >
+          <View style={styles.dropdownContainer}>
+            <LinearGradient
+              colors={['rgba(25, 25, 30, 0.98)', 'rgba(15, 15, 20, 0.98)']}
+              style={styles.dropdownGradient}
+            >
+              <View style={styles.dropdownHeader}>
+                <Text style={styles.dropdownTitle}>Filtrar tiempo</Text>
+                <TouchableOpacity 
+                  onPress={() => setPeriodModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Icon name="times" size={16} color={tokens.colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+              {periodOptions.map((o) => (
+                <TouchableOpacity
+                  key={o.value}
+                  style={[
+                    styles.dropdownItem,
+                    period === o.value && styles.dropdownItemActive
+                  ]}
+                  onPress={() => {
+                    if (o.value === 'personalizado') {
+                      setPeriodModalVisible(false);
+                      setCustomModalVisible(true);
+                      setPeriod('personalizado');
+                    } else {
+                      setPeriod(o.value as any);
+                      setPeriodModalVisible(false);
+                    }
+                  }}
+                >
+                  <View style={[
+                    styles.methodIconSmall,
+                    { backgroundColor: period === o.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                  ]}>
+                    <Icon 
+                      name={o.icon} 
+                      size={14} 
+                      color={period === o.value ? '#FFF' : tokens.colors.textDim} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.dropdownItemText,
+                    period === o.value && styles.dropdownItemTextActive
+                  ]}>
+                    {o.label}
+                  </Text>
+                  {period === o.value && (
+                    <Icon name="check" size={16} color={tokens.colors.mahogany} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </LinearGradient>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <CustomDateRangeModal
+        visible={customModalVisible}
+        onClose={() => setCustomModalVisible(false)}
+        onConfirm={(start, end) => {
+          setStartDate(start);
+          setEndDate(end);
+          setCustomModalVisible(false);
+        }}
+        initialStart={startDate}
+        initialEnd={endDate}
+      />
     </View>
   );
 });
@@ -435,16 +686,21 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bg,
   },
   header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: verticalScale(24),
+    marginBottom: verticalScale(16),
     paddingHorizontal: scale(20),
+  },
+  filterSection: {
+    marginBottom: verticalScale(20),
+  },
+  filterScroll: {
+    paddingHorizontal: scale(20),
+    gap: scale(10),
+    flexDirection: 'row',
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(14),
+    gap: scale(12),
   },
   headerIconCircle: {
     width: scale(44),
@@ -455,6 +711,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: tokens.colors.mahogany,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(16),
+  },
+  headerStats: {
+    alignItems: 'flex-end',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(6),
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  statsLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(10),
+    color: tokens.colors.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statsValue: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(16),
+    color: tokens.colors.sage,
+    fontWeight: '800',
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
@@ -550,5 +834,73 @@ const styles = StyleSheet.create({
   saleChevron: {
     marginLeft: scale(4),
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: scale(20),
+  },
+  dropdownContainer: {
+    width: '100%',
+    maxWidth: scale(280),
+    borderRadius: tokens.radius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  dropdownGradient: {
+    padding: scale(16),
+  },
+  dropdownTitle: {
+    fontSize: moderateScale(14),
+    fontWeight: '800',
+    color: tokens.colors.textDim,
+    marginBottom: verticalScale(16),
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: verticalScale(16),
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 0,
+    top: -scale(4),
+    padding: scale(8),
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: verticalScale(12),
+    paddingHorizontal: scale(12),
+    borderRadius: tokens.radius.lg,
+    gap: scale(12),
+    marginBottom: verticalScale(4),
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+  },
+  methodIconSmall: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownItemText: {
+    flex: 1,
+    fontSize: moderateScale(16),
+    fontWeight: '600',
+    color: tokens.colors.textSecondary,
+  },
+  dropdownItemTextActive: {
+    color: tokens.colors.text,
+    fontWeight: '700',
+  },
 });
-

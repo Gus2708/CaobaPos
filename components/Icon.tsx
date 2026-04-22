@@ -56,6 +56,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; lib
   'exchange-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exchange-alt' },
   'exclamation-circle': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exclamation-circle' },
   'loader': { lib: 'fontawesome', component: FontAwesome, libraryName: 'spinner' },
+  'cog': { lib: 'fontawesome', component: FontAwesome, libraryName: 'cog' },
   // EvilIcons
   'search': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
   'search-plus': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
