@@ -7,8 +7,7 @@ import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Product } from '../store/cartStore';
 import { Icon } from './Icon';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
 import { Badge } from './Badge';
@@ -144,97 +143,27 @@ export const SaleDetailModal = memo(function SaleDetailModal({
 
   const { subtotal, tax, total } = calculateTotals();
 
-  const generateReceiptHTML = () => {
-    const itemsHTML = editedItems
-      .map(
-        (item) => `
-        <tr>
-          <td>${item.product_name} x${item.quantity}</td>
-          <td style="text-align: right;">$${item.subtotal.toFixed(2)}</td>
-        </tr>
-      `
-      )
-      .join('');
-
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Recibo - Caoba</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; max-width: 300px; margin: 0 auto; }
-            h1 { font-size: 24px; text-align: center; margin-bottom: 5px; }
-            .subtitle { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
-            .divider { border-top: 1px dashed #ccc; margin: 15px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            td { padding: 5px 0; font-size: 14px; }
-            .totals { margin-top: 15px; }
-            .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-top: 10px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-            .receipt-id { text-align: center; font-size: 10px; color: #999; margin-top: 10px; }
-          </style>
-        </head>
-        <body>
-          <h1>CAOBA</h1>
-          <div class="subtitle">Punto de Venta</div>
-          <div class="subtitle">${formatDate(sale.created_at)}</div>
-          
-          <div class="divider"></div>
-          
-          <table>
-            ${itemsHTML}
-          </table>
-          
-          <div class="divider"></div>
-          
-          <div class="totals">
-            <div style="display: flex; justify-content: space-between;">
-              <span>Subtotal:</span>
-              <span>$${subtotal.toFixed(2)}</span>
-            </div>
-            ${ivaEnabled ? `
-            <div style="display: flex; justify-content: space-between;">
-              <span>IVA (16%):</span>
-              <span>$${tax.toFixed(2)}</span>
-            </div>
-            ` : ''}
-            <div class="total-row">
-              <span>TOTAL:</span>
-              <span>$${total.toFixed(2)}</span>
-            </div>
-          </div>
-          
-          <div class="divider"></div>
-          
-          <div style="text-align: center; margin-top: 15px;">
-            <strong>Método de pago:</strong><br>
-            ${getPaymentLabel(sale.payment_method)}
-          </div>
-          
-          <div class="receipt-id">Folio: ${sale.id.slice(0, 8).toUpperCase()}</div>
-          
-          <div class="footer">
-            ¡Gracias por su compra!<br>
-            Vuelva pronto
-          </div>
-        </body>
-      </html>
-    `;
-  };
 
   const sharePDF = async () => {
     try {
       setLoadingPdf(true);
-      const html = generateReceiptHTML();
-      const { uri } = await Print.printToFileAsync({ html });
+      
+      const receiptData: ReceiptData = {
+        saleId: sale.id,
+        date: formatDate(sale.created_at),
+        items: editedItems.map(item => ({
+          name: item.product_name,
+          quantity: item.quantity,
+          price: item.unit_price,
+          subtotal: item.subtotal,
+        })),
+        subtotal,
+        tax,
+        total,
+        paymentMethod: sale.payment_method,
+      };
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Compartir Recibo',
-        });
-      }
+      await shareReceiptPDF(receiptData);
     } catch (error) {
       Alert.alert('Error', 'No se pudo generar el PDF');
     } finally {

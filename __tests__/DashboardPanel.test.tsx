@@ -4,12 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DashboardPanel } from '../app/DashboardPanel';
 import { supabase } from '../lib/supabase';
 
-// Mock Supabase
-jest.mock('../lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(),
-  },
-}));
+// Supabase is mocked in jest.setup.js
 
 // Mock Toast to avoid context errors
 jest.mock('../components/Toast', () => ({
@@ -30,8 +25,8 @@ const MOCK_SALES = [
 ];
 
 const MOCK_SALE_ITEMS = [
-  { sale_id: 's1', product_id: 'p1', quantity: 2, unit_price: 20, subtotal: 40 }, // Cost: 2 * 10 = 20
-  { sale_id: 's2', product_id: 'p1', quantity: 5, unit_price: 20, subtotal: 100 }, // Cost: 5 * 10 = 50
+  { sale_id: 's1', product_id: 'p1', quantity: 2, unit_price: 20, unit_cost: 10, subtotal: 40, sales: { created_at: TODAY_STR } }, // Cost: 2 * 10 = 20
+  { sale_id: 's2', product_id: 'p1', quantity: 5, unit_price: 20, unit_cost: 10, subtotal: 100, sales: { created_at: PAST_DATE } }, // Cost: 5 * 10 = 50
 ];
 
 const queryClient = new QueryClient({
@@ -44,23 +39,28 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe('DashboardPanel Metrics', () => {
   beforeEach(() => {
+    queryClient.clear();
     jest.clearAllMocks();
     
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
-      return {
-        select: jest.fn().mockImplementation(() => {
-          if (table === 'sales') {
-            return { order: jest.fn().mockResolvedValue({ data: MOCK_SALES, error: null }) };
-          }
-          if (table === 'sale_items') {
-            return Promise.resolve({ data: MOCK_SALE_ITEMS, error: null });
-          }
-          if (table === 'products') {
-            return Promise.resolve({ data: MOCK_PRODUCTS, error: null });
-          }
-          return Promise.resolve({ data: [], error: null });
-        }),
+      const mockChain: any = {
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lte: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockReturnThis(),
       };
+      
+      mockChain.then = jest.fn((callback) => {
+        let data = [];
+        if (table === 'sales') data = MOCK_SALES;
+        else if (table === 'sale_items') data = MOCK_SALE_ITEMS;
+        else if (table === 'products') data = MOCK_PRODUCTS;
+        return Promise.resolve(callback({ data, error: null }));
+      });
+      
+      return mockChain;
     });
   });
 
@@ -68,7 +68,6 @@ describe('DashboardPanel Metrics', () => {
     await render(<DashboardPanel />, { wrapper });
 
     // Wait until loading indicator is gone and main text appears
-    // The component displays "$20.00" for Ganancia and "$40.00" for revenue since it defaults to 'dia'
     const ventashoy = await screen.findByText('Ventas (Hoy)');
     expect(ventashoy).toBeOnTheScreen();
     

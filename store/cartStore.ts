@@ -39,6 +39,7 @@ interface SettingsStore {
   categories: string[];
   addCategory: (category: string) => void;
   removeCategory: (category: string) => void;
+  setCategories: (categories: string[]) => void;
 }
 
 export const useCartStore = create<CartStore>((set, get) => ({
@@ -118,6 +119,13 @@ export const useSettingsStore = create<SettingsStore>()(
       removeCategory: (category: string) => set((state) => {
         if (DEFAULT_CATEGORIES.includes(category)) return state;
         return { categories: state.categories.filter((c) => c !== category) };
+      }),
+      setCategories: (categories: string[]) => set((state) => {
+        const unique = Array.from(new Set([
+          ...DEFAULT_CATEGORIES,
+          ...categories.map(c => c.toLowerCase().trim())
+        ]));
+        return { categories: unique };
       }),
     }),
     {

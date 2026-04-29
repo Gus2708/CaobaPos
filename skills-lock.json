@@ -5,6 +5,11 @@
       "source": "callstack/react-native-testing-library",
       "sourceType": "github",
       "computedHash": "e6beef7078f84b041306394c89141344e7a88f83b06b53e26a0ea8615ca2a703"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "7e3c9cd74e9e2b4828527a857170e86310f2dab5ea8030a9043df2c7e6c88857"
     }
   }
 }

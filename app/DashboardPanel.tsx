@@ -624,6 +624,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         method={selectedMethod}
         periodLabel={periodLabel}
         sales={filteredSales.filter(s => s.payment_method === selectedMethod)}
+        payments={(allPayments ?? []).filter(p => p.payment_method === selectedMethod)}
       />
 
       <CustomDateRangeModal 
@@ -669,18 +670,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: verticalScale(24),
+    flexWrap: 'wrap',
+    gap: scale(12),
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(28), 
     color: tokens.colors.text, 
-    fontWeight: '800', 
+    fontWeight: '800',
+    flexShrink: 1,
   },
   headerTitleRow: {
-    flex: 1,
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: scale(12),
+    alignItems: 'center',
+    gap: scale(8),
+    flexWrap: 'wrap',
   },
   downloadBtn: {
     flexDirection: 'row',
@@ -834,6 +838,8 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    flexWrap: 'wrap',
+    gap: scale(4),
   },
   financialItemHighlight: {
     backgroundColor: 'rgba(109, 184, 138, 0.05)',
@@ -852,6 +858,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.textMuted,
+    flexShrink: 1,
   },
   financialLabelHighlight: {
     fontFamily: FontNames.instrumentSans,
@@ -918,6 +925,8 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(14),
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(255,255,255,0.04)',
+    flexWrap: 'wrap',
+    gap: scale(8),
   },
   listItemLeft: {
     flexDirection: 'row',

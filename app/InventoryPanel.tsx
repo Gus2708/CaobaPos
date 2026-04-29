@@ -18,6 +18,7 @@ import { ImagePickerModal } from '../components/ImagePickerModal';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { useCategories } from '../hooks/useProducts';
 
 interface EditState {
   id: string;
@@ -62,6 +63,9 @@ export const InventoryPanel = memo(function InventoryPanel({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isAddingQuickCat, setIsAddingQuickCat] = useState<'new' | 'edit' | null>(null);
   const [quickCatText, setQuickCatText] = useState('');
+  
+  // Use the new hook to fetch and sync categories from Supabase
+  useCategories();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -145,7 +149,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       for (const catName of item.categories) {
         const { data: catData } = await supabase
           .from('categories')
-          .upsert({ name: catName }, { onConflict: 'name' })
+          .upsert({ name: catName.toLowerCase().trim() }, { onConflict: 'name' })
           .select()
           .single();
         
@@ -187,6 +191,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       setEditing(null);
       showToast('Producto actualizado', 'success');
       onSuccess?.();
@@ -233,7 +238,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       for (const catName of newProduct.categories) {
         const { data: catData } = await supabase
           .from('categories')
-          .upsert({ name: catName }, { onConflict: 'name' })
+          .upsert({ name: catName.toLowerCase().trim() }, { onConflict: 'name' })
           .select()
           .single();
         
@@ -253,6 +258,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
       setNewProduct({ name: '', price: '', cost: '', stock: '', categories: [], barcode: '' });
       setShowAddForm(false);
       showToast('Producto agregado', 'success');
@@ -268,8 +274,11 @@ export const InventoryPanel = memo(function InventoryPanel({
     mutationFn: async (name: string) => {
       const { error } = await supabase
         .from('categories')
-        .upsert({ name: name.toLowerCase() }, { onConflict: 'name' });
+        .upsert({ name: name.toLowerCase().trim() }, { onConflict: 'name' });
       if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
     onError: (err: any) => {
       console.error('Category sync error:', err);
