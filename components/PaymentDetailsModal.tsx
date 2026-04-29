@@ -22,9 +22,10 @@ interface PaymentDetailsModalProps {
   method: string | null;
   periodLabel: string;
   sales: Sale[];
+  payments?: any[]; // Abonos
 }
 
-export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sales }: PaymentDetailsModalProps) {
+export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sales, payments = [] }: PaymentDetailsModalProps) {
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
@@ -50,7 +51,14 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
   };
 
   const { showToast } = useToast();
-  const totalAmount = sales.reduce((acc, s) => acc + Number(s.total_amount), 0);
+  const totalSalesAmount = sales.reduce((acc, s) => acc + Number(s.total_amount), 0);
+  const totalPaymentsAmount = payments.reduce((acc, p) => acc + Number(p.amount), 0);
+  const totalAmount = totalSalesAmount + totalPaymentsAmount;
+
+  const combinedMovements = [
+    ...sales.map(s => ({ ...s, isPayment: false, amount: s.total_amount })),
+    ...payments.map(p => ({ ...p, isPayment: true, amount: p.amount }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const handleDownload = async () => {
     try {
@@ -89,7 +97,7 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>{method ? methodLabels[method] || method : 'Ventas'}</Text>
-                <Text style={styles.subtitle} numberOfLines={1}>{periodLabel} • {sales.length} ventas</Text>
+                <Text style={styles.subtitle} numberOfLines={1}>{periodLabel} • {combinedMovements.length} mov.</Text>
               </View>
             </View>
             <View style={styles.headerRight}>
@@ -109,17 +117,22 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
           </View>
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-            {sales.length === 0 ? (
-              <Text style={styles.empty}>No hay ventas registradas</Text>
+            {combinedMovements.length === 0 ? (
+              <Text style={styles.empty}>No hay movimientos registrados</Text>
             ) : (
-              sales.map((sale) => (
-                <View key={sale.id} style={styles.saleItem}>
+              combinedMovements.map((item) => (
+                <View key={item.id} style={styles.saleItem}>
                   <View style={styles.saleLeft}>
-                    <Text style={styles.saleAmount}>${Number(sale.total_amount).toFixed(2)}</Text>
+                    <Text style={[styles.saleAmount, item.isPayment && { color: tokens.colors.sage }]}>
+                      {item.isPayment ? '+' : ''}${Number(item.amount).toFixed(2)}
+                    </Text>
+                    {item.isPayment && (
+                      <Text style={styles.movementBadge}>Abono</Text>
+                    )}
                   </View>
                   <View style={styles.saleRight}>
-                    <Text style={styles.saleDate}>{formatDate(sale.created_at)}</Text>
-                    <Text style={styles.saleTime}>{formatTime(sale.created_at)}</Text>
+                    <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
+                    <Text style={styles.saleTime}>{formatTime(item.created_at)}</Text>
                   </View>
                 </View>
               ))
@@ -280,6 +293,19 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(11),
     color: tokens.colors.textMuted,
+  },
+  movementBadge: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(9),
+    fontWeight: '800',
+    color: tokens.colors.sage,
+    backgroundColor: `${tokens.colors.sage}15`,
+    paddingHorizontal: scale(6),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
+    alignSelf: 'flex-start',
+    marginTop: verticalScale(2),
+    textTransform: 'uppercase',
   },
   empty: {
     fontFamily: FontNames.instrumentSans,

@@ -23,6 +23,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'history' | 'payment'>('history');
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'cash' | 'card' | 'transfer' | null>(null);
   const [selectedSale, setSelectedSale] = useState<any | null>(null);
   const [loadingSaleDetail, setLoadingSaleDetail] = useState(false);
   
@@ -238,6 +239,11 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       return;
     }
     
+    if (!selectedPaymentMethod) {
+      showToast('Selecciona un método de pago', 'warning');
+      return;
+    }
+    
     if (amount > client.balance_due + 0.01) {
       showToast(`El saldo es de $${client.balance_due.toFixed(2)}`, 'warning');
       return;
@@ -249,7 +255,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       await addPayment.mutateAsync({
         clientId: client.id,
         amount: amount,
-        paymentMethod: 'cash',
+        paymentMethod: selectedPaymentMethod!,
         // No enviamos saleId para que sea un abono general a la cuenta
       });
 
@@ -263,11 +269,33 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   };
 
   const handleSaldarSale = async (sale: any, balance: any) => {
+    Alert.alert(
+      'Saldar Venta',
+      '¿Con qué método de pago se realiza el abono?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Efectivo', 
+          onPress: () => executeSaldar(sale, balance, 'cash') 
+        },
+        { 
+          text: 'Tarjeta', 
+          onPress: () => executeSaldar(sale, balance, 'card') 
+        },
+        { 
+          text: 'Transferencia', 
+          onPress: () => executeSaldar(sale, balance, 'transfer') 
+        },
+      ]
+    );
+  };
+
+  const executeSaldar = async (sale: any, balance: any, method: string) => {
     try {
       await addPayment.mutateAsync({
         clientId: client.id,
         amount: balance.remaining,
-        paymentMethod: 'cash',
+        paymentMethod: method,
         saleId: sale.id,
       });
       showToast('Venta saldada con éxito', 'success');
@@ -333,82 +361,124 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
     });
 
-    const accentColor = isPayment ? tokens.colors.sage : tokens.colors.mahogany;
-    const borderColor = isPayment ? tokens.colors.sageDim : tokens.colors.mahoganyDim;
-    const gradientColors = ['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.01)'] as const;
-
     const balance = !isPayment ? saleBalances.get(item.id) : null;
     const isPaid = balance && balance.remaining <= 0.01;
     const isPartial = balance && balance.paid > 0 && balance.remaining > 0.01;
 
     const statusLabel = isPaid ? 'Pagada' : isPartial ? 'Parcial' : 'Pendiente';
-    const statusColor = isPaid ? tokens.colors.sage : isPartial ? '#F59E0B' : '#EF4444';
+    const statusColor = isPaid ? tokens.colors.sage : isPartial ? tokens.colors.amber : tokens.colors.coral;
+    
+    const amount = parseFloat(item.amount || item.total_amount);
 
-    const content = (
-      <View style={[styles.historyCard, { borderColor: isPaid ? tokens.colors.border : (isPayment ? tokens.colors.sageDim : statusColor + '40'), opacity: isPaid ? 0.7 : 1 }]}>
+    return (
+      <View style={[
+        styles.historyCard, 
+        { borderColor: isPaid ? tokens.colors.border : `${statusColor}20` },
+        isPaid && { opacity: 0.8 }
+      ]}>
         <LinearGradient
-          colors={gradientColors}
+          colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
+        
         <View style={styles.historyCardInner}>
-          {/* Section Left: Icon */}
-          <View style={[styles.historyIcon, { backgroundColor: `${isPayment ? accentColor : statusColor}08`, borderColor: `${isPayment ? accentColor : statusColor}15` }]}>
-            <Icon name={isPayment ? 'money-bill' : 'shopping-cart'} size={20} color={isPayment ? accentColor : statusColor} />
+          {/* Icon Box */}
+          <View style={[
+            styles.historyIcon, 
+            { 
+              backgroundColor: isPayment ? `${tokens.colors.sage}10` : `${statusColor}10`,
+              borderColor: isPayment ? `${tokens.colors.sage}20` : `${statusColor}20`
+            }
+          ]}>
+            <Icon 
+              name={isPayment ? 'receipt' : 'shopping-bag'} 
+              size={18} 
+              color={isPayment ? tokens.colors.sage : statusColor} 
+            />
           </View>
 
-          {/* Section Center: Info */}
+          {/* Info Section */}
           <View style={styles.historyInfo}>
-            <View style={styles.historyHeaderRow}>
-              <Text style={styles.historyTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{isPayment ? 'Abono realizado' : 'Venta a crédito'}</Text>
-            </View>
+            <Text style={styles.historyTitle} numberOfLines={1}>
+              {isPayment ? (item.sale_id ? 'Abono a Venta' : 'Abono General') : 'Venta a Crédito'}
+            </Text>
             <Text style={styles.historyDate}>{date}</Text>
+            
             {!isPayment && !isPaid && (
-              <View style={styles.remainingBadge}>
-                <Text style={styles.remainingText}>
-                  Resta: <Text style={styles.remainingValue}>${balance.remaining.toFixed(2)}</Text>
-                </Text>
+              <View style={styles.balanceTag}>
+                <Text style={styles.balanceTagLabel}>Resta </Text>
+                <Text style={styles.balanceTagValue}>${balance.remaining.toFixed(2)}</Text>
               </View>
             )}
           </View>
 
-          {/* Section Right: Value & Actions */}
+          {/* Right Section: Amount & Status */}
           <View style={styles.historyRight}>
-            <Text style={[styles.historyAmount, isPayment ? styles.historyAmountPayment : isPaid ? styles.historyAmountPaid : styles.historyAmountSale]}>
-              {isPayment ? '+' : '-'}${parseFloat(item.amount || item.total_amount).toFixed(2)}
+            <Text style={[
+              styles.historyAmount, 
+              isPayment ? styles.amountGreen : isPaid ? styles.amountMuted : styles.amountRed
+            ]}>
+              {isPayment ? '+' : '-'}${amount.toFixed(2)}
             </Text>
-            
-            <View style={styles.historyActionsRow}>
+
+            <View style={styles.historyActions}>
               {!isPayment && (
-                <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15`, marginRight: scale(4) }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusColor, fontSize: moderateScale(9) }]}>{statusLabel}</Text>
+                <View style={styles.statusGroup}>
+                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                  <Text style={[styles.statusLabel, { color: statusColor }]}>{statusLabel}</Text>
                 </View>
               )}
-              
-              {isPayment ? (
-                <TouchableOpacity onPress={() => handleDeletePayment(item.id)} style={styles.miniActionBtn}>
-                  <Icon name="trash" size={16} color={tokens.colors.coral} />
-                </TouchableOpacity>
-              ) : (
-                <>
-                  {!isPaid && (
-                    <TouchableOpacity style={styles.settleButtonCompact} onPress={() => handleSaldarSale(item, balance)}>
-                      <Text style={styles.settleButtonTextSmall}>Saldar</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity onPress={() => handleOpenSaleDetail(item.id, item)} style={styles.miniActionBtn}>
-                    <Icon name="chevron-right" size={16} color={tokens.colors.mahogany} />
-                  </TouchableOpacity>
-                </>
+
+              {isPayment && (
+                <View style={styles.paymentMethodBadge}>
+                  <Icon 
+                    name={item.payment_method === 'cash' ? 'money-bill' : item.payment_method === 'card' ? 'credit-card' : 'university'} 
+                    size={10} 
+                    color={tokens.colors.textMuted} 
+                  />
+                  <Text style={styles.methodText}>
+                    {item.payment_method === 'cash' ? 'Efectivo' : item.payment_method === 'card' ? 'Tarjeta' : 'Transf.'}
+                  </Text>
+                </View>
               )}
+
+              <View style={styles.buttonGroup}>
+                {isPayment ? (
+                  <TouchableOpacity 
+                    onPress={() => handleDeletePayment(item.id)} 
+                    style={styles.actionBtnSmall}
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="trash" size={14} color={tokens.colors.coral} />
+                  </TouchableOpacity>
+                ) : (
+                  <>
+                    {!isPaid && (
+                      <TouchableOpacity 
+                        style={styles.settleBtn} 
+                        onPress={() => handleSaldarSale(item, balance)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.settleBtnText}>Saldar</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                      onPress={() => handleOpenSaleDetail(item.id, item)} 
+                      style={styles.actionBtnSmall}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="chevron-right" size={14} color={tokens.colors.textSecondary} />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </View>
           </View>
         </View>
       </View>
     );
-
-    return content;
   };
 
   const isLoading = loadsPayments || loadsSales;
@@ -530,17 +600,54 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
               <ScrollView contentContainerStyle={styles.paymentContainer}>
                 <Text style={styles.paymentInstruction}>Ingresa el monto a abonar en la cuenta:</Text>
                 
-                <View style={styles.paymentInputWrapper}>
-                  <Text style={styles.paymentCurrency}>$</Text>
-                  <TextInput
-                    style={styles.paymentInput}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
-                    value={paymentAmount}
-                    onChangeText={setPaymentAmount}
-                    autoFocus
-                  />
+                <View style={styles.paymentDisplayContainer}>
+                  <View style={styles.paymentInputWrapper}>
+                    <Text style={styles.paymentCurrency}>$</Text>
+                    <TextInput
+                      style={[
+                        styles.paymentInput,
+                        { width: Math.max(scale(40), (paymentAmount.length || 1) * scale(32)) }
+                      ]}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor="rgba(255,255,255,0.1)"
+                      value={paymentAmount}
+                      onChangeText={setPaymentAmount}
+                      selectionColor={tokens.colors.mahogany}
+                    />
+                  </View>
+                  <View style={styles.paymentUnderline} />
+                </View>
+
+                <Text style={[styles.paymentInstruction, { marginTop: verticalScale(8) }]}>Método de pago:</Text>
+                <View style={styles.methodSelector}>
+                  {[
+                    { id: 'cash', label: 'Efectivo', icon: 'money-bill' },
+                    { id: 'card', label: 'Tarjeta', icon: 'credit-card' },
+                    { id: 'transfer', label: 'Transf.', icon: 'mobile-alt' },
+                  ].map((m) => (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[
+                        styles.methodOption,
+                        selectedPaymentMethod === m.id && styles.methodOptionActive,
+                      ]}
+                      onPress={() => setSelectedPaymentMethod(m.id as any)}
+                      accessibilityRole="button"
+                    >
+                      <Icon 
+                        name={m.icon} 
+                        size={18} 
+                        color={selectedPaymentMethod === m.id ? '#FFF' : tokens.colors.textDim} 
+                      />
+                      <Text style={[
+                        styles.methodLabel,
+                        selectedPaymentMethod === m.id && styles.methodLabelActive
+                      ]}>
+                        {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
 
                 {client.balance_due > 0 && (
@@ -555,9 +662,10 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
                 )}
 
                 <TouchableOpacity 
-                  style={[styles.submitButton, addPayment.isPending && styles.submitButtonDisabled]}
+                  style={[styles.submitButton, (addPayment.isPending || !paymentAmount || !selectedPaymentMethod) && styles.submitButtonDisabled]}
                   onPress={handleAddPayment}
-                  disabled={addPayment.isPending || !paymentAmount}
+                  disabled={addPayment.isPending || !paymentAmount || !selectedPaymentMethod}
+                  accessibilityRole="button"
                 >
                   {addPayment.isPending ? (
                     <ActivityIndicator size="small" color="#FFF" />
@@ -775,110 +883,149 @@ const styles = StyleSheet.create({
     padding: scale(20),
     paddingBottom: verticalScale(100),
   },
-   historyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    marginBottom: verticalScale(12),
+  historyCard: {
+    backgroundColor: tokens.colors.surface,
+    marginBottom: verticalScale(10),
     borderRadius: tokens.radius.xl,
     borderWidth: 1,
-    padding: scale(12),
+    borderColor: tokens.colors.border,
     overflow: 'hidden',
+    padding: scale(14),
   },
   historyCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   historyIcon: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(11),
-    justifyContent: 'center', 
+    width: scale(42),
+    height: scale(42),
+    borderRadius: tokens.radius.md,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: scale(10),
+    marginRight: scale(12),
     borderWidth: 1,
   },
   historyInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
-   historyTitle: {
+  historyTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: '800',
     color: tokens.colors.text,
+    letterSpacing: -0.3,
   },
   historyDate: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
+    color: tokens.colors.textMuted,
+    marginTop: verticalScale(1),
+  },
+  balanceTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.xs,
+    marginTop: verticalScale(6),
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  balanceTagLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(10),
     color: tokens.colors.textDim,
-    marginTop: verticalScale(2),
+    fontWeight: '600',
   },
-   historyAmount: {
+  balanceTagValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(14),
-    fontWeight: '800',
-    textAlign: 'right',
-    marginBottom: verticalScale(4),
+    fontSize: moderateScale(10),
+    color: tokens.colors.mahogany,
+    fontWeight: '700',
   },
-  historyAmountPayment: { color: tokens.colors.sage },
-  historyAmountSale: { color: tokens.colors.coral },
-  historyAmountPaid: {
-    color: tokens.colors.sage,
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
+  historyRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  historyHeaderRow: {
+  historyAmount: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(15),
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    marginBottom: verticalScale(6),
+  },
+  amountMuted: {
+    color: tokens.colors.textDim,
+    opacity: 0.5,
+  },
+  historyActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(8),
   },
-  statusBadge: {
-    paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: tokens.radius.pill,
-  },
-  statusBadgeText: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(10),
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  deleteAction: {
-    padding: scale(8),
-  },
-   historyActionsRow: {
+  statusGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: scale(4),
+    marginRight: scale(4),
+  },
+  statusDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+  },
+  statusLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(10),
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+  },
+  paymentMethodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingHorizontal: scale(6),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
+    marginRight: scale(4),
+  },
+  methodText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(9),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: scale(6),
   },
-  miniActionBtn: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(8),
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  settleButtonCompact: {
+  settleBtn: {
     backgroundColor: tokens.colors.sage,
     paddingHorizontal: scale(10),
     paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,
   },
-  settleButtonTextSmall: {
+  settleBtnText: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(10),
     fontWeight: '800',
     color: '#FFF',
   },
-  remainingBadge: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+  actionBtnSmall: {
+    width: scale(28),
+    height: scale(28),
+    borderRadius: tokens.radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
-    borderRadius: scale(6),
-    marginTop: verticalScale(4),
+    borderColor: 'rgba(255,255,255,0.02)',
   },
   paymentContainer: {
     padding: scale(24),
@@ -888,35 +1035,56 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     color: tokens.colors.textDim,
     textAlign: 'center',
-    marginBottom: verticalScale(24),
+    marginBottom: verticalScale(12),
+  },
+  paymentDisplayContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: verticalScale(16),
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    paddingVertical: verticalScale(16),
+    paddingHorizontal: scale(32),
+    borderRadius: tokens.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
   },
   paymentInputWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     justifyContent: 'center',
-    marginBottom: verticalScale(32),
   },
   paymentCurrency: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(32),
+    fontSize: moderateScale(24),
     fontWeight: '800',
     color: tokens.colors.mahogany,
-    marginRight: scale(8),
+    marginRight: scale(6),
+    opacity: 0.8,
   },
   paymentInput: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(42),
+    fontSize: moderateScale(48),
     fontWeight: '800',
     color: tokens.colors.text,
-    minWidth: scale(150),
     textAlign: 'center',
+    letterSpacing: -1,
+    padding: 0,
+    margin: 0,
+  },
+  paymentUnderline: {
+    width: scale(60),
+    height: 2,
+    backgroundColor: tokens.colors.mahogany,
+    marginTop: verticalScale(4),
+    borderRadius: 1,
+    opacity: 0.3,
   },
   quickAmounts: {
-    marginBottom: verticalScale(32),
+    marginBottom: verticalScale(16),
   },
   quickAmountBtn: {
     backgroundColor: tokens.colors.mahoganyDim,
-    paddingVertical: verticalScale(14),
+    paddingVertical: verticalScale(10),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: tokens.colors.mahogany,
@@ -930,7 +1098,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: tokens.colors.mahogany,
-    paddingVertical: verticalScale(16),
+    paddingVertical: verticalScale(14),
     borderRadius: tokens.radius.pill,
     alignItems: 'center',
     shadowColor: tokens.colors.mahogany,
@@ -970,19 +1138,34 @@ const styles = StyleSheet.create({
     right: 0,
     height: 3,
   },
-  remainingText: {
+  methodSelector: {
+    flexDirection: 'row',
+    gap: scale(8),
+    marginBottom: verticalScale(16),
+  },
+  methodOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(6),
+    paddingVertical: verticalScale(12),
+    borderRadius: tokens.radius.lg,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  methodOptionActive: {
+    backgroundColor: tokens.colors.mahogany,
+    borderColor: tokens.colors.mahogany,
+  },
+  methodLabel: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(12),
+    fontWeight: '700',
     color: tokens.colors.textDim,
-    marginTop: verticalScale(2),
   },
-  remainingValue: {
-    fontWeight: '800',
-    color: tokens.colors.mahogany,
-  },
-  historyRight: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: verticalScale(8),
+  methodLabelActive: {
+    color: '#FFF',
   },
 });

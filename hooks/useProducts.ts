@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Product } from '../store/cartStore';
+import { Product, useSettingsStore } from '../store/cartStore';
 import { useCartStore } from '../store/cartStore';
 
 const PRODUCTS_TABLE = 'products';
@@ -41,6 +41,28 @@ export function useProducts(category: Category = 'todos') {
     staleTime: 1000 * 60 * 5,
     // Keep previous data visible while new category loads (no flash)
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useCategories() {
+  const setCategories = useSettingsStore((state) => state.setCategories);
+
+  return useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .order('name');
+
+      if (error) throw error;
+      
+      const names = data.map(c => c.name);
+      // Sync with store
+      setCategories(names);
+      return names;
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes
   });
 }
 

@@ -7,8 +7,7 @@ import { CartItem } from '../store/cartStore';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -53,98 +52,27 @@ export function SaleSummaryModal({
     return labels[method] || method;
   };
 
-  const generateReceiptHTML = () => {
-    const itemsHTML = items
-      .map(
-        (item) => `
-        <tr>
-          <td>${item.name} x${item.quantity}</td>
-          <td style="text-align: right;">$${Number(item.price * item.quantity).toFixed(2)}</td>
-        </tr>
-      `
-      )
-      .join('');
-
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Recibo - Caoba</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; max-width: 300px; margin: 0 auto; }
-            h1 { font-size: 24px; text-align: center; margin-bottom: 5px; }
-            .subtitle { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
-            .divider { border-top: 1px dashed #ccc; margin: 15px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            td { padding: 5px 0; font-size: 14px; }
-            .totals { margin-top: 15px; }
-            .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-top: 10px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-            .receipt-id { text-align: center; font-size: 10px; color: #999; margin-top: 10px; }
-          </style>
-        </head>
-        <body>
-          <h1>CAOBA</h1>
-          <div class="subtitle">Punto de Venta</div>
-          <div class="subtitle">${formatDate()}</div>
-          
-          <div class="divider"></div>
-          
-          <table>
-            ${itemsHTML}
-          </table>
-          
-          <div class="divider"></div>
-          
-          <div class="totals">
-            <div style="display: flex; justify-content: space-between;">
-              <span>Subtotal:</span>
-              <span>$${subtotal.toFixed(2)}</span>
-            </div>
-            ${tax > 0 ? `
-            <div style="display: flex; justify-content: space-between;">
-              <span>IVA (16%):</span>
-              <span>$${tax.toFixed(2)}</span>
-            </div>
-            ` : ''}
-            <div class="total-row">
-              <span>TOTAL:</span>
-              <span>$${total.toFixed(2)}</span>
-            </div>
-          </div>
-          
-          <div class="divider"></div>
-          
-          <div style="text-align: center; margin-top: 15px;">
-            <strong>Método de pago:</strong><br>
-            ${getPaymentLabel(paymentMethod)}
-          </div>
-          
-          <div class="receipt-id">Folio: ${saleId.slice(0, 8).toUpperCase()}</div>
-          
-          <div class="footer">
-            ¡Gracias por su compra!<br>
-            Vuelva pronto
-          </div>
-        </body>
-      </html>
-    `;
-  };
 
   const sharePDF = async () => {
     try {
       setLoading(true);
 
-      const html = generateReceiptHTML();
-      const { uri } = await Print.printToFileAsync({ html });
+      const receiptData: ReceiptData = {
+        saleId,
+        date: formatDate(),
+        items: items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.price * item.quantity,
+        })),
+        subtotal,
+        tax,
+        total,
+        paymentMethod,
+      };
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Compartir Recibo',
-        });
-      }
+      await shareReceiptPDF(receiptData);
     } catch (error) {
       Alert.alert('Error', 'No se pudo compartir el recibo');
       console.error(error);

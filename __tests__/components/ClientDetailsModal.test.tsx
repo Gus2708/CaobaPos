@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { ClientDetailsModal } from '../../components/ClientDetailsModal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -101,5 +101,48 @@ describe('ClientDetailsModal - Debts Calculations', () => {
 
     // Assuming negative is shown correctly
     expect(screen.getByText('$-5.00')).toBeOnTheScreen();
+  });
+});
+
+describe('ClientDetailsModal - Payment Validation', () => {
+  it('prevents registering abono if no amount or no payment method is selected', async () => {
+    const mockClient = {
+      id: 'abc-123',
+      name: 'Gustavo',
+      phone: null,
+      created_at: new Date().toISOString(),
+      total_credit_sales: 10.00,
+      total_paid: 0,
+      balance_due: 10.00,
+    };
+
+    await renderWithProviders(
+      <ClientDetailsModal visible={true} client={mockClient} onClose={jest.fn()} />
+    );
+
+    // Switch to "Abonar" tab
+    fireEvent.press(screen.getByText('Abonar'));
+
+    // Wait for the tab content to render
+    const submitBtn = await screen.findByRole('button', { name: 'Registrar Abono' });
+    
+    expect(submitBtn).toBeOnTheScreen();
+    // Should be disabled initially
+    expect(submitBtn).toBeDisabled();
+
+    // Enter amount
+    const amountInput = screen.getByPlaceholderText('0.00');
+    fireEvent.changeText(amountInput, '5.00');
+    
+    // Still disabled because no method selected
+    expect(submitBtn).toBeDisabled();
+
+    // Select method
+    fireEvent.press(screen.getByRole('button', { name: 'Efectivo' }));
+
+    // Now it should be enabled
+    await waitFor(() => {
+      expect(submitBtn).not.toBeDisabled();
+    });
   });
 });
