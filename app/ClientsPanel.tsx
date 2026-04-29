@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import React, { useState, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../components/Icon';
@@ -6,7 +7,7 @@ import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useClients, ClientBalance } from '../hooks/useClients';
-import { useState } from 'react';
+import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
 
 export default function ClientsPanel() {
@@ -17,6 +18,11 @@ export default function ClientsPanel() {
   const totalDeuda = clients?.reduce((sum, c) => sum + (c.balance_due > 0 ? c.balance_due : 0), 0) || 0;
   const debtorsCount = clients?.filter(c => c.balance_due > 0).length || 0;
   const [search, setSearch] = useState('');
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const HEADER_HEIGHT = verticalScale(60) + insets.top;
+  const NAVBAR_HEIGHT = verticalScale(64);
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
 
   const filteredClients = clients?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -30,6 +36,12 @@ export default function ClientsPanel() {
         onPress={() => setSelectedClient(item)}
         activeOpacity={0.7}
       >
+        <LinearGradient
+          colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={styles.clientAvatar}>
           <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
         </View>
@@ -49,26 +61,42 @@ export default function ClientsPanel() {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, verticalScale(16)) }]}>
+  const ListHeader = useMemo(() => (
+    <View style={styles.listHeader}>
+      <View style={styles.header}>
+        <Text style={styles.headerLabel}>Gestión de cartera</Text>
         <Text style={styles.title}>Clientes y Créditos</Text>
-        <Text style={styles.subtitle}>Gestión de saldos y cuentas por cobrar</Text>
+        <Text style={styles.subtitle}>Supervisión de saldos y cuentas por cobrar</Text>
       </View>
 
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryIconBox}>
-            <Icon name="wallet" size={24} color={tokens.colors.mahogany} />
+      <View style={styles.summarySection}>
+        <Text style={styles.sectionLabel}>Estado de cuenta global</Text>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <LinearGradient
+              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.summaryIconBox}>
+              <Icon name="wallet" size={24} color={tokens.colors.mahogany} />
+            </View>
+            <View style={{ gap: verticalScale(2) }}>
+              <Text style={styles.summaryLabel}>Total por cobrar</Text>
+              <Text style={styles.summaryValue}>${totalDeuda.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.summaryLabel}>Total por cobrar</Text>
-            <Text style={styles.summaryValue}>${totalDeuda.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+          <View style={styles.debtorsBadge}>
+            <LinearGradient
+              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Text style={styles.debtorsCount}>{debtorsCount}</Text>
+            <Text style={styles.debtorsLabel}>Deudores</Text>
           </View>
-        </View>
-        <View style={styles.debtorsBadge}>
-          <Text style={styles.debtorsCount}>{debtorsCount}</Text>
-          <Text style={styles.debtorsLabel}>Deudores</Text>
         </View>
       </View>
 
@@ -84,44 +112,62 @@ export default function ClientsPanel() {
           />
         </View>
       </View>
+    </View>
+  ), [totalDeuda, debtorsCount, search]);
 
-      <View style={styles.listContainer}>
-        {isLoading ? (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-            <Text style={styles.loadingText}>Sincronizando clientes...</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.centerContainer}>
-            <Icon name="exclamation-circle" size={48} color={tokens.colors.coral} />
-            <Text style={styles.errorText}>No se pudo cargar la base de datos</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredClients}
-            keyExtractor={item => item.id}
-            renderItem={renderClientItem}
-            contentContainerStyle={[
-              styles.listContent, 
-              { paddingBottom: insets.bottom + verticalScale(100) }
-            ]}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <View style={styles.emptyIconBox}>
-                  <Icon name="users" size={42} color={tokens.colors.mahogany} />
-                </View>
-                <Text style={styles.emptyText}>
-                  {search 
-                    ? `No encontramos resultados para "${search}"` 
-                    : 'Aún no tienes clientes registrados en tu base de datos'}
-                </Text>
-              </View>
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {isLoading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
+          <Text style={styles.loadingText}>Sincronizando clientes...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Icon name="exclamation-circle" size={48} color={tokens.colors.coral} />
+          <Text style={styles.errorText}>No se pudo cargar la base de datos</Text>
+        </View>
+      ) : (
+        <Animated.FlatList
+          ListHeaderComponent={ListHeader}
+          data={filteredClients}
+          keyExtractor={item => item.id}
+          renderItem={renderClientItem}
+          contentContainerStyle={[
+            styles.listContent, 
+            { 
+              paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), 
+              paddingBottom: insets.bottom + verticalScale(100) 
             }
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-      </View>
-
+          ]}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconBox}>
+                <Icon name="users" size={42} color={tokens.colors.mahogany} />
+              </View>
+              <Text style={styles.emptyText}>
+                {search 
+                  ? `No encontramos resultados para "${search}"` 
+                  : 'Aún no tienes clientes registrados en tu base de datos'}
+              </Text>
+            </View>
+          }
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
+        />
+      )}
+      
       <ClientDetailsModal
         visible={!!selectedClient}
         client={clients?.find(c => c.id === selectedClient?.id) || selectedClient}
@@ -137,141 +183,154 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bg,
   },
   header: {
-    paddingHorizontal: scale(20),
-    paddingBottom: verticalScale(20),
+    paddingHorizontal: scale(4),
+    paddingBottom: verticalScale(32),
+  },
+  headerLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: verticalScale(4),
   },
   title: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(30),
+    fontSize: moderateScale(32),
     fontWeight: '800',
     color: tokens.colors.text,
     letterSpacing: scale(-0.8),
   },
   subtitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(15),
-    color: tokens.colors.textSecondary,
-    marginTop: verticalScale(4),
+    fontSize: moderateScale(14),
+    color: tokens.colors.textMuted,
+    marginTop: verticalScale(2),
+    fontWeight: '500',
+  },
+  summarySection: {
+    marginBottom: verticalScale(32),
+  },
+  sectionLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(13),
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
+    marginBottom: verticalScale(12),
+    paddingHorizontal: scale(4),
   },
   summaryRow: {
     flexDirection: 'row',
-    marginHorizontal: scale(20),
-    marginBottom: verticalScale(20),
     gap: scale(12),
+    paddingHorizontal: scale(4),
   },
   summaryCard: {
     flex: 1,
-    padding: scale(20),
-    borderRadius: tokens.radius.xl,
-    backgroundColor: tokens.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderRadius: tokens.radius.card,
+    padding: tokens.spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(14),
+    gap: tokens.spacing.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.glass.border,
+    overflow: 'hidden',
   },
   summaryIconBox: {
     width: scale(48),
     height: scale(48),
-    borderRadius: scale(24),
+    borderRadius: tokens.radius.btn,
     backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
   },
   summaryLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(13),
-    fontWeight: '600',
+    fontSize: tokens.typography.xs,
     color: tokens.colors.textMuted,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: scale(0.5),
+    letterSpacing: 0.5,
   },
   summaryValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(22),
+    fontSize: tokens.typography['2xl'],
+    color: tokens.colors.sage,
     fontWeight: '800',
-    color: tokens.colors.text,
-    marginTop: verticalScale(2),
   },
   debtorsBadge: {
-    backgroundColor: tokens.colors.coralDim,
-    borderRadius: tokens.radius.xl,
-    paddingHorizontal: scale(16),
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.md,
+    borderRadius: tokens.radius.card,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: tokens.colors.coral,
+    borderColor: tokens.colors.glass.border,
     minWidth: scale(80),
+    overflow: 'hidden',
   },
   debtorsCount: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(22),
+    color: tokens.colors.mahogany,
     fontWeight: '800',
-    color: tokens.colors.coral,
-    lineHeight: moderateScale(28),
   },
   debtorsLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(10),
-    color: tokens.colors.coral,
-    textTransform: 'uppercase',
+    fontSize: tokens.typography.xs,
+    color: tokens.colors.textMuted,
     fontWeight: '700',
-    marginTop: verticalScale(2),
+    textTransform: 'uppercase',
   },
   searchRow: {
-    marginHorizontal: scale(20),
-    marginBottom: verticalScale(20),
+    marginBottom: tokens.spacing.xxl,
+    paddingHorizontal: tokens.spacing.xs,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.pill,
-    paddingHorizontal: scale(18),
+    backgroundColor: tokens.colors.glass.light,
+    borderRadius: tokens.radius.md,
+    paddingHorizontal: tokens.spacing.lg,
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
-    gap: scale(12),
+    borderColor: tokens.colors.glass.border,
+    gap: tokens.spacing.md,
     height: verticalScale(54),
   },
   searchInput: {
     flex: 1,
-    color: tokens.colors.text,
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(15),
-    padding: 0,
-  },
-  listContainer: {
-    flex: 1,
-    backgroundColor: tokens.colors.surface,
-    borderTopLeftRadius: tokens.radius.xl,
-    borderTopRightRadius: tokens.radius.xl,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: tokens.colors.borderLight,
+    fontSize: tokens.typography.md,
+    color: tokens.colors.text,
+    fontWeight: '600',
   },
   listContent: {
-    padding: scale(20),
+    paddingHorizontal: scale(16),
   },
   clientCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     padding: scale(16),
-    marginBottom: verticalScale(14),
-    borderRadius: tokens.radius.lg,
+    marginBottom: verticalScale(16),
+    borderRadius: tokens.radius.card,
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: tokens.colors.glass.border,
+    overflow: 'hidden',
+    minHeight: verticalScale(84),
+    justifyContent: 'center',
+    gap: scale(14),
   },
   clientAvatar: {
     width: scale(48),
     height: scale(48),
-    borderRadius: scale(24),
-    backgroundColor: tokens.colors.surfaceElevated,
+    borderRadius: tokens.radius.btn,
+    backgroundColor: tokens.colors.glass.light,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: scale(16),
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: tokens.colors.glass.border,
   },
   clientAvatarText: {
     fontFamily: FontNames.instrumentSans,

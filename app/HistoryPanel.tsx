@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
 import { Text } from '../components/Text';
+
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
@@ -16,6 +18,9 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
+
+// Create animated component at module level to avoid remount on every render
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
 interface SaleItem {
   id: string;
@@ -74,6 +79,8 @@ const SaleCard = React.memo(function SaleCard({
       onPress={onView} 
       activeOpacity={0.7}
       onLongPress={onDelete}
+      accessibilityRole="button"
+      accessibilityLabel={`Venta de ${Number(item.total_amount).toFixed(2)} pesos, realizada el ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
       <LinearGradient
         colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
@@ -104,6 +111,13 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const HEADER_HEIGHT = verticalScale(60) + insets.top;
+  const NAVBAR_HEIGHT = verticalScale(64);
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
@@ -398,37 +412,32 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     />
   ), [handleView, handleDelete]);
 
-  return (
-    <View style={[
-      styles.container,
-      { paddingTop: Platform.OS === 'android' ? Math.max(insets.top, StatusBar.currentHeight || 0) + verticalScale(8) : insets.top }
-    ]}>
-      <LinearGradient
-        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      
+  const ListHeader = useMemo(() => (
+    <View style={styles.listHeader}>
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.headerIconCircle}>
             <Icon name="history" size={24} color={tokens.colors.mahogany} />
           </View>
-          <View style={{ flex: 1, gap: scale(8), flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.title}>Historial</Text>
-            <Badge variant="neutral">
-              {filteredSales.length}
-            </Badge>
+          <View style={{ flex: 1, gap: scale(4), marginRight: scale(12) }}>
+            <Text style={styles.headerLabel}>Actividad reciente</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8), flexWrap: 'wrap' }}>
+              <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>Historial</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{filteredSales.length}</Text>
+              </View>
+            </View>
           </View>
 
           <View style={styles.headerRight}>
             <View style={styles.headerStats}>
-              <Text style={styles.statsLabel}>Total</Text>
+              <Text style={styles.statsLabel}>Total ventas</Text>
               {loadingTotal ? (
                 <ActivityIndicator size="small" color={tokens.colors.mahogany} />
               ) : (
-                <Text style={styles.statsValue}>$ {totalSum?.toLocaleString()}</Text>
+                <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit>
+                  $ {totalSum?.toLocaleString()}
+                </Text>
               )}
             </View>
           </View>
@@ -436,6 +445,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       </View>
 
       <View style={styles.filterSection}>
+        <Text style={styles.sectionLabel}>Filtrar resultados</Text>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
@@ -472,16 +482,37 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             placeholderTextColor="#6A6A72"
             value={search}
             onChangeText={setSearch}
+            accessibilityRole="search"
+            accessibilityLabel="Campo de búsqueda de historial"
           />
         </View>
       </View>
+    </View>
+  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search]);
 
-      <FlashList
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      {/* @ts-ignore */}
+      <AnimatedFlashList
+        ListHeaderComponent={ListHeader}
         data={filteredSales}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: Sale) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
-        estimatedItemSize={scale(120)}
+        contentContainerStyle={[
+          styles.list, 
+          { 
+            paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), 
+            paddingBottom: insets.bottom + verticalScale(100) 
+          }
+        ]}
+        estimatedItemSize={100}
         ListEmptyComponent={
           isLoading ? (
             <View style={{ gap: verticalScale(12) }}>
@@ -508,6 +539,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           ) : null
         }
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -673,8 +709,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           setEndDate(end);
           setCustomModalVisible(false);
         }}
-        initialStart={startDate}
-        initialEnd={endDate}
+        initialStartDate={startDate}
+        initialEndDate={endDate}
       />
     </View>
   );
@@ -686,26 +722,56 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.bg,
   },
   header: { 
-    marginBottom: verticalScale(16),
-    paddingHorizontal: scale(20),
+    marginBottom: verticalScale(28),
+    paddingHorizontal: scale(4),
+  },
+  headerLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: scale(6),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  countText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    color: tokens.colors.text,
+    fontWeight: '700',
   },
   filterSection: {
-    marginBottom: verticalScale(20),
+    marginBottom: verticalScale(28),
+  },
+  sectionLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(13),
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
+    marginBottom: verticalScale(12),
+    paddingHorizontal: scale(4),
   },
   filterScroll: {
-    paddingHorizontal: scale(20),
-    gap: scale(10),
+    paddingHorizontal: scale(4),
+    gap: scale(12),
     flexDirection: 'row',
   },
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
+    gap: scale(16),
   },
   headerIconCircle: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
+    width: scale(52),
+    height: scale(52),
+    borderRadius: scale(16),
     backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
@@ -715,24 +781,26 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(16),
+    flexShrink: 1,
   },
   headerStats: {
     alignItems: 'flex-end',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(6),
-    borderRadius: tokens.radius.lg,
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.md,
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    minWidth: scale(90),
   },
   statsLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(9),
     color: tokens.colors.textMuted,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    marginBottom: verticalScale(2),
   },
   statsValue: {
     fontFamily: FontNames.jetBrainsMono,
@@ -742,36 +810,34 @@ const styles = StyleSheet.create({
   },
   title: { 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(28), 
+    fontSize: moderateScale(32), 
     color: tokens.colors.text, 
     fontWeight: '800',
-    lineHeight: moderateScale(34),
+    letterSpacing: scale(-0.5),
   },
   searchRow: { 
-    marginBottom: verticalScale(24),
-    paddingHorizontal: scale(20),
+    marginBottom: verticalScale(32),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: scale(16),
     paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: scale(12),
-    height: verticalScale(48),
+    height: verticalScale(54),
   },
   searchInput: { 
     flex: 1,
     color: tokens.colors.text, 
     fontFamily: FontNames.instrumentSans, 
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: '600',
-    height: '100%',
   },
   list: { 
-    paddingHorizontal: scale(20),
+    paddingHorizontal: scale(16),
     paddingBottom: verticalScale(32),
   },
   emptyContainer: {

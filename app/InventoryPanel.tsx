@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions } from 'react-native';
+import { useRef } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
@@ -19,6 +20,10 @@ import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useCategories } from '../hooks/useProducts';
+import { globalScrollY } from '../store/uiStore';
+
+// Create animated component at module level to avoid remount on every render
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
 interface EditState {
   id: string;
@@ -42,6 +47,287 @@ interface NewProductState {
   imageUri?: string;
 }
 
+
+const ProductItem = memo(({ 
+  item, 
+  isEditing, 
+  readOnly, 
+  isPending, 
+  categories, 
+  onStartEdit, 
+  onCancelEdit, 
+  onSaveEdit, 
+  onDelete, 
+  onPickImage, 
+  onToggleCategory,
+  setEditing,
+  isAddingQuickCat,
+  setIsAddingQuickCat,
+  quickCatText,
+  setQuickCatText,
+  handleQuickAdd
+}: { 
+  item: Product; 
+  isEditing: boolean; 
+  readOnly: boolean;
+  isPending: boolean;
+  categories: string[];
+  onStartEdit: (p: Product) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: (id: string, name: string, url?: string) => void;
+  onPickImage: (t: 'new' | 'edit') => void;
+  onToggleCategory: (cat: string) => void;
+  setEditing: (s: any) => void;
+  isAddingQuickCat: string | null;
+  setIsAddingQuickCat: (s: any) => void;
+  quickCatText: string;
+  setQuickCatText: (s: string) => void;
+  handleQuickAdd: (t: 'new' | 'edit') => void;
+}) => {
+  if (isEditing) {
+    const editState = item as unknown as EditState;
+    return (
+      <View style={styles.editCard} testID="edit-card">
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        
+        <TouchableOpacity 
+          style={styles.closeEditBtn} 
+          onPress={onCancelEdit}
+          activeOpacity={0.7}
+          accessibilityLabel="Cerrar edición"
+        >
+          <Icon name="close" size={24} color={tokens.colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.imagePickerCard, { marginTop: verticalScale(52) }]} onPress={() => onPickImage('edit')} activeOpacity={0.85}>
+          <View style={styles.imagePickerThumb}>
+            {editState.newImageUri || editState.image_url ? (
+              <CachedImage
+                remoteUri={(editState.newImageUri || editState.image_url) as string}
+                style={styles.imagePickerThumbImg}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.imagePickerThumbEmpty}>
+                <Icon name="image" size={28} color={tokens.colors.mahogany} />
+              </View>
+            )}
+            <View style={styles.imagePickerCamBadge}>
+              <Icon name="camera" size={12} color="#FFF" />
+            </View>
+          </View>
+          <View style={styles.imagePickerInfo}>
+            <Text style={styles.imagePickerLabel}>Foto del producto</Text>
+            <Text style={styles.imagePickerSub}>
+              {editState.newImageUri ? 'Nueva foto seleccionada ✓' : editState.image_url ? 'Toca para cambiar imagen' : 'Toca para agregar imagen'}
+            </Text>
+          </View>
+          <View style={styles.imagePickerArrow}>
+            <Icon name="chevron-right" size={18} color={tokens.colors.textMuted} />
+          </View>
+        </TouchableOpacity>
+
+        <Text style={styles.inputLabel}>Nombre</Text>
+        <TextInput
+          style={styles.input}
+          value={editState.name}
+          onChangeText={(v) => setEditing((e: any) => e ? { ...e, name: v } : null)}
+          placeholder="Nombre del producto"
+          placeholderTextColor={tokens.colors.textDim}
+          testID="edit-input-name"
+        />
+        <View style={styles.row}>
+          <View style={[styles.flex1, styles.formSection]}>
+            <Text style={styles.inputLabel}>Precio Venta</Text>
+            <TextInput
+              style={styles.input}
+              value={editState.price}
+              onChangeText={(v) => setEditing((e: any) => e ? { ...e, price: v } : null)}
+              placeholder="0.00"
+              placeholderTextColor="#6A6A72"
+              keyboardType="decimal-pad"
+              testID="edit-input-price"
+            />
+          </View>
+          <View style={[styles.flex1, styles.formSection]}>
+            <Text style={styles.inputLabel}>Costo</Text>
+            <TextInput
+              style={styles.input}
+              value={editState.cost}
+              onChangeText={(v) => setEditing((e: any) => e ? { ...e, cost: v } : null)}
+              placeholder="0.00"
+              placeholderTextColor="#6A6A72"
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <View style={[styles.flex1, styles.formSection]}>
+            <Text style={styles.inputLabel}>Stock</Text>
+            <TextInput
+              style={styles.input}
+              value={editState.stock}
+              onChangeText={(v) => setEditing((e: any) => e ? { ...e, stock: v } : null)}
+              placeholder="0"
+              placeholderTextColor="#6A6A72"
+              keyboardType="number-pad"
+            />
+          </View>
+        </View>
+        <Text style={styles.inputLabel}>Código de barras</Text>
+        <TextInput
+          style={styles.input}
+          value={editState.barcode}
+          onChangeText={(v) => setEditing((e: any) => e ? { ...e, barcode: v } : null)}
+          placeholder="Opcional"
+          placeholderTextColor="#6A6A72"
+        />
+        <Text style={styles.inputLabel}>Categorías</Text>
+        <View style={styles.catRow}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.catBtn, editState.categories.includes(cat) && styles.catActive]}
+              onPress={() => onToggleCategory(cat)}
+              activeOpacity={0.7}
+            >
+              {editState.categories.includes(cat) && (
+                <LinearGradient
+                  colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
+              <Text style={[styles.catText, editState.categories.includes(cat) && styles.catTextActive]}>
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          
+          {isAddingQuickCat === 'edit' ? (
+            <View style={styles.quickAddContainer}>
+              <TextInput
+                style={styles.quickAddInput}
+                placeholder="Categoría..."
+                placeholderTextColor={tokens.colors.textDim}
+                value={quickCatText}
+                onChangeText={setQuickCatText}
+                autoFocus
+                onSubmitEditing={() => handleQuickAdd('edit')}
+              />
+              <TouchableOpacity onPress={() => handleQuickAdd('edit')} style={styles.quickAddActionBtn}>
+                <Icon name="check" size={18} color={tokens.colors.sage} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsAddingQuickCat(null)} style={styles.quickAddActionBtn}>
+                <Icon name="close" size={18} color={tokens.colors.coral} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.quickAddToggle} onPress={() => setIsAddingQuickCat('edit')}>
+              <Icon name="plus" size={16} color={tokens.colors.mahogany} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.editActions}>
+          <TouchableOpacity
+            style={[styles.saveBtn, isPending && styles.btnDisabled]}
+            onPress={onSaveEdit}
+            disabled={isPending}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Guardar Cambios"
+          >
+            <LinearGradient
+              colors={[tokens.colors.mahogany, tokens.colors.mahoganyDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <Icon name={isPending ? 'loader' : 'check'} size={18} color="#FFFFFF" />
+            <Text style={styles.saveBtnText}>
+              {isPending ? 'Guardando...' : 'Guardar Cambios'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.editSecondaryRow}>
+            <TouchableOpacity
+              style={[styles.cancelBtnOutline, styles.flex1]}
+              onPress={onCancelEdit}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar edición"
+            >
+              <Icon name="close" size={16} color={tokens.colors.textMuted} />
+              <Text style={styles.cancelBtnOutlineText}>Cancelar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.deleteBtnOutline, styles.flex1]}
+              onPress={() => onDelete(item.id, item.name, item.image_url)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Eliminar producto"
+            >
+              <Icon name="trash" size={16} color={tokens.colors.coral} />
+              <Text style={styles.deleteBtnOutlineText}>Eliminar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity 
+      style={styles.listItemWrapper} 
+      onPress={() => onStartEdit(item)}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Editar ${item.name}`}
+    >
+      <View style={styles.item}>
+        <View style={styles.itemMainRow}>
+          <View style={styles.itemImageCircle}>
+            {item.image_url ? (
+              <CachedImage 
+                remoteUri={item.image_url} 
+                style={styles.thumbImage} 
+                contentFit="cover" 
+              />
+            ) : (
+              <View style={[styles.thumbPlaceholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                <Text style={[styles.thumbPlaceholderText, { color: tokens.colors.mahogany }]}>
+                  {item.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+            <View style={styles.itemMeta}>
+              <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
+              <View style={[styles.stockDotRow, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)', borderColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.1)' }]}>
+                 <View style={[styles.stockDot, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.sage }]} />
+                 <Text style={[styles.itemStockText, { color: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>{item.stock_quantity} uds</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.itemChevron}>
+            <Icon name="chevron-right" size={20} color={tokens.colors.textMuted} />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
 export const InventoryPanel = memo(function InventoryPanel({ 
   readOnly = false,
   onSuccess 
@@ -64,6 +350,12 @@ export const InventoryPanel = memo(function InventoryPanel({
   const [isAddingQuickCat, setIsAddingQuickCat] = useState<'new' | 'edit' | null>(null);
   const [quickCatText, setQuickCatText] = useState('');
   
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const HEADER_HEIGHT = verticalScale(60) + insets.top;
+  const NAVBAR_HEIGHT = verticalScale(64);
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+
   // Use the new hook to fetch and sync categories from Supabase
   useCategories();
 
@@ -433,238 +725,30 @@ export const InventoryPanel = memo(function InventoryPanel({
   };
 
   const renderItem = useCallback(({ item }: { item: Product }) => {
-    if (editing?.id === item.id) {
-      return (
-        <View style={styles.editCard}>
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          
-          <TouchableOpacity 
-            style={styles.closeEditBtn} 
-            onPress={() => setEditing(null)}
-            activeOpacity={0.7}
-          >
-            <Icon name="close" size={24} color={tokens.colors.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.imagePickerCard, { marginTop: verticalScale(52) }]} onPress={() => handlePickImage('edit')} activeOpacity={0.85}>
-            <View style={styles.imagePickerThumb}>
-              {editing.newImageUri || editing.image_url ? (
-                <CachedImage
-                  remoteUri={(editing.newImageUri || editing.image_url) as string}
-                  style={styles.imagePickerThumbImg}
-                  contentFit="cover"
-                />
-              ) : (
-                <View style={styles.imagePickerThumbEmpty}>
-                  <Icon name="image" size={28} color={tokens.colors.mahogany} />
-                </View>
-              )}
-              <View style={styles.imagePickerCamBadge}>
-                <Icon name="camera" size={12} color="#FFF" />
-              </View>
-            </View>
-            <View style={styles.imagePickerInfo}>
-              <Text style={styles.imagePickerLabel}>Foto del producto</Text>
-              <Text style={styles.imagePickerSub}>
-                {editing.newImageUri ? 'Nueva foto seleccionada ✓' : editing.image_url ? 'Toca para cambiar imagen' : 'Toca para agregar imagen'}
-              </Text>
-            </View>
-            <View style={styles.imagePickerArrow}>
-              <Icon name="chevron-right" size={18} color={tokens.colors.textMuted} />
-            </View>
-          </TouchableOpacity>
-
-          <Text style={styles.inputLabel}>Nombre</Text>
-            <TextInput
-            style={styles.input}
-            value={editing.name}
-            onChangeText={(v) => setEditing((e) => e ? { ...e, name: v } : null)}
-            placeholder="Nombre del producto"
-            placeholderTextColor={tokens.colors.textDim}
-          />
-          <View style={styles.row}>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Precio Venta</Text>
-              <TextInput
-                style={styles.input}
-                value={editing.price}
-                onChangeText={(v) => setEditing((e) => e ? { ...e, price: v } : null)}
-                placeholder="0.00"
-                placeholderTextColor="#6A6A72"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Costo</Text>
-              <TextInput
-                style={styles.input}
-                value={editing.cost}
-                onChangeText={(v) => setEditing((e) => e ? { ...e, cost: v } : null)}
-                placeholder="0.00"
-                placeholderTextColor="#6A6A72"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Stock</Text>
-              <TextInput
-                style={styles.input}
-                value={editing.stock}
-                onChangeText={(v) => setEditing((e) => e ? { ...e, stock: v } : null)}
-                placeholder="0"
-                placeholderTextColor="#6A6A72"
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
-          <Text style={styles.inputLabel}>Código de barras</Text>
-          <TextInput
-            style={styles.input}
-            value={editing.barcode}
-            onChangeText={(v) => setEditing((e) => e ? { ...e, barcode: v } : null)}
-            placeholder="Opcional"
-            placeholderTextColor="#6A6A72"
-          />
-          <Text style={styles.inputLabel}>Categorías</Text>
-          <View style={styles.catRow}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.catBtn, editing.categories.includes(cat) && styles.catActive]}
-                onPress={() => toggleCategory(cat)}
-                activeOpacity={0.7}
-              >
-                {editing.categories.includes(cat) && (
-                  <LinearGradient
-                    colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
-                <Text style={[styles.catText, editing.categories.includes(cat) && styles.catTextActive]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            
-            {isAddingQuickCat === 'edit' ? (
-              <View style={styles.quickAddContainer}>
-                <TextInput
-                  style={styles.quickAddInput}
-                  placeholder="Categoría..."
-                  placeholderTextColor={tokens.colors.textDim}
-                  value={quickCatText}
-                  onChangeText={setQuickCatText}
-                  autoFocus
-                  onSubmitEditing={() => handleQuickAdd('edit')}
-                />
-                <TouchableOpacity onPress={() => handleQuickAdd('edit')} style={styles.quickAddActionBtn}>
-                  <Icon name="check" size={18} color={tokens.colors.sage} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsAddingQuickCat(null)} style={styles.quickAddActionBtn}>
-                  <Icon name="close" size={18} color={tokens.colors.coral} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.quickAddToggle} onPress={() => setIsAddingQuickCat('edit')}>
-                <Icon name="plus" size={16} color={tokens.colors.mahogany} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <View style={styles.editActions}>
-            {/* Primary: Guardar */}
-            <TouchableOpacity
-              style={[styles.saveBtn, updateMutation.isPending && styles.btnDisabled]}
-              onPress={saveEdit}
-              disabled={updateMutation.isPending}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[tokens.colors.mahogany, tokens.colors.mahoganyDark]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <Icon name={updateMutation.isPending ? 'loader' : 'check'} size={18} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>
-                {updateMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Secondary row: Cancelar + Eliminar */}
-            <View style={styles.editSecondaryRow}>
-              <TouchableOpacity
-                style={[styles.cancelBtnOutline, styles.flex1]}
-                onPress={() => setEditing(null)}
-                activeOpacity={0.7}
-              >
-                <Icon name="close" size={16} color={tokens.colors.textMuted} />
-                <Text style={styles.cancelBtnOutlineText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.deleteBtnOutline, styles.flex1]}
-                onPress={() => handleDelete(item.id, item.name, item.image_url)}
-                activeOpacity={0.7}
-              >
-                <Icon name="trash" size={16} color={tokens.colors.coral} />
-                <Text style={styles.deleteBtnOutlineText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
+    const isEditing = editing?.id === item.id;
+    
     return (
-      <TouchableOpacity 
-        style={styles.listItemWrapper} 
-        onPress={() => startEdit(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.item}>
-          <View style={styles.itemMainRow}>
-            <View style={styles.itemImageCircle}>
-              {item.image_url ? (
-                <CachedImage 
-                  remoteUri={item.image_url} 
-                  style={styles.thumbImage} 
-                  contentFit="cover" 
-                />
-              ) : (
-                <View style={[styles.thumbPlaceholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
-                  <Text style={[styles.thumbPlaceholderText, { color: tokens.colors.mahogany }]}>
-                    {item.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-            </View>
-            
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-              <View style={styles.itemMeta}>
-                <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
-                <View style={[styles.stockDotRow, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)', borderColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.1)' }]}>
-                   <View style={[styles.stockDot, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.sage }]} />
-                   <Text style={[styles.itemStockText, { color: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>{item.stock_quantity} uds</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.itemChevron}>
-              <Icon name="chevron-right" size={20} color={tokens.colors.textMuted} />
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+      <ProductItem 
+        item={isEditing ? (editing as unknown as Product) : item}
+        isEditing={isEditing}
+        readOnly={readOnly}
+        isPending={updateMutation.isPending}
+        categories={categories}
+        onStartEdit={startEdit}
+        onCancelEdit={() => setEditing(null)}
+        onSaveEdit={saveEdit}
+        onDelete={handleDelete}
+        onPickImage={handlePickImage}
+        onToggleCategory={toggleCategory}
+        setEditing={setEditing}
+        isAddingQuickCat={isAddingQuickCat}
+        setIsAddingQuickCat={setIsAddingQuickCat}
+        quickCatText={quickCatText}
+        setQuickCatText={setQuickCatText}
+        handleQuickAdd={handleQuickAdd}
+      />
     );
-  }, [editing, categories, readOnly, updateMutation.isPending, handlePickImage, toggleCategory, startEdit, handleDelete, saveEdit]);
+  }, [editing, categories, readOnly, updateMutation.isPending, handlePickImage, toggleCategory, startEdit, handleDelete, saveEdit, isAddingQuickCat, quickCatText, handleQuickAdd]);
 
   const ListHeader = useMemo(() => (
     <View style={{ marginBottom: verticalScale(16) }}>
@@ -682,6 +766,8 @@ export const InventoryPanel = memo(function InventoryPanel({
               style={styles.addBtnMini} 
               onPress={() => setShowAddForm(!showAddForm)}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={showAddForm ? "Cerrar formulario de agregar" : "Agregar nuevo producto"}
             >
               <LinearGradient
                 colors={showAddForm ? [tokens.colors.coral, tokens.colors.coral] : [tokens.colors.mahogany, tokens.colors.mahoganyDark]}
@@ -756,6 +842,8 @@ export const InventoryPanel = memo(function InventoryPanel({
             placeholderTextColor={tokens.colors.textDim}
             value={search}
             onChangeText={setSearch}
+            accessibilityRole="search"
+            accessibilityLabel="Buscar productos"
           />
         </View>
         <View style={styles.countContainer}>
@@ -766,7 +854,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       </View>
 
       {showAddForm && !readOnly && (
-        <View style={styles.addForm}>
+        <View style={styles.addForm} testID="add-form">
           <LinearGradient
             colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
@@ -778,7 +866,7 @@ export const InventoryPanel = memo(function InventoryPanel({
               <View style={styles.addFormIconCircle}>
                 <Icon name="plus" size={20} color={tokens.colors.mahogany} />
               </View>
-              <Text style={styles.formTitle}>Nuevo Producto</Text>
+              <Text style={styles.formTitle} accessibilityRole="header">Nuevo Producto</Text>
             </View>
           </View>
           
@@ -916,6 +1004,8 @@ export const InventoryPanel = memo(function InventoryPanel({
               onPress={() => createMutation.mutate()}
               disabled={!newProduct.name || !newProduct.price || newProduct.categories.length === 0 || createMutation.isPending}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Crear Producto"
             >
               <LinearGradient
                 colors={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0)
@@ -965,12 +1055,12 @@ export const InventoryPanel = memo(function InventoryPanel({
         
 
 
-        <FlashList
+        <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredProducts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.list, { paddingBottom: verticalScale(32) + insets.bottom }]}
+          contentContainerStyle={[styles.list, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), paddingBottom: verticalScale(32) + insets.bottom }]}
           // @ts-ignore
           estimatedItemSize={scale(96)}
           ListEmptyComponent={() => {
@@ -1013,6 +1103,11 @@ export const InventoryPanel = memo(function InventoryPanel({
             ) : null
           }
           showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+            { useNativeDriver: true }
+          )}
+          scrollEventThrottle={16}
         />
 
         <ImagePickerModal
@@ -1086,7 +1181,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   list: { 
-    paddingHorizontal: scale(20),
+    paddingHorizontal: scale(16),
     paddingTop: verticalScale(8),
   },
   categoryManager: { 
@@ -1360,12 +1455,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   listItemWrapper: { 
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(16),
     borderRadius: tokens.radius.xl,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
+    minHeight: verticalScale(84),
+    justifyContent: 'center',
   },
   item: { 
     padding: scale(16), 
@@ -1613,11 +1710,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: verticalScale(40),
   },
-  addFormActions: { 
-    marginTop: verticalScale(24),
-    gap: verticalScale(16),
-  },
-  cancelAddBtn: { 
+  cancelBtnAdd: { 
     height: verticalScale(48),
     alignItems: 'center', 
     justifyContent: 'center',

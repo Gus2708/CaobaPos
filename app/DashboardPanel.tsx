@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Animated, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
+import { globalScrollY } from '../store/uiStore';
 
 interface Sale {
   id: string;
@@ -77,9 +78,11 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
       style={[styles.statCard, style]}
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole={onPress ? 'button' : 'none'}
+      accessibilityLabel={onPress ? `Ver detalles de ${label}: ${value}` : `${label}: ${value}`}
     >
       <LinearGradient
-        colors={['rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.01)']}
+        colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.01)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -117,6 +120,12 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [methodModalVisible, setMethodModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isMobile = width < 768;
+  const HEADER_HEIGHT = verticalScale(60) + insets.top;
+  const NAVBAR_HEIGHT = verticalScale(64);
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
 
   const { today, weekAgo, monthAgo, defaultStart } = useMemo(() => {
     const t = new Date(); t.setHours(0, 0, 0, 0);
@@ -231,64 +240,70 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     return map;
   }, [products]);
 
-  const calculateMetricsForSales = useMemo(() => {
-    return (saleList: Sale[], paymentList: ClientPayment[]) => {
-      const saleIds = new Set(saleList.map(s => s.id));
-      const relevantItems = (saleItems ?? []).filter(item => saleIds.has(item.sale_id));
-      
-      const rawRevenue = saleList.reduce((acc, s) => acc + Number(s.total_amount), 0);
-      
-      const pendingCredit = saleList
-        .filter(s => s.payment_method === 'credito')
-        .reduce((acc, s) => acc + Number(s.total_amount), 0);
-      
-      const paidSalesIds = new Set(saleList.filter(s => s.payment_method !== 'credito').map(s => s.id));
-      const paidItems = (saleItems ?? []).filter(item => paidSalesIds.has(item.sale_id));
-
-      // Separate cash vs electronic for both sales and payments
-      const cashFromSales = saleList
-        .filter(s => s.payment_method === 'cash')
-        .reduce((acc, s) => acc + Number(s.total_amount), 0);
-
-      const electronicSales = saleList
-        .filter(s => s.payment_method === 'card' || s.payment_method === 'transfer')
-        .reduce((acc, s) => acc + Number(s.total_amount), 0);
-      
-      const cashAbonos = paymentList
-        .filter(p => p.payment_method === 'cash')
-        .reduce((acc, p) => acc + Number(p.amount), 0);
-
-      const electronicAbonos = paymentList
-        .filter(p => p.payment_method === 'card' || p.payment_method === 'transfer')
-        .reduce((acc, p) => acc + Number(p.amount), 0);
-      
-      const totalAbonos = cashAbonos + electronicAbonos;
-      const receivedMoney = cashFromSales + cashAbonos;
-      const bsRevenue = electronicSales + electronicAbonos;
-
-      // REVENUE: Only non-credit sales + All Abonos
-      const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
-
-      // COST: Only cost of items in paid sales
-      const costOfPaidSales = paidItems.reduce((acc, item) => {
-        const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
-        return acc + (itemCost * item.quantity);
-      }, 0);
-
-      // PROFIT: (Paid Sales - Their costs) + All Abonos
-      const profit = (rawRevenue - pendingCredit - costOfPaidSales) + totalAbonos;
-
-      return { revenue: effectiveRevenue, cost: costOfPaidSales, profit, pendingCredit, receivedMoney, bsRevenue };
-    };
-  }, [saleItems, productMap]);
-
   const currentMetrics = useMemo(() => {
-    const m = calculateMetricsForSales(filteredSales, allPayments ?? []);
-    const margin = m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0;
-    return { ...m, margin };
-  }, [filteredSales, allPayments, calculateMetricsForSales]);
+    const saleList = filteredSales;
+    const paymentList = allPayments ?? [];
+    const saleIds = new Set(saleList.map(s => s.id));
+    const items = saleItems ?? [];
+    
+    let rawRevenue = 0;
+    let pendingCredit = 0;
+    let cashFromSales = 0;
+    let electronicSales = 0;
+    
+    saleList.forEach(s => {
+      const amt = Number(s.total_amount) || 0;
+      rawRevenue += amt;
+      if (s.payment_method === 'credito') {
+        pendingCredit += amt;
+      } else if (s.payment_method === 'cash') {
+        cashFromSales += amt;
+      } else if (s.payment_method === 'card' || s.payment_method === 'transfer') {
+        electronicSales += amt;
+      }
+    });
 
-  const insets = useSafeAreaInsets();
+    let cashAbonos = 0;
+    let electronicAbonos = 0;
+    paymentList.forEach(p => {
+      const amt = Number(p.amount) || 0;
+      if (p.payment_method === 'cash') {
+        cashAbonos += amt;
+      } else {
+        electronicAbonos += amt;
+      }
+    });
+
+    const totalAbonos = cashAbonos + electronicAbonos;
+    const receivedMoney = cashFromSales + cashAbonos;
+    const bsRevenue = electronicSales + electronicAbonos;
+    const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
+
+    let costOfPaidSales = 0;
+    items.forEach(item => {
+      if (saleIds.has(item.sale_id)) {
+        const sale = saleList.find(s => s.id === item.sale_id);
+        if (sale && sale.payment_method !== 'credito') {
+          const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
+          costOfPaidSales += (itemCost * item.quantity);
+        }
+      }
+    });
+
+    const profit = (rawRevenue - pendingCredit - costOfPaidSales) + totalAbonos;
+    const margin = effectiveRevenue > 0 ? (profit / effectiveRevenue) * 100 : 0;
+
+    return { 
+      revenue: effectiveRevenue, 
+      cost: costOfPaidSales, 
+      profit, 
+      pendingCredit, 
+      receivedMoney, 
+      bsRevenue,
+      margin
+    };
+  }, [filteredSales, allPayments, saleItems, productMap]);
+
   const { showToast } = useToast();
 
   const handleDownloadPDF = async () => {
@@ -360,10 +375,28 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.content, { paddingBottom: verticalScale(40) + insets.bottom }]}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      <Animated.ScrollView 
+        showsVerticalScrollIndicator={false}
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+        { useNativeDriver: true }
+      )}
+      scrollEventThrottle={16}
+      contentContainerStyle={[
+        styles.content, 
+        { 
+          paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20),
+          paddingBottom: verticalScale(40) + insets.bottom 
+        }
+      ]}
     >
       
       <View style={styles.header}>
@@ -378,6 +411,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           style={styles.downloadBtn}
           onPress={handleDownloadPDF}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Descargar reporte PDF del periodo actual"
         >
           <Icon name="file-pdf" size={20} color={tokens.colors.mahogany} />
           <Text style={styles.downloadBtnText}>Reporte PDF</Text>
@@ -437,7 +472,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -525,7 +560,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.sectionCard}>
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -560,7 +595,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           </View>
           <View style={styles.sectionCard}>
             <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -593,7 +628,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.sectionCard}>
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -639,7 +674,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           setCustomModalVisible(false);
         }}
       />
-    </ScrollView>
+    </Animated.ScrollView>
+    </View>
   );
 });
 
@@ -799,8 +835,8 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
-    marginBottom: verticalScale(16),
+    gap: tokens.spacing.md,
+    marginBottom: tokens.spacing.lg,
   },
   sectionIcon: {
     width: scale(38),
@@ -818,9 +854,9 @@ const styles = StyleSheet.create({
   },
   sectionCard: { 
     borderRadius: tokens.radius.xl, 
-    padding: scale(16),
+    padding: tokens.spacing.lg,
     borderWidth: 1, 
-    borderColor: tokens.colors.borderLight,
+    borderColor: tokens.colors.glass.border,
     overflow: 'hidden',
   },
   financialGrid: {
@@ -837,7 +873,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: tokens.colors.glass.border,
     flexWrap: 'wrap',
     gap: scale(4),
   },

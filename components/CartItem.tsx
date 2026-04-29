@@ -54,7 +54,7 @@ export const CartItemRow = memo(function CartItemRow({
             onPress={onDecrement}
             activeOpacity={0.7}
           >
-            <Icon name="minus" size={12} color={tokens.colors.text} />
+            <Icon name="minus" size={14} color={tokens.colors.text} />
           </TouchableOpacity>
           
           <View style={styles.quantityContainer}>
@@ -66,7 +66,7 @@ export const CartItemRow = memo(function CartItemRow({
             onPress={onIncrement}
             activeOpacity={0.7}
           >
-            <Icon name="plus" size={12} color={tokens.colors.text} />
+            <Icon name="plus" size={14} color={tokens.colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -77,7 +77,7 @@ export const CartItemRow = memo(function CartItemRow({
             onPress={onRemove}
             activeOpacity={0.7}
           >
-            <Icon name="trash" size={14} color={tokens.colors.coral} />
+            <Icon name="trash" size={18} color={tokens.colors.coral} />
           </TouchableOpacity>
         </View>
       </View>
@@ -99,9 +99,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   itemIconCircle: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: tokens.radius.btn,
+    width: scale(52),
+    height: scale(52),
+    borderRadius: tokens.radius.lg,
     backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   itemInitial: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(20),
     fontWeight: '800',
     color: tokens.colors.mahogany,
   },

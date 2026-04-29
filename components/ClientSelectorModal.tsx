@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { BlurView } from 'expo-blur';
 import { 
   View, 
   Modal, 
@@ -11,7 +12,8 @@ import {
   Platform,
   Animated,
   PanResponder,
-  Dimensions
+  Dimensions,
+  ScrollView
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,9 +30,10 @@ interface ClientSelectorModalProps {
   onSelectClient: (client: ClientBalance) => void;
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MIN_MODAL_HEIGHT = SCREEN_HEIGHT * 0.45;
-const MAX_MODAL_HEIGHT = SCREEN_HEIGHT * 0.92;
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const MIN_MODAL_HEIGHT = SCREEN_HEIGHT * 0.88;
+const MAX_MODAL_HEIGHT = SCREEN_HEIGHT * 0.88; 
+const MODAL_TOP_RADIUS = tokens.radius.xl;
 
 export function ClientSelectorModal({ visible, onClose, onSelectClient }: ClientSelectorModalProps) {
   const insets = useSafeAreaInsets();
@@ -157,43 +160,71 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
   ), [onSelectClient, onClose]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+    <Modal 
+      visible={visible} 
+      animationType="slide" 
+      transparent={true} 
+      onRequestClose={onClose}
+      statusBarTranslucent={true}
+    >
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -50} 
       >
         <View style={styles.overlay}>
+          <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
           <Animated.View 
             style={[
               styles.modalContainer, 
               { 
                 height: heightAnim,
-                paddingBottom: Math.max(insets.bottom, verticalScale(16)) 
+                paddingBottom: insets.bottom 
               }
             ]}
           >
-            <LinearGradient
-              colors={['rgba(30, 30, 36, 0.85)', 'rgba(15, 15, 20, 0.92)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={styles.blurContainer}>
+               <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 12, 0.75)' }]} />
+            </View>
             
             <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
               <View style={styles.dragHandle} />
             </View>
             <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>Seleccionar Cliente</Text>
-                <Text style={styles.subtitleCount}>{filteredClients.length} clientes encontrados</Text>
+              <View style={styles.headerTop}>
+                <View>
+                  <Text style={styles.title}>Seleccionar Cliente</Text>
+                  <Text style={styles.subtitleCount}>{filteredClients.length} clientes encontrados</Text>
+                </View>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+                  <Icon name="close" size={24} color={tokens.colors.textDim} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
-                <Icon name="close" size={24} color={tokens.colors.textDim} />
-              </TouchableOpacity>
+              
+              {!isCreating && (
+                <View style={styles.searchRow}>
+                  <View style={styles.searchInputContainer}>
+                    <Icon name="search" size={18} color={tokens.colors.mahogany} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Buscar por nombre o teléfono..."
+                      placeholderTextColor={tokens.colors.textDim}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                  </View>
+                </View>
+              )}
             </View>
 
             {isCreating ? (
-              <View style={styles.createContainer}>
+              <ScrollView 
+                style={styles.createScroll}
+                contentContainerStyle={styles.createContainer}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={styles.sectionTitle}>Nuevo Cliente</Text>
                 <View style={styles.inputGroup}>
                   <View style={styles.inputContainer}>
@@ -241,22 +272,9 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                     )}
                   </TouchableOpacity>
                 </View>
-              </View>
+              </ScrollView>
             ) : (
               <>
-                <View style={styles.searchRow}>
-                  <View style={styles.searchInputContainer}>
-                    <Icon name="search" size={18} color={tokens.colors.mahogany} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Buscar por nombre o teléfono..."
-                      placeholderTextColor={tokens.colors.textDim}
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                    />
-                  </View>
-                </View>
-
                 <TouchableOpacity 
                   style={styles.createButton}
                   onPress={() => setIsCreating(true)}
@@ -320,20 +338,25 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.82)',
     justifyContent: 'flex-end',
   },
+  dismissArea: {
+    flex: 1,
+  },
   modalContainer: {
-    borderTopLeftRadius: tokens.radius.modal,
-    borderTopRightRadius: tokens.radius.modal,
+    width: '100%',
+    borderTopLeftRadius: tokens.radius.xl * 1.5,
+    borderTopRightRadius: tokens.radius.xl * 1.5,
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
     elevation: 20,
+    backgroundColor: 'transparent',
+  },
+  blurContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
   },
   dragHandleContainer: {
     width: '100%',
@@ -348,32 +371,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: scale(20),
-    paddingBottom: scale(20),
+    paddingBottom: scale(16),
     paddingTop: scale(8),
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.borderLight,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(16),
   },
   title: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(20),
     fontWeight: '800',
     color: tokens.colors.text,
   },
   subtitleCount: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(13),
     color: tokens.colors.textDim,
     marginTop: verticalScale(2),
   },
   closeButton: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -381,23 +407,23 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   searchRow: {
-    padding: scale(20),
+    paddingTop: scale(4),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    height: verticalScale(48),
-    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    height: verticalScale(52),
+    borderRadius: tokens.radius.lg,
     paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   searchInput: {
     flex: 1,
-    marginLeft: scale(10),
+    marginLeft: scale(12),
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     color: tokens.colors.text,
   },
   createButton: {
@@ -476,7 +502,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: tokens.colors.coral,
   },
-  createContainer: { padding: scale(24) },
+  createScroll: {
+    flex: 1,
+  },
+  createContainer: { 
+    padding: scale(24),
+    paddingBottom: verticalScale(32),
+  },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
     fontSize: moderateScale(16),

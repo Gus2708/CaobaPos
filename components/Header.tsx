@@ -73,11 +73,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   brandLogo: {
-    width: scale(220),
-    height: scale(90),
-    marginLeft: -scale(20),
-    marginTop: -scale(10),
-    marginBottom: -scale(10),
+    width: scale(180),
+    height: verticalScale(60),
+    marginLeft: -scale(16),
   },
   timeSection: {
     flexDirection: 'row',

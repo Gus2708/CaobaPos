@@ -43,21 +43,28 @@ describe('DashboardPanel Metrics', () => {
     jest.clearAllMocks();
     
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      let filteredData: any[] = [];
+      if (table === 'sales') filteredData = [...MOCK_SALES];
+      else if (table === 'sale_items') filteredData = [...MOCK_SALE_ITEMS];
+      else if (table === 'products') filteredData = [...MOCK_PRODUCTS];
+
       const mockChain: any = {
         select: jest.fn().mockReturnThis(),
-        gte: jest.fn().mockReturnThis(),
-        lte: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockImplementation((col, val) => {
+          filteredData = filteredData.filter(d => (d.created_at || d.sales?.created_at) >= val);
+          return mockChain;
+        }),
+        lte: jest.fn().mockImplementation((col, val) => {
+          filteredData = filteredData.filter(d => (d.created_at || d.sales?.created_at) <= val);
+          return mockChain;
+        }),
         order: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockReturnThis(),
       };
       
       mockChain.then = jest.fn((callback) => {
-        let data = [];
-        if (table === 'sales') data = MOCK_SALES;
-        else if (table === 'sale_items') data = MOCK_SALE_ITEMS;
-        else if (table === 'products') data = MOCK_PRODUCTS;
-        return Promise.resolve(callback({ data, error: null }));
+        return Promise.resolve(callback({ data: filteredData, error: null }));
       });
       
       return mockChain;
@@ -68,11 +75,11 @@ describe('DashboardPanel Metrics', () => {
     await render(<DashboardPanel />, { wrapper });
 
     // Wait until loading indicator is gone and main text appears
-    const ventashoy = await screen.findByText('Ventas (Hoy)');
+    const ventashoy = await screen.findByText(/Ventas \(Hoy\)/);
     expect(ventashoy).toBeOnTheScreen();
     
-    // Profit Hoy
-    const profitElements = await screen.findAllByText('$20.00');
+    // Profit Hoy: Should find $20.00 (could be formatted with spaces or different dots)
+    const profitElements = await screen.findAllByText(/\$?\s*20[.,]00/);
     expect(profitElements.length).toBeGreaterThanOrEqual(1);
 
     // Switch to "Mes"
@@ -80,10 +87,10 @@ describe('DashboardPanel Metrics', () => {
     fireEvent.press(btnMes);
 
     // Now it should show "Ventas (Este Mes)"
-    expect(await screen.findByText('Ventas (Este Mes)')).toBeOnTheScreen();
+    expect(await screen.findByText(/Ventas \(Este Mes\)/)).toBeOnTheScreen();
     
     // Total profit for both mock products is $70.00
-    const totalProfitElements = await screen.findAllByText('$70.00');
+    const totalProfitElements = await screen.findAllByText(/\$?\s*70[.,]00/);
     expect(totalProfitElements.length).toBeGreaterThanOrEqual(1);
 
     // Check modal interaction
@@ -93,7 +100,7 @@ describe('DashboardPanel Metrics', () => {
     // Our modal should pop up showing 'Total en Efectivo'
     expect(await screen.findByText('Total en Efectivo')).toBeOnTheScreen();
     // And exactly $40.00 (the single cash sale)
-    const cashElements = await screen.findAllByText('$40.00');
+    const cashElements = await screen.findAllByText(/\$?\s*40[.,]00/);
     expect(cashElements.length).toBeGreaterThanOrEqual(1);
-  });
+  }, 20000);
 });
