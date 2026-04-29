@@ -29,6 +29,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
+
   const storeCategories = useSettingsStore((state) => state.categories);
   const categories = storeCategories.length > 0 ? storeCategories : DEFAULT_CATEGORIES;
 
@@ -56,20 +57,22 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
   };
 
   return (
-    <ScrollView 
-      horizontal 
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.container}
-    >
-      {renderTab('todos', 'Todos', 'filter')}
-      {categories.map((cat) =>
-        renderTab(
-          cat,
-          cat.charAt(0).toUpperCase() + cat.slice(1),
-          CATEGORY_ICONS[cat.toLowerCase()] || 'folder'
-        )
-      )}
-    </ScrollView>
+    <View>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+      >
+        {renderTab('todos', 'Todos', 'filter')}
+        {categories.map((cat) =>
+          renderTab(
+            cat,
+            cat.charAt(0).toUpperCase() + cat.slice(1),
+            CATEGORY_ICONS[cat.toLowerCase()] || 'folder'
+          )
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -80,9 +83,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(10),
+    paddingVertical: verticalScale(6),
     gap: scale(8),
-    minHeight: verticalScale(52),
+    minHeight: verticalScale(44),
   },
   tab: {
     flexDirection: 'row',

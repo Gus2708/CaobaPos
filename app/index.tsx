@@ -1,10 +1,11 @@
-import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useProducts, Category } from '../hooks/useProducts';
 import { useCartStore, useSettingsStore } from '../store/cartStore';
+import { globalScrollY, headerTranslateY } from '../store/uiStore';
 import { CategoryTabs } from '../components/CategoryTabs';
 import { ProductButton } from '../components/ProductButton';
 import { CheckoutPanel } from '../components/CheckoutPanel';
@@ -25,6 +26,9 @@ import { Badge } from '../components/Badge';
 // Row height = item minHeight (76) + vertical padding (4+4 = 8). Used for getItemLayout.
 const ITEM_HEIGHT = verticalScale(76) + verticalScale(8);
 const LOW_STOCK_THRESHOLD = 10;
+
+// Create animated component at module level to avoid remount on every render
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
 const ProductItem = React.memo(function ProductItem({ 
   product, 
@@ -58,6 +62,16 @@ export function POSScreen() {
   const numColumns = isMobile ? 1 : 3;
 
   const [showMobileCart, setShowMobileCart] = useState(false);
+
+  const HEADER_HEIGHT = verticalScale(60) + insets.top;
+  const NAVBAR_HEIGHT = verticalScale(64);
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const CAT_HEIGHT = verticalScale(44);
+  const TOTAL_HIDE = TOTAL_NAV_HEIGHT + CAT_HEIGHT;
+
+  // CategoryTabs follow the same animation as header/navbar
+  const catTranslateY = headerTranslateY;
+  
   const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
 
   const subtotal = useMemo(() => items.reduce((acc, i) => acc + i.price * i.quantity, 0), [items]);
@@ -258,31 +272,21 @@ export function POSScreen() {
       />
       
       <View style={[styles.leftPanel, isMobile && { flex: 1 }]}>
-        <View style={styles.tabsContainer}>
+        <Animated.View style={[styles.tabsContainer, {
+          position: 'absolute',
+          top: TOTAL_NAV_HEIGHT,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          transform: [{ translateY: catTranslateY }]
+        }]}>
           <CategoryTabs 
             selected={selectedCategory} 
             onSelect={setSelectedCategory} 
           />
-        </View>
+        </Animated.View>
 
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Icon name="search" size={20} color={tokens.colors.textMuted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar producto..."
-              placeholderTextColor={tokens.colors.textDim}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <Badge variant="mahogany">
-                {filteredProducts.length}
-              </Badge>
-            )}
-          </View>
-        </View>
-        
+
         <View style={styles.productsContainer}>
           {isLoading ? (
             <View style={styles.productsContainer}>
@@ -292,7 +296,7 @@ export function POSScreen() {
               />
             </View>
           ) : (
-            <FlashList
+            <AnimatedFlashList
               key={`products-grid-${numColumns}`}
               data={filteredProducts}
               numColumns={numColumns}
@@ -302,9 +306,36 @@ export function POSScreen() {
               estimatedItemSize={ITEM_HEIGHT}
               contentContainerStyle={[
                 styles.productGrid,
-                { paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom }
+                { 
+                  paddingTop: TOTAL_NAV_HEIGHT + CAT_HEIGHT + verticalScale(10),
+                  paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom 
+                }
               ]}
+              ListHeaderComponent={
+                <View style={styles.searchContainer}>
+                  <View style={styles.searchInputContainer}>
+                    <Icon name="search" size={20} color={tokens.colors.textMuted} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Buscar producto..."
+                      placeholderTextColor={tokens.colors.textDim}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                      <Badge variant="mahogany">
+                        {filteredProducts.length}
+                      </Badge>
+                    )}
+                  </View>
+                </View>
+              }
               showsVerticalScrollIndicator={false}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+                { useNativeDriver: true }
+              )}
+              scrollEventThrottle={16}
               refreshControl={
                 <RefreshControl
                   refreshing={false}
@@ -396,12 +427,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tabsContainer: {
+    backgroundColor: tokens.colors.glass.medium,
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.border,
   },
   searchContainer: {
     paddingHorizontal: scale(16),
-    paddingTop: verticalScale(12),
+    paddingTop: verticalScale(20),
     paddingBottom: verticalScale(8),
   },
   searchInputContainer: {
@@ -467,7 +499,7 @@ const styles = StyleSheet.create({
   },
   productItem: {
     paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(4),
+    paddingVertical: verticalScale(8),
   },
   emptyContainer: {
     flex: 1,

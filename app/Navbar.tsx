@@ -27,18 +27,22 @@ export function Navbar({ current, onNavigate }: NavbarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+
+  // Static style since we now natively translate the wrapper in MainApp
+  const containerStyle = [
+    styles.container,
+    { 
+      height: verticalScale(64),
+      borderBottomWidth: 1,
+      justifyContent: 'center' as const,
+    }
+  ];
+
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const activeTab = TABS.find((t) => t.key === current);
 
-  // Dynamic style for safe area
-  const containerStyle = [
-    styles.container,
-    { paddingTop: Math.max(insets.top, verticalScale(4)) }
-  ];
-
   return (
     <View style={containerStyle}>
-
       <View style={styles.content}>
         {isMobile ? (
           <View style={styles.tabsContainer}>
@@ -161,7 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    paddingVertical: 0,
     gap: scale(16),
   },
   tabsContainer: {

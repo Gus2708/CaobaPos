@@ -1,8 +1,7 @@
-import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
-import React, { useState, useCallback } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useCartStore, CartItem, useSettingsStore } from '../store/cartStore';
 import { useCreateSale } from '../hooks/useProducts';
 import { CartItemRow } from './CartItem';
@@ -53,12 +52,34 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const [selectedClient, setSelectedClient] = useState<ClientBalance | null>(null);
   const [isClientModalVisible, setIsClientModalVisible] = useState(false);
   const createSale = useCreateSale();
-  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   
   const subtotal = getTotal();
   const tax = ivaEnabled ? parseFloat((subtotal * TAX_RATE).toFixed(2)) : 0;
   const total = parseFloat((subtotal + tax).toFixed(2));
+
+  const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const MAX_HIDE = verticalScale(60);
+  const clampedScrollY = Animated.diffClamp(scrollY, 0, MAX_HIDE);
+
+  const bottomTranslateY = clampedScrollY.interpolate({
+    inputRange: [0, MAX_HIDE],
+    outputRange: [0, -MAX_HIDE],
+    extrapolate: 'clamp',
+  });
+
+  const subtotalOpacity = clampedScrollY.interpolate({
+    inputRange: [0, MAX_HIDE / 2],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true }
+  );
 
   const confirmSale = useCallback(async () => {
     try {
@@ -177,6 +198,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         style={styles.itemsList} 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.itemsContent}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {items.length === 0 ? (
           <View style={styles.emptyState}>
@@ -191,18 +214,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         )}
       </ScrollView>
 
-      <View style={styles.summary}>
-        <View style={[styles.summaryCard, { borderRadius: tokens.radius.xl }]}>
-          <LinearGradient
-            colors={['rgba(26, 26, 26, 0.8)', 'rgba(12, 12, 12, 0.5)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+      <View style={styles.summaryWrapper}>
+        <Animated.View style={[styles.summaryTop, { opacity: subtotalOpacity }]}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
           </View>
+
           <TouchableOpacity 
             style={styles.ivaRow} 
             onPress={toggleIva}
@@ -218,6 +236,12 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               ${tax.toFixed(2)}
             </Text>
           </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[
+          styles.summaryBottomSliding,
+          { transform: [{ translateY: bottomTranslateY }] }
+        ]}>
           <View style={styles.totalRow}>
             <View style={styles.totalLabelContainer}>
               <Text style={styles.totalLabel}>Total</Text>
@@ -227,12 +251,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 </Text>
               </View>
             </View>
-            <PriceDisplay amount={total} size="xl" />
+            <PriceDisplay amount={total} size="lg" />
           </View>
-        </View>
-      </View>
 
-      <View style={styles.paymentSection}>
+          <View style={styles.paymentSection}>
         <Text style={styles.sectionTitle}>Método de pago</Text>
         <View style={styles.paymentChips}>
           {PAYMENT_METHODS.map((method) => {
@@ -303,6 +325,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           </Text>
         </View>
       </TouchableOpacity>
+      </Animated.View>
+      </View>
 
       {completedSale && (
         <SaleSummaryModal
@@ -432,32 +456,36 @@ const styles = StyleSheet.create({
     color: tokens.colors.textMuted,
     marginTop: verticalScale(4),
   },
-  summary: {
-    padding: scale(16),
+  summaryWrapper: {
+    paddingHorizontal: scale(20),
+    paddingTop: verticalScale(16),
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.borderLight,
+    backgroundColor: tokens.colors.bg,
   },
-  summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.xl,
-    padding: scale(20),
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
-    overflow: 'hidden',
+  summaryTop: {
+    paddingBottom: verticalScale(12),
+  },
+  summaryBottomSliding: {
+    backgroundColor: tokens.colors.bg,
+    paddingBottom: verticalScale(70), // Ensures we don't see empty space when translating up
+    marginBottom: verticalScale(-70), // Cancels the padding for normal layout
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(10),
+    marginBottom: verticalScale(6),
   },
   summaryLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: tokens.colors.textDim,
   },
   summaryValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,
   },
@@ -465,18 +493,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(10),
-    paddingVertical: verticalScale(4),
+    marginBottom: verticalScale(6),
+    paddingVertical: verticalScale(2),
   },
   ivaLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
+    gap: scale(10),
   },
   checkbox: {
-    width: scale(22),
-    height: scale(22),
-    borderRadius: scale(6),
+    width: scale(18),
+    height: scale(18),
+    borderRadius: scale(5),
     borderWidth: 2,
     borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
@@ -489,7 +517,7 @@ const styles = StyleSheet.create({
   },
   ivaLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: tokens.colors.textDim,
   },
@@ -500,19 +528,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: verticalScale(12),
-    paddingTop: verticalScale(16),
+    marginTop: verticalScale(8),
+    paddingTop: verticalScale(12),
     borderTopWidth: 1,
     borderTopColor: tokens.colors.borderLight,
   },
   totalLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(10),
+    gap: scale(8),
   },
   totalLabel: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.text,
   },
@@ -531,7 +559,6 @@ const styles = StyleSheet.create({
     color: tokens.colors.sage,
   },
   paymentSection: {
-    paddingHorizontal: scale(20),
     paddingBottom: verticalScale(20),
   },
   sectionTitle: {

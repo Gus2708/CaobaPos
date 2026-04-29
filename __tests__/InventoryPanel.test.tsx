@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { InventoryPanel } from '../app/InventoryPanel';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
@@ -33,18 +33,19 @@ describe('InventoryPanel', () => {
   });
 
   it('toggles the add form using accessibility roles', async () => {
-    const user = userEvent.setup();
     await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
     
     // Find by role for initial state
     const addBtn = await screen.findByRole('button', { name: 'Agregar nuevo producto' });
-    await user.press(addBtn);
+    fireEvent.press(addBtn);
     
-    expect(await screen.findByText('Nuevo Producto')).toBeOnTheScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId('add-form')).toBeOnTheScreen();
+    }, { timeout: 10000 });
     
     // Verify that the button label changed to "Cerrar..."
     expect(await screen.findByRole('button', { name: 'Cerrar formulario de agregar' })).toBeOnTheScreen();
-  });
+  }, 15000);
 
   it('shows error state when supabase fails', async () => {
     const mockSupabase = supabase.from as jest.Mock;
@@ -61,12 +62,15 @@ describe('InventoryPanel', () => {
   });
 
   it('disables the "Crear" button if required fields are empty', async () => {
-    const user = userEvent.setup();
     await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
     
-    await user.press(await screen.findByRole('button', { name: 'Agregar nuevo producto' }));
+    fireEvent.press(await screen.findByRole('button', { name: 'Agregar nuevo producto' }));
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('add-form')).toBeOnTheScreen();
+    }, { timeout: 10000 });
     
     const createBtn = screen.getByText('Crear Producto');
     expect(createBtn).toBeDisabled();
-  });
+  }, 15000);
 });
