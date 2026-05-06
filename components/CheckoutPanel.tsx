@@ -1,4 +1,6 @@
-import { View, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -23,6 +25,8 @@ const PAYMENT_METHODS = [
   { key: 'transfer', label: 'Transferencia', icon: 'mobile-alt' },
   { key: 'credito', label: 'Crédito', icon: 'user' },
 ] as const;
+
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
 interface SaleResult {
   id: string;
@@ -54,9 +58,15 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const createSale = useCreateSale();
   const { showToast } = useToast();
   
-  const subtotal = getTotal();
-  const tax = ivaEnabled ? parseFloat((subtotal * TAX_RATE).toFixed(2)) : 0;
-  const total = parseFloat((subtotal + tax).toFixed(2));
+  const subtotal = React.useMemo(() => getTotal(), [items, getTotal]);
+
+  const tax = React.useMemo(() => {
+    return ivaEnabled ? parseFloat((subtotal * TAX_RATE).toFixed(2)) : 0;
+  }, [subtotal, ivaEnabled]);
+
+  const total = React.useMemo(() => {
+    return parseFloat((subtotal + tax).toFixed(2));
+  }, [subtotal, tax]);
 
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -76,10 +86,22 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     extrapolate: 'clamp',
   });
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: true }
+  const onScroll = React.useMemo(() => 
+    Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+      { useNativeDriver: true }
+    ),
+    [scrollY]
   );
+
+  const renderItem = useCallback(({ item }: { item: CartItem }) => (
+    <CartItemRow
+      item={item}
+      onIncrement={() => updateQuantity(item.id, item.quantity + 1)}
+      onDecrement={() => updateQuantity(item.id, item.quantity - 1)}
+      onRemove={() => removeItem(item.id)}
+    />
+  ), [updateQuantity, removeItem]);
 
   const confirmSale = useCallback(async () => {
     try {
@@ -146,15 +168,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     setCompletedSale(null);
   }, []);
 
-  const renderCartItem = useCallback((item: CartItem) => (
-    <CartItemRow
-      key={item.id}
-      item={item}
-      onIncrement={() => updateQuantity(item.id, item.quantity + 1)}
-      onDecrement={() => updateQuantity(item.id, item.quantity - 1)}
-      onRemove={() => removeItem(item.id)}
-    />
-  ), [updateQuantity, removeItem]);
+
 
   return (
     <KeyboardAvoidingView 
@@ -165,6 +179,16 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         styles.container, 
         { paddingBottom: insets.bottom + verticalScale(8) }
       ]}>
+        <BlurView 
+          tint="dark" 
+          intensity={25} 
+          style={StyleSheet.absoluteFill} 
+        />
+        <View style={{
+          ...StyleSheet.absoluteFillObject,
+          borderLeftWidth: 1,
+          borderLeftColor: tokens.colors.glass.liquidHighlight,
+        }} />
   
         <View style={[
           styles.header, 
@@ -194,14 +218,17 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         </View>
       </View>
 
-      <ScrollView 
-        style={styles.itemsList} 
+      <AnimatedFlashList
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        estimatedItemSize={verticalScale(84)}
+        extraData={items}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.itemsContent}
-        onScroll={handleScroll}
+        onScroll={onScroll}
         scrollEventThrottle={16}
-      >
-        {items.length === 0 ? (
+        ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
               <Icon name="cart" size={48} color="rgba(184, 123, 90, 0.6)" />
@@ -209,10 +236,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={styles.emptyText}>Carrito vacío</Text>
             <Text style={styles.emptySubtext}>Toca un producto para agregarlo</Text>
           </View>
-        ) : (
-          items.map(renderCartItem)
-        )}
-      </ScrollView>
+        }
+      />
 
       <View style={styles.summaryWrapper}>
         <Animated.View style={[styles.summaryTop, { opacity: subtotalOpacity }]}>
@@ -420,9 +445,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },
-  itemsList: {
-    flex: 1,
-  },
+
   itemsContent: {
     padding: scale(12),
     paddingBottom: verticalScale(20),
@@ -625,10 +648,6 @@ const styles = StyleSheet.create({
   },
   checkoutContentActive: {
     backgroundColor: tokens.colors.mahogany,
-    shadowColor: tokens.colors.mahogany,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
   },
   checkoutContentDisabled: {
     backgroundColor: 'rgba(255,255,255,0.05)',

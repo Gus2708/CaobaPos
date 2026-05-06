@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
+import React, { useState, useMemo, useCallback, memo } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../components/Icon';
@@ -9,6 +10,40 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useClients, ClientBalance } from '../hooks/useClients';
 import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
+import { Text } from '../components/Text';
+
+const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (client: ClientBalance) => void }) => (
+  <TouchableOpacity 
+    style={styles.clientCard}
+    onPress={() => onSelect(item)}
+    activeOpacity={0.7}
+  >
+    <LinearGradient
+      colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={StyleSheet.absoluteFill}
+    />
+    <View style={styles.clientAvatar}>
+      <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+    </View>
+    <View style={styles.clientInfo}>
+      <Text style={styles.clientName} numberOfLines={1}>{item.name}</Text>
+      <Text style={styles.clientPhone} numberOfLines={1}>
+        <Icon name="phone" size={11} color={tokens.colors.textDim} /> {item.phone || 'Sin número'}
+      </Text>
+    </View>
+    <View style={styles.clientDebt}>
+      <Text style={styles.debtLabel}>Saldo Pendiente</Text>
+      <Text style={[styles.debtAmount, item.balance_due > 0 ? styles.debtRed : styles.debtGreen]} numberOfLines={1} adjustsFontSizeToFit>
+        ${item.balance_due.toFixed(2)}
+      </Text>
+    </View>
+  </TouchableOpacity>
+));
+
+// Animated FlashList component
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
 export default function ClientsPanel() {
   const insets = useSafeAreaInsets();
@@ -20,46 +55,17 @@ export default function ClientsPanel() {
   const [search, setSearch] = useState('');
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const filteredClients = clients?.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
     (c.phone && c.phone.includes(search))
   );
 
-  const renderClientItem = ({ item }: { item: ClientBalance }) => {
-    return (
-      <TouchableOpacity 
-        style={styles.clientCard}
-        onPress={() => setSelectedClient(item)}
-        activeOpacity={0.7}
-      >
-        <LinearGradient
-          colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.clientAvatar}>
-          <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={styles.clientInfo}>
-          <Text style={styles.clientName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.clientPhone} numberOfLines={1}>
-            <Icon name="phone" size={11} color={tokens.colors.textDim} /> {item.phone || 'Sin número'}
-          </Text>
-        </View>
-        <View style={styles.clientDebt}>
-          <Text style={styles.debtLabel}>Saldo Pendiente</Text>
-          <Text style={[styles.debtAmount, item.balance_due > 0 ? styles.debtRed : styles.debtGreen]} numberOfLines={1} adjustsFontSizeToFit>
-            ${item.balance_due.toFixed(2)}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderClientItem = useCallback(({ item }: { item: ClientBalance }) => (
+    <ClientItem item={item} onSelect={setSelectedClient} />
+  ), []);
 
   const ListHeader = useMemo(() => (
     <View style={styles.listHeader}>
@@ -118,7 +124,7 @@ export default function ClientsPanel() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        colors={[tokens.colors.bg, tokens.colors.bg]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -135,15 +141,16 @@ export default function ClientsPanel() {
           <Text style={styles.errorText}>No se pudo cargar la base de datos</Text>
         </View>
       ) : (
-        <Animated.FlatList
+        <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredClients}
           keyExtractor={item => item.id}
           renderItem={renderClientItem}
+          estimatedItemSize={verticalScale(80)}
           contentContainerStyle={[
             styles.listContent, 
             { 
-              paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), 
+              paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), 
               paddingBottom: insets.bottom + verticalScale(100) 
             }
           ]}

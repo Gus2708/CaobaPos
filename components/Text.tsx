@@ -40,7 +40,12 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
   return (
     <RNText
       {...props}
-      style={[{ fontFamily: fontMap[family][weight] }, scaledStyle]}
+      style={[
+        { 
+          fontFamily: fontMap[family][weight],
+        }, 
+        scaledStyle
+      ]}
     />
   );
 }

@@ -37,41 +37,44 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
 
   const deleteSaleMutation = useMutation({
     mutationFn: async (sale: any) => {
-      // 1. Revert stock
-      const { data: items, error: itemsError } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity')
-        .eq('sale_id', sale.id);
+      try {
+        // 1. Revert stock using RPC
+        const { data: items, error: itemsError } = await supabase
+          .from('sale_items')
+          .select('product_id, quantity')
+          .eq('sale_id', sale.id);
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
 
-      if (items && items.length > 0) {
-        for (const item of items) {
-          await supabase.rpc('increment_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-          });
+        if (items && items.length > 0) {
+          for (const item of items) {
+            const { error: rpcError } = await supabase.rpc('increment_stock', {
+              p_product_id: item.product_id,
+              p_quantity: item.quantity,
+            });
+            if (rpcError) throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+          }
         }
+
+        // 2. Clear payments linked to this sale
+        await supabase
+          .from('client_payments')
+          .delete()
+          .eq('sale_id', sale.id);
+
+        // 3. Delete the sale itself (cascades to sale_items)
+        const { error: saleError } = await supabase
+          .from('sales')
+          .delete()
+          .eq('id', sale.id);
+
+        if (saleError) throw saleError;
+        
+        return { success: true };
+      } catch (error: any) {
+        console.error('Delete credit sale error:', error);
+        throw error;
       }
-
-      // 2. Clear payments linked to this sale
-      await supabase
-        .from('client_payments')
-        .delete()
-        .eq('sale_id', sale.id);
-
-      // 3. Delete sale items
-      await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', sale.id);
-
-      // 4. Delete the sale itself
-      const { error: saleError } = await supabase
-        .from('sales')
-        .delete()
-        .eq('id', sale.id);
-      if (saleError) throw saleError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
@@ -1101,11 +1104,6 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(14),
     borderRadius: tokens.radius.pill,
     alignItems: 'center',
-    shadowColor: tokens.colors.mahogany,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   submitButtonDisabled: {
     opacity: 0.5,

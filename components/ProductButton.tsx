@@ -43,7 +43,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
     ? tokens.colors.amber
     : tokens.colors.sage;
 
-  const gradientColors = ['rgba(255, 255, 255, 0.05)', 'transparent'] as const;
+  const gradientColors = tokens.styles.liquidCard.reflectionColors;
 
   if (compact) {
     // Tablet grid mode: vertical card
@@ -189,11 +189,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.xl,
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
     padding: scale(16),
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
     gap: scale(14),
     minHeight: verticalScale(84),
     overflow: 'hidden',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(15),
     fontWeight: '800',
-    color: tokens.colors.mahogany,
+    color: tokens.colors.amberGold, // Gold/Amber for premium feel
   },
   priceDisabled: {
     color: tokens.colors.textDim,
@@ -288,10 +288,10 @@ const styles = StyleSheet.create({
 
   // ─── Compact / Tablet Card (vertical) ──────────────────────────────
   cardContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: tokens.radius.xl,
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
     overflow: 'hidden',
     flex: 1,
   },
@@ -338,11 +338,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(2),
     borderRadius: tokens.radius.pill,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   stockText: {
     fontFamily: FontNames.jetBrainsMono,

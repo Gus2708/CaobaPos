@@ -1,4 +1,5 @@
-import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView } from 'react-native';
+import { BlurView } from '@sbaiahmed1/react-native-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -23,32 +24,23 @@ import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
 
-// Row height = item minHeight (76) + vertical padding (4+4 = 8). Used for getItemLayout.
-const ITEM_HEIGHT = verticalScale(76) + verticalScale(8);
+// Row height = item minHeight (84) + vertical padding (8+8 = 16). Used for getItemLayout.
+const ITEM_HEIGHT = verticalScale(84) + verticalScale(16);
 const LOW_STOCK_THRESHOLD = 10;
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
 
-const ProductItem = React.memo(function ProductItem({ 
-  product, 
-  onPress 
-}: { 
-  product: Product; 
-  onPress: () => void; 
-}) {
-  return (
-    <View style={styles.productItem}>
-      <ProductButton product={product} onPress={onPress} />
-    </View>
-  );
-});
-
 export function POSScreen() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('todos');
   const [searchQuery, setSearchQuery] = useState('');
-  const [barcodeBuffer, setBarcodeBuffer] = useState('');
-  const { data: products, isLoading, refetch } = useProducts(selectedCategory);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const barcodeBufferRef = useRef('');
+  const [displayBarcodeBuffer, setDisplayBarcodeBuffer] = useState(''); // Just for the hidden input value
+  
+  // Single query for all products
+  const { data: allProducts = [], isLoading, refetch } = useProducts('todos');
+  
   const addItem = useCartStore((state) => state.addItem);
   const clearCart = useCartStore((state) => state.clearCart);
   const items = useCartStore((state) => state.items);
@@ -63,152 +55,104 @@ export function POSScreen() {
 
   const [showMobileCart, setShowMobileCart] = useState(false);
 
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const CAT_HEIGHT = verticalScale(44);
-  const TOTAL_HIDE = TOTAL_NAV_HEIGHT + CAT_HEIGHT;
 
-  // CategoryTabs follow the same animation as header/navbar
-  const catTranslateY = headerTranslateY;
-  
-  const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
+  // Search debouncing
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const subtotal = useMemo(() => items.reduce((acc, i) => acc + i.price * i.quantity, 0), [items]);
-  const finalTotal = ivaEnabled ? subtotal * 1.16 : subtotal;
-
-  const { data: allProducts } = useQuery<Product[]>({
-    queryKey: ['products-all-for-barcode'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, price, cost, barcode, image_url, stock_quantity, categories, is_active, created_at')
-        .eq('is_active', true);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  // O(1) Lookup Map for Barcodes [js-index-maps]
+  // O(1) Lookup Map for Barcodes derived from allProducts
   const barcodeMap = useMemo(() => {
     const map = new Map<string, Product>();
-    if (allProducts) {
-      allProducts.forEach(p => {
-        if (p.barcode) map.set(p.barcode, p);
-      });
-    }
+    allProducts.forEach(p => {
+      if (p.barcode) map.set(p.barcode, p);
+    });
     return map;
   }, [allProducts]);
 
-  // Prefetch product images to local cache on first load
-  // Only use our custom prefetchImages (parallel batches) — expo-image handles its own layer
-  useEffect(() => {
-    if (allProducts && allProducts.length > 0) {
-      const urls = allProducts.map(p => p.image_url).filter(Boolean) as string[];
-      if (urls.length > 0) prefetchImages(urls);
+  // Filtering products
+  const filteredProducts = useMemo(() => {
+    let result = allProducts;
+    
+    // 1. Filter by Category
+    if (selectedCategory !== 'todos') {
+      result = result.filter(p => p.categories?.includes(selectedCategory));
     }
-  }, [allProducts]);
-
-  // Priority prefetch for selected category to ensure smooth scroll
-  useEffect(() => {
-    if (selectedCategory && allProducts) {
-      const categoryUrls = allProducts
-        .filter(p => !selectedCategory || (p.categories && p.categories.includes(selectedCategory)))
-        .map(p => p.image_url)
-        .filter(Boolean) as string[];
-      if (categoryUrls.length > 0) prefetchImages(categoryUrls);
+    
+    // 2. Filter by Search
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.barcode?.toLowerCase().includes(query)
+      );
     }
-  }, [selectedCategory, allProducts]);
+    
+    return result;
+  }, [allProducts, selectedCategory, debouncedSearch]);
 
   const checkLowStock = useCallback((product: Product) => {
     if (product.stock_quantity <= 0) {
       showToast(`${product.name} sin stock`, 'error');
       return false;
     }
-    // Low stock warning removed by user request
     return true;
   }, [showToast]);
 
-  useEffect(() => {
-    // Focus barcode input after short delay to allow UI to settle
-    const timer = setTimeout(() => {
-      barcodeInputRef.current?.focus();
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleBarcodeBlur = useCallback(() => {
-    // Only refocus if not searching and cart is not empty
-    if (!searchQuery && items.length > 0) {
-      setTimeout(() => {
-        barcodeInputRef.current?.focus();
-      }, 500);
-    }
-  }, [searchQuery, items.length]);
-
   const handleBarcodeBuffer = useCallback((text: string) => {
-    setBarcodeBuffer(text);
+    // text is the current value of the input
+    barcodeBufferRef.current = text;
+    setDisplayBarcodeBuffer(text);
 
     if (bufferTimeoutRef.current) {
       clearTimeout(bufferTimeoutRef.current);
     }
 
+    // Enter/Newline detected (standard for most hardware scanners)
     if (text.includes('\n') || text.includes('\r')) {
       const barcode = text.replace(/[\n\r]/g, '').trim();
-      if (barcode) {
-        const product = barcodeMap.get(barcode);
-        if (product) {
-          if (checkLowStock(product)) {
-            addItem(product);
-            showToast(`Agregado: ${product.name}`, 'success');
-          }
-        } else {
-          showToast(`Producto no encontrado: ${barcode}`, 'error');
-        }
-      }
-      setBarcodeBuffer('');
+      processBarcode(barcode);
       return;
     }
 
+    // Fallback for scanners that don't send Enter
     bufferTimeoutRef.current = setTimeout(() => {
-      if (barcodeBuffer.length > 0) {
-        const barcode = barcodeBuffer.trim();
-        if (barcode.length >= 3) {
-          const product = barcodeMap.get(barcode);
-          if (product) {
-            if (checkLowStock(product)) {
-              addItem(product);
-              showToast(`Agregado: ${product.name}`, 'success');
-            }
-          } else {
-            showToast(`Producto no encontrado: ${barcode}`, 'error');
-          }
-        }
-        setBarcodeBuffer('');
+      processBarcode(barcodeBufferRef.current.trim());
+    }, 50); // Faster timeout for scanner input
+  }, [allProducts, barcodeMap]); // Only depend on static-ish data
+
+  const processBarcode = useCallback((barcode: string) => {
+    if (!barcode) return;
+    
+    const product = barcodeMap.get(barcode);
+    if (product) {
+      if (checkLowStock(product)) {
+        addItem(product);
+        showToast(`Agregado: ${product.name}`, 'success');
       }
-    }, 500);
-  }, [addItem, showToast, barcodeBuffer, checkLowStock, barcodeMap]);
+    } else if (barcode.length >= 3) {
+      showToast(`Producto no encontrado: ${barcode}`, 'error');
+    }
+    
+    barcodeBufferRef.current = '';
+    setDisplayBarcodeBuffer('');
+  }, [addItem, showToast, checkLowStock, barcodeMap]);
 
   useEffect(() => {
-    return () => {
-      if (bufferTimeoutRef.current) {
-        clearTimeout(bufferTimeoutRef.current);
-      }
-    };
+    const timer = setTimeout(() => barcodeInputRef.current?.focus(), 1000);
+    return () => clearTimeout(timer);
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    if (!products) return [];
-    // Category filtering is handled server-side in useProducts
-    // Here we only apply the local search filter
-    if (!searchQuery.trim()) return products;
-    const query = searchQuery.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.barcode?.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+  const handleBarcodeBlur = useCallback(() => {
+    if (!searchQuery && items.length > 0) {
+      setTimeout(() => barcodeInputRef.current?.focus(), 500);
+    }
+  }, [searchQuery, items.length]);
 
   const handleProductPress = useCallback((product: Product) => {
     if (checkLowStock(product)) {
@@ -233,7 +177,6 @@ export function POSScreen() {
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
-  // [rerender-memo] Extract to memoized component
   const ListEmptyComponent = useMemo(() => {
     if (isLoading) return null;
     return (
@@ -253,48 +196,87 @@ export function POSScreen() {
     );
   }, [searchQuery, isLoading]);
 
+  const getTotal = useCartStore((state) => state.getTotal);
+  const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
+  const subtotal = useMemo(() => getTotal(), [items, getTotal]);
+  const finalTotal = ivaEnabled ? subtotal * 1.16 : subtotal;
+
   return (
     <View style={[styles.main, isMobile && { flexDirection: 'column' }]}>
-
-      
       <TextInput
         ref={barcodeInputRef}
         style={styles.hiddenInput}
-        value={barcodeBuffer}
+        value={displayBarcodeBuffer}
         onChangeText={handleBarcodeBuffer}
         onBlur={handleBarcodeBlur}
         autoFocus
         showSoftInputOnFocus={false}
         autoCapitalize="none"
         autoCorrect={false}
-        keyboardType="default"
-        returnKeyType="done"
       />
       
       <View style={[styles.leftPanel, isMobile && { flex: 1 }]}>
         <Animated.View style={[styles.tabsContainer, {
           position: 'absolute',
-          top: TOTAL_NAV_HEIGHT,
-          left: 0,
-          right: 0,
+          top: TOTAL_NAV_HEIGHT + verticalScale(8),
+          left: scale(8),
+          right: scale(8),
           zIndex: 10,
-          transform: [{ translateY: catTranslateY }]
+          transform: [{ 
+            translateY: headerTranslateY.interpolate({
+              inputRange: [-(TOTAL_NAV_HEIGHT + verticalScale(8)), 0],
+              outputRange: [-(TOTAL_NAV_HEIGHT - verticalScale(4)), 0],
+              extrapolate: 'clamp'
+            }) 
+          }],
+          backgroundColor: tokens.styles.liquidCard.backgroundColor,
+          borderRadius: tokens.styles.liquidCard.borderRadius,
+          borderWidth: tokens.styles.liquidCard.borderWidth,
+          borderColor: tokens.styles.liquidCard.borderColor,
+          overflow: 'hidden',
         }]}>
-          <CategoryTabs 
-            selected={selectedCategory} 
-            onSelect={setSelectedCategory} 
+          <BlurView 
+            blurType="dark"
+            blurAmount={25}
+            style={StyleSheet.absoluteFill} 
           />
+          <View style={styles.islandContent}>
+            <CategoryTabs 
+              selected={selectedCategory} 
+              onSelect={setSelectedCategory} 
+            />
+            <View style={styles.islandSearchContainer}>
+               <View style={styles.searchInputContainer}>
+                <Icon name="search" size={20} color={tokens.colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Buscar producto..."
+                  placeholderTextColor={tokens.colors.textDim}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <Badge variant="mahogany">{filteredProducts.length}</Badge>
+                )}
+              </View>
+            </View>
+          </View>
         </Animated.View>
-
 
         <View style={styles.productsContainer}>
           {isLoading ? (
-            <View style={styles.productsContainer}>
-              <SkeletonItem 
-                layout={isMobile ? 'row' : 'card'} 
-                count={isMobile ? 8 : 12} 
-              />
-            </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.productGrid,
+                { 
+                  paddingTop: TOTAL_NAV_HEIGHT + verticalScale(210), 
+                  paddingBottom: verticalScale(20) + insets.bottom 
+                }
+              ]}
+            >
+              <SkeletonItem layout={isMobile ? 'row' : 'card'} count={isMobile ? 8 : 12} />
+            </ScrollView>
           ) : (
             <AnimatedFlashList
               key={`products-grid-${numColumns}`}
@@ -302,33 +284,21 @@ export function POSScreen() {
               numColumns={numColumns}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
-              // @ts-ignore - Property exists at runtime but causes false negative in some TSC versions
               estimatedItemSize={ITEM_HEIGHT}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+                { useNativeDriver: true }
+              )}
+              scrollEventThrottle={16}
               contentContainerStyle={[
                 styles.productGrid,
                 { 
-                  paddingTop: TOTAL_NAV_HEIGHT + CAT_HEIGHT + verticalScale(10),
+                  paddingTop: TOTAL_NAV_HEIGHT + verticalScale(210), 
                   paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom 
                 }
               ]}
               ListHeaderComponent={
-                <View style={styles.searchContainer}>
-                  <View style={styles.searchInputContainer}>
-                    <Icon name="search" size={20} color={tokens.colors.textMuted} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Buscar producto..."
-                      placeholderTextColor={tokens.colors.textDim}
-                      value={searchQuery}
-                      onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                      <Badge variant="mahogany">
-                        {filteredProducts.length}
-                      </Badge>
-                    )}
-                  </View>
-                </View>
+                <View style={{ height: verticalScale(16) }} />
               }
               showsVerticalScrollIndicator={false}
               onScroll={Animated.event(
@@ -337,12 +307,7 @@ export function POSScreen() {
               )}
               scrollEventThrottle={16}
               refreshControl={
-                <RefreshControl
-                  refreshing={false}
-                  onRefresh={refetch}
-                  tintColor={tokens.colors.mahogany}
-                  progressBackgroundColor={tokens.colors.glass.heavy}
-                />
+                <RefreshControl refreshing={false} onRefresh={refetch} tintColor={tokens.colors.mahogany} />
               }
               ListEmptyComponent={ListEmptyComponent}
             />
@@ -351,20 +316,13 @@ export function POSScreen() {
         
         {!isMobile && (
           <View style={styles.actionsContainer}>
-            <QuickActions 
-              onClear={handleClearCart} 
-              hasItems={items.length > 0}
-            />
+            <QuickActions onClear={handleClearCart} hasItems={items.length > 0} />
           </View>
         )}
 
         {isMobile && items.length > 0 && (
           <View style={[styles.mobileActionBar, { bottom: verticalScale(10) + insets.bottom }]}>
-            <QuickActions 
-              onClear={handleClearCart} 
-              hasItems={items.length > 0}
-              compact
-            />
+            <QuickActions onClear={handleClearCart} hasItems={items.length > 0} compact />
             <TouchableOpacity 
               style={styles.mobileCheckoutBtn} 
               onPress={() => setShowMobileCart(true)}
@@ -372,19 +330,17 @@ export function POSScreen() {
             >
               <LinearGradient
                 colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.checkoutBtnContent}>
                 <Icon name="shopping-cart" size={24} color="#F0F0F2" />
-                <Text style={styles.mobileFabText}>Ver Carrito ({items.length})</Text>
+                <Text style={styles.mobileFabText}>Carrito ({items.length})</Text>
                 <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
               </View>
             </TouchableOpacity>
           </View>
         )}
-
       </View>
       
       {isMobile ? (
@@ -392,8 +348,6 @@ export function POSScreen() {
           visible={showMobileCart}
           animationType="slide"
           transparent={true}
-          statusBarTranslucent={true}
-          navigationBarTranslucent={true}
           onRequestClose={() => setShowMobileCart(false)}
         >
           <View style={styles.mobileCartOverlay}>
@@ -401,9 +355,7 @@ export function POSScreen() {
           </View>
         </Modal>
       ) : (
-        <View style={styles.rightPanel}>
-          <CheckoutPanel />
-        </View>
+        <View style={styles.rightPanel}><CheckoutPanel /></View>
       )}
     </View>
   );
@@ -427,31 +379,43 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tabsContainer: {
-    backgroundColor: tokens.colors.glass.medium,
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.border,
+    marginHorizontal: scale(20),
+    marginTop: verticalScale(24),
+    borderRadius: tokens.radius.xl,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    // Glass highlight for depth
+    borderTopColor: 'rgba(255, 255, 255, 0.12)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
   },
-  searchContainer: {
+  islandContent: {
+    paddingBottom: verticalScale(18),
+  },
+  islandSearchContainer: {
     paddingHorizontal: scale(16),
-    paddingTop: verticalScale(20),
-    paddingBottom: verticalScale(8),
+    marginTop: verticalScale(4), // Space after tabs
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)', // Subtle separator
+    paddingTop: verticalScale(16),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: tokens.radius.pill,
-    paddingHorizontal: scale(16),
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    paddingHorizontal: scale(18),
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     gap: scale(12),
-    height: verticalScale(48),
+    height: verticalScale(54),
   },
   searchInput: {
     flex: 1,
     color: tokens.colors.text,
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(15),
     fontWeight: '600',
     height: '100%',
   },
@@ -494,8 +458,8 @@ const styles = StyleSheet.create({
     color: tokens.colors.textMuted,
   },
   productGrid: {
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(8),
+    paddingHorizontal: tokens.layout.gutter,
+    paddingVertical: verticalScale(16),
   },
   productItem: {
     paddingHorizontal: scale(8),

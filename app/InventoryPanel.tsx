@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions } from 'react-native';
-import { useRef } from 'react';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions } from 'react-native';
+
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
@@ -352,9 +352,8 @@ export const InventoryPanel = memo(function InventoryPanel({
   
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   // Use the new hook to fetch and sync categories from Supabase
   useCategories();
@@ -424,11 +423,17 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const updateMutation = useMutation({
     mutationFn: async (item: EditState) => {
-      // 1. Barcode uniqueness check (excluding self)
       if (item.barcode) {
-        const duplicate = products.find(p => p.barcode === item.barcode && p.id !== item.id);
-        if (duplicate) {
-          throw new Error(`El código ${item.barcode} ya lo tiene "${duplicate.name}"`);
+        const { data: duplicateData } = await supabase
+          .from('products')
+          .select('id, name')
+          .eq('barcode', item.barcode)
+          .neq('id', item.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (duplicateData) {
+          throw new Error(`El código ${item.barcode} ya lo tiene "${duplicateData.name}"`);
         }
       }
 
@@ -506,11 +511,16 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      // 1. Barcode uniqueness check
       if (newProduct.barcode) {
-        const duplicate = products.find(p => p.barcode === newProduct.barcode);
-        if (duplicate) {
-          throw new Error(`El código de barras ${newProduct.barcode} ya pertenece a "${duplicate.name}"`);
+        const { data: duplicateData } = await supabase
+          .from('products')
+          .select('id, name')
+          .eq('barcode', newProduct.barcode)
+          .eq('is_active', true)
+          .maybeSingle();
+          
+        if (duplicateData) {
+          throw new Error(`El código de barras ${newProduct.barcode} ya pertenece a "${duplicateData.name}"`);
         }
       }
 
@@ -1047,7 +1057,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     >
       <View style={styles.container}>
         <LinearGradient
-          colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+          colors={[tokens.colors.bg, tokens.colors.bg]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -1060,7 +1070,7 @@ export const InventoryPanel = memo(function InventoryPanel({
           data={filteredProducts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.list, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), paddingBottom: verticalScale(32) + insets.bottom }]}
+          contentContainerStyle={[styles.list, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), paddingBottom: verticalScale(32) + insets.bottom }]}
           // @ts-ignore
           estimatedItemSize={scale(96)}
           ListEmptyComponent={() => {
@@ -1654,22 +1664,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     color: tokens.colors.coral,
   },
-  // Legacy (kept for safety, unused)
-  deleteBtnInline: {
-    height: verticalScale(48),
-    borderRadius: tokens.radius.pill,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: scale(10),
-    overflow: 'hidden',
-  },
-  deleteBtnTextInline: {
-    fontFamily: FontNames.instrumentSans,
-    fontWeight: '800',
-    fontSize: moderateScale(14),
-    color: '#FFFFFF',
-  },
+
   cancelBtn: { 
     height: verticalScale(48),
     alignItems: 'center', 

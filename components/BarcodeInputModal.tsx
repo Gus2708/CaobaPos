@@ -116,11 +116,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: tokens.colors.borderAccent,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
   },
   header: {
     flexDirection: 'row',

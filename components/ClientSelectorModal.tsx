@@ -184,7 +184,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
             ]}
           >
             <View style={styles.blurContainer}>
-               <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+               <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 12, 0.75)' }]} />
             </View>
             
@@ -351,7 +351,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
-    elevation: 20,
     backgroundColor: 'transparent',
   },
   blurContainer: {
