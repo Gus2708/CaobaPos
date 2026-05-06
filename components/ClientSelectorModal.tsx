@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BlurView } from 'expo-blur';
+import { AppBlurView as BlurView } from './AppBlurView';
 import { 
   View, 
   Modal, 
