@@ -16,6 +16,11 @@ interface ProductButtonProps {
   compact?: boolean;  // tablet grid mode: vertical card
 }
 
+const isValidImageUrl = (url?: string): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  return url.startsWith('http://') || url.startsWith('https://');
+};
+
 function ProductButtonComponent({ product, onPress, compact = false }: ProductButtonProps) {
   const isLowStock = product.stock_quantity < 5;
   const isOutOfStock = product.stock_quantity <= 0;
@@ -54,10 +59,10 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           />
           {/* Image or placeholder */}
           <View style={styles.cardImageWrapper}>
-            {product.image_url ? (
-              <CachedImage 
-                remoteUri={product.image_url} 
-                style={styles.cardImage} 
+            {isValidImageUrl(product.image_url) ? (
+              <CachedImage
+                remoteUri={product.image_url}
+                style={styles.cardImage}
                 contentFit="cover"
               />
             ) : (
@@ -107,10 +112,10 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         />
         {/* Left — image or placeholder */}
         <View style={styles.imageWrapper}>
-          {product.image_url ? (
-            <CachedImage 
-              remoteUri={product.image_url} 
-              style={styles.image} 
+          {isValidImageUrl(product.image_url) ? (
+            <CachedImage
+              remoteUri={product.image_url}
+              style={styles.image}
               contentFit="cover"
             />
           ) : (
