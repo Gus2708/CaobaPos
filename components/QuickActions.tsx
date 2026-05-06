@@ -1,10 +1,11 @@
 import React, { memo } from 'react';
-import { TouchableOpacity, StyleSheet, Alert, View } from 'react-native';
+import { TouchableOpacity, StyleSheet, Alert, View, Animated } from 'react-native';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { usePressAnimation } from '../hooks/usePressAnimation';
 
 interface QuickActionsProps {
   onClear: () => void;
@@ -12,10 +13,9 @@ interface QuickActionsProps {
   compact?: boolean;
 }
 
-/**
- * Modern QuickActions: clean solid buttons without glass/gradient noise.
- */
 export const QuickActions = memo(function QuickActions({ onClear, hasItems, compact }: QuickActionsProps) {
+  const { scale: pressScale, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.94 });
+
   const handleClear = () => {
     Alert.alert(
       'Limpiar Carrito',
@@ -29,39 +29,47 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
 
   if (compact) {
     return (
-      <TouchableOpacity
-        style={[styles.buttonCompact, !hasItems && styles.buttonDisabled]}
-        onPress={handleClear}
-        disabled={!hasItems}
-        activeOpacity={0.7}
-      >
-        <Icon 
-          name="trash" 
-          size={26} 
-          color={hasItems ? tokens.colors.coral : tokens.colors.textDim} 
-        />
-      </TouchableOpacity>
+      <Animated.View style={{ transform: [{ scale: pressScale }] }}>
+        <TouchableOpacity
+          style={[styles.buttonCompact, !hasItems && styles.buttonDisabled]}
+          onPress={handleClear}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          disabled={!hasItems}
+          activeOpacity={0.85}
+        >
+          <Icon
+            name="trash"
+            size={26}
+            color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
+          />
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
   return (
-    <TouchableOpacity
-      style={[styles.button, !hasItems && styles.buttonDisabled]}
-      onPress={handleClear}
-      disabled={!hasItems}
-      activeOpacity={0.7}
-    >
-      <View style={styles.content}>
-        <Icon 
-          name="trash" 
-          size={22} 
-          color={hasItems ? tokens.colors.coral : tokens.colors.textDim} 
-        />
-        <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
-          Limpiar Carrito
-        </Text>
-      </View>
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: pressScale }] }}>
+      <TouchableOpacity
+        style={[styles.button, !hasItems && styles.buttonDisabled]}
+        onPress={handleClear}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        disabled={!hasItems}
+        activeOpacity={0.85}
+      >
+        <View style={styles.content}>
+          <Icon
+            name="trash"
+            size={22}
+            color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
+          />
+          <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
+            Limpiar Carrito
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 });
 
