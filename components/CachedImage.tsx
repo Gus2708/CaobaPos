@@ -14,14 +14,16 @@ interface CachedImageProps extends ImageProps {
  * 4. Skips redundant resolves when remoteUri hasn't changed             [stable-ref]
  */
 export const CachedImage = ({ remoteUri, style, ...props }: CachedImageProps) => {
-  // Start with remote so the image renders immediately while we check cache
   const [sourceUri, setSourceUri] = useState<string>(remoteUri);
+  const [hasError, setHasError] = useState(false);
   const resolvedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!remoteUri) return;
+    if (!remoteUri) {
+      setHasError(true);
+      return;
+    }
 
-    // If we already resolved this URL, nothing to do
     if (resolvedRef.current === remoteUri) return;
 
     let cancelled = false;
@@ -31,6 +33,7 @@ export const CachedImage = ({ remoteUri, style, ...props }: CachedImageProps) =>
       if (!cancelled && localUri && localUri !== remoteUri) {
         resolvedRef.current = remoteUri;
         setSourceUri(localUri);
+        setHasError(false);
       }
     }
 
@@ -41,22 +44,23 @@ export const CachedImage = ({ remoteUri, style, ...props }: CachedImageProps) =>
     };
   }, [remoteUri]);
 
-  // Sync source when remoteUri changes to a new product
   useEffect(() => {
     if (remoteUri && sourceUri !== remoteUri && resolvedRef.current !== remoteUri) {
       setSourceUri(remoteUri);
+      setHasError(false);
     }
   }, [remoteUri]);
+
+  if (hasError) return null;
 
   return (
     <Image
       {...props}
       source={{ uri: sourceUri }}
       style={[style, { backgroundColor: 'rgba(184,123,90,0.05)' }]}
-      // No fade if already local; smooth fade on first remote load
       transition={sourceUri.startsWith('file') ? 0 : 150}
-      // expo-image handles disk cache as a tertiary fallback
       cachePolicy="disk"
+      onError={() => setHasError(true)}
     />
   );
 };
