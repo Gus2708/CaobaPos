@@ -1,6 +1,6 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { AppBlurView as BlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';

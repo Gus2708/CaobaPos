@@ -16,6 +16,7 @@
     "@react-native-vector-icons/common": "^13.0.0",
     "@react-native-vector-icons/evil-icons": "^13.0.0",
     "@react-native-vector-icons/fontawesome-free-solid": "^1.0.0",
+    "@dimezis/react-native-blur-view": "^1.0.0",
     "@shopify/flash-list": "2.0.2",
     "@supabase/supabase-js": "^2.102.1",
     "@tailwindcss/vite": "^4.2.2",

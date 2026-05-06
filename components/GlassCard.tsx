@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ViewProps, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { AppBlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/designTokens';
 import { scale } from '../lib/responsive';
@@ -37,7 +37,7 @@ export function GlassCard({
       ]}
       {...props}
     >
-      <BlurView
+      <AppBlurView
         tint="dark"
         intensity={finalBlurAmount}
         style={StyleSheet.absoluteFill}
@@ -70,15 +70,15 @@ const styles = StyleSheet.create({
 
 const intensityStyles = StyleSheet.create({
   subtle: {
-    backgroundColor: 'rgba(20, 20, 22, 0.60)',
+    backgroundColor: 'transparent',
     borderColor: tokens.colors.border,
   },
   medium: {
-    backgroundColor: 'rgba(20, 20, 22, 0.75)',
+    backgroundColor: 'transparent',
     borderColor: tokens.colors.borderMedium,
   },
   strong: {
-    backgroundColor: 'rgba(20, 20, 22, 0.90)',
+    backgroundColor: 'transparent',
     borderColor: tokens.colors.borderMedium,
   },
 });
