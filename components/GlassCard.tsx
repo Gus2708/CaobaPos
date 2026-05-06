@@ -70,15 +70,15 @@ const styles = StyleSheet.create({
 
 const intensityStyles = StyleSheet.create({
   subtle: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(20, 20, 22, 0.60)',
     borderColor: tokens.colors.border,
   },
   medium: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(20, 20, 22, 0.75)',
     borderColor: tokens.colors.borderMedium,
   },
   strong: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(20, 20, 22, 0.90)',
     borderColor: tokens.colors.borderMedium,
   },
 });
