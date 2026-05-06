@@ -1,4 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import { BlurView } from 'expo-blur';
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -82,6 +83,11 @@ const SaleCard = React.memo(function SaleCard({
       accessibilityRole="button"
       accessibilityLabel={`Venta de ${Number(item.total_amount).toFixed(2)} pesos, realizada el ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
+      <BlurView
+        tint="dark"
+        intensity={20}
+        style={StyleSheet.absoluteFill}
+      />
       <LinearGradient
         colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
         start={{ x: 0, y: 0 }}
@@ -114,9 +120,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -249,50 +254,71 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const deleteMutation = useMutation({
     mutationFn: async (sale: Sale) => {
-      const { data: items, error: itemsError } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity')
-        .eq('sale_id', sale.id);
+      try {
+        // 1. Get items to restore stock
+        const { data: items, error: itemsError } = await supabase
+          .from('sale_items')
+          .select('product_id, quantity')
+          .eq('sale_id', sale.id);
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
 
-      if (items && items.length > 0) {
-        for (const item of items) {
-          await supabase.rpc('increment_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-          });
+        // 2. Restore stock using RPC
+        if (items && items.length > 0) {
+          for (const item of items) {
+            const { error: rpcError } = await supabase.rpc('increment_stock', {
+              p_product_id: item.product_id,
+              p_quantity: item.quantity,
+            });
+            if (rpcError) throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+          }
         }
+
+        // 3. Delete linked payments (explicit until cascade is applied)
+        await supabase
+          .from('client_payments')
+          .delete()
+          .eq('sale_id', sale.id);
+
+        // 4. Delete the sale (cascades to sale_items)
+        const { error: saleError } = await supabase
+          .from('sales')
+          .delete()
+          .eq('id', sale.id);
+
+        if (saleError) throw saleError;
+        
+        return { success: true };
+      } catch (error: any) {
+        console.error('Delete mutation error:', error);
+        throw error;
       }
-
-      const { error: deleteError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', sale.id);
-      if (deleteError) throw deleteError;
-
-      await supabase
-        .from('client_payments')
-        .delete()
-        .eq('sale_id', sale.id);
-
-      const { error: saleError } = await supabase
-        .from('sales')
-        .delete()
-        .eq('id', sale.id);
-      if (saleError) throw saleError;
     },
-    onSuccess: (_, sale) => {
+    onSuccess: (_, deletedSale) => {
+      // 1. Actualizar el cache de la consulta infinita manualmente para respuesta instantánea
+      queryClient.setQueriesData({ queryKey: ['sales-history'] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any) => 
+            page.filter((sale: any) => sale.id !== deletedSale.id)
+          )
+        };
+      });
+
+      // 2. Invalidar para asegurar sincronización con DB
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }); 
-      if (sale.payment_method === 'credito') {
+      
+      if (deletedSale.payment_method === 'credito') {
         queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
-        if (sale.client_id) {
-          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', sale.client_id] });
-          queryClient.invalidateQueries({ queryKey: ['client_payments', sale.client_id] });
+        if (deletedSale.client_id) {
+          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', deletedSale.client_id] });
+          queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
         }
       }
+
       setShowDetail(false);
       setSelectedSale(null);
       showToast('Venta eliminada y stock restaurado', 'success');
@@ -301,7 +327,13 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   });
 
   const updateSaleMutation = useMutation({
-    mutationFn: async ({ saleId, items, newTotal }: { saleId: string; items: SaleItem[]; newTotal: number }) => {
+    mutationFn: async ({ saleId, items, newTotal, ivaEnabled, taxAmount }: { 
+      saleId: string; 
+      items: SaleItem[]; 
+      newTotal: number;
+      ivaEnabled: boolean;
+      taxAmount: number;
+    }) => {
       const { data: oldItems, error: fetchError } = await supabase
         .from('sale_items')
         .select('product_id, quantity')
@@ -358,7 +390,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
       const { error: updateError } = await supabase
         .from('sales')
-        .update({ total_amount: newTotal })
+        .update({ 
+          total_amount: newTotal,
+          iva_enabled: ivaEnabled,
+          tax_amount: taxAmount
+        })
         .eq('id', saleId);
       if (updateError) throw updateError;
     },
@@ -378,13 +414,20 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     onError: () => showToast('No se pudo actualizar la venta', 'error'),
   });
 
-  const handleDelete = useCallback((sale: Sale) => {
+  const handleDelete = useCallback((sale: Sale, skipConfirm = false) => {
+    const executeDelete = () => deleteMutation.mutate(sale);
+
+    if (skipConfirm) {
+      executeDelete();
+      return;
+    }
+
     Alert.alert(
       'Eliminar Venta',
       `¿Eliminar venta #${sale.id.slice(0, 8).toUpperCase()}? El stock será restaurado.`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => deleteMutation.mutate(sale) },
+        { text: 'Eliminar', style: 'destructive', onPress: executeDelete },
       ]
     );
   }, [deleteMutation]);
@@ -493,7 +536,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        colors={[tokens.colors.bg, tokens.colors.bg]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -508,7 +551,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         contentContainerStyle={[
           styles.list, 
           { 
-            paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20), 
+            paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), 
             paddingBottom: insets.bottom + verticalScale(100) 
           }
         ]}
@@ -562,8 +605,16 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             setShowDetail(false);
             setSelectedSale(null);
           }}
-          onDelete={() => handleDelete(selectedSale)}
-          onUpdate={(items, total) => updateSaleMutation.mutate({ saleId: selectedSale.id, items, newTotal: total })}
+          onDelete={() => handleDelete(selectedSale, true)}
+          onUpdate={(items, total, ivaEnabled, taxAmount) => 
+            updateSaleMutation.mutate({ 
+              saleId: selectedSale.id, 
+              items, 
+              newTotal: total,
+              ivaEnabled,
+              taxAmount
+            })
+          }
           isDeleting={deleteMutation.isPending}
           isUpdating={updateSaleMutation.isPending}
         />
@@ -581,10 +632,12 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setMethodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
+            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={['rgba(25, 25, 30, 0.98)', 'rgba(15, 15, 20, 0.98)']}
-              style={styles.dropdownGradient}
-            >
+              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar por pago</Text>
                 <TouchableOpacity 
@@ -627,7 +680,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                   )}
                 </TouchableOpacity>
               ))}
-            </LinearGradient>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -644,10 +697,12 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setPeriodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
+            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
             <LinearGradient
-              colors={['rgba(25, 25, 30, 0.98)', 'rgba(15, 15, 20, 0.98)']}
-              style={styles.dropdownGradient}
-            >
+              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar tiempo</Text>
                 <TouchableOpacity 
@@ -696,7 +751,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                   )}
                 </TouchableOpacity>
               ))}
-            </LinearGradient>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -917,6 +972,7 @@ const styles = StyleSheet.create({
   },
   dropdownGradient: {
     padding: scale(16),
+    backgroundColor: 'transparent',
   },
   dropdownTitle: {
     fontSize: moderateScale(14),

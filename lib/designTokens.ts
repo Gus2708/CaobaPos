@@ -63,6 +63,7 @@ export const tokens = {
     // Status — Amber (critical warning)
     amber: '#E8B560',
     amberDim: 'rgba(232, 181, 96, 0.12)',
+    amberGold: '#CA8A04', // Premium gold accent for restaurant look
 
     // Text — cleaner hierarchy
     text: '#F0F0F2',
@@ -72,11 +73,20 @@ export const tokens = {
 
     // Glass/Transparency Effects — simplified
     glass: {
-      bg: 'rgba(20, 20, 23, 0.85)',
-      border: 'rgba(255, 255, 255, 0.08)',
-      accent: 'rgba(184, 123, 90, 0.12)',
-      heavy: 'rgba(14, 14, 17, 0.94)',
-      light: 'rgba(255, 255, 255, 0.05)',
+      bg: 'rgba(5, 5, 6, 0.96)',         // Solid dark base
+      medium: 'rgba(8, 8, 10, 0.92)',
+      heavy: 'rgba(12, 12, 14, 0.95)',
+      
+      // Liquid Glass specifics — focus on depth
+      liquid: 'rgba(255, 255, 255, 0.03)', 
+      liquidHighlight: 'rgba(255, 255, 255, 0.08)', // For top edges
+      liquidShadow: 'rgba(0, 0, 0, 0.4)',           // For bottom edges
+      
+      border: 'rgba(255, 255, 255, 0.05)',
+      borderStrong: 'rgba(255, 255, 255, 0.08)',
+      borderLight: 'rgba(255, 255, 255, 0.02)',
+      accent: 'rgba(184, 123, 90, 0.08)',
+      light: 'rgba(255, 255, 255, 0.02)',
     }
   },
   typography: {
@@ -96,6 +106,20 @@ export const tokens = {
     semibold: '600' as const,
     bold: '700' as const,
     extrabold: '800' as const,
+  },
+  layout: {
+    gutter: scale(20),    // Standard horizontal padding
+    cardGap: scale(12),   // Gap between cards
+  },
+  styles: {
+    liquidCard: {
+      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      borderWidth: 1,
+      borderRadius: scale(24), // Premium XL radius
+      // Reflections
+      reflectionColors: ['rgba(255, 255, 255, 0.05)', 'transparent'] as const,
+    }
   },
   animation: {
     fast: 150,

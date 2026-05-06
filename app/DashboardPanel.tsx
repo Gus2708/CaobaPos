@@ -14,6 +14,7 @@ import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
+import { GlassCard } from '../components/GlassCard';
 import { globalScrollY } from '../store/uiStore';
 
 interface Sale {
@@ -82,7 +83,7 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
       accessibilityLabel={onPress ? `Ver detalles de ${label}: ${value}` : `${label}: ${value}`}
     >
       <LinearGradient
-        colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.01)']}
+        colors={tokens.styles.liquidCard.reflectionColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -115,6 +116,16 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
   );
 });
 
+const formatTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDate = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+};
+
 export const DashboardPanel = React.memo(function DashboardPanel() {
   const [period, setPeriod] = useState<DashboardPeriod>('dia');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
@@ -123,9 +134,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const { today, weekAgo, monthAgo, defaultStart } = useMemo(() => {
     const t = new Date(); t.setHours(0, 0, 0, 0);
@@ -279,10 +289,12 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     const bsRevenue = electronicSales + electronicAbonos;
     const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
 
+    const saleMap = new Map(saleList.map(s => [s.id, s]));
+
     let costOfPaidSales = 0;
     items.forEach(item => {
       if (saleIds.has(item.sale_id)) {
-        const sale = saleList.find(s => s.id === item.sale_id);
+        const sale = saleMap.get(item.sale_id);
         if (sale && sale.payment_method !== 'credito') {
           const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
           costOfPaidSales += (itemCost * item.quantity);
@@ -353,15 +365,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       }));
   }, [saleItems, products, filteredSales]);
 
-  const formatTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-  };
 
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-  };
 
   if (loadingSales) {
     return (
@@ -377,7 +381,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(10, 10, 12, 0.98)', 'rgba(10, 10, 12, 0.95)']}
+        colors={[tokens.colors.bg, tokens.colors.bg]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -393,8 +397,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       contentContainerStyle={[
         styles.content, 
         { 
-          paddingTop: TOTAL_NAV_HEIGHT + verticalScale(20),
-          paddingBottom: verticalScale(40) + insets.bottom 
+          paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), 
+          paddingBottom: verticalScale(100) + insets.bottom 
         }
       ]}
     >
@@ -472,7 +476,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <LinearGradient
-            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+            colors={tokens.styles.liquidCard.reflectionColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -560,7 +564,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.sectionCard}>
           <LinearGradient
-            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+            colors={tokens.styles.liquidCard.reflectionColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -595,7 +599,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           </View>
           <View style={styles.sectionCard}>
             <LinearGradient
-              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+              colors={tokens.styles.liquidCard.reflectionColors}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -628,7 +632,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.sectionCard}>
           <LinearGradient
-            colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
+            colors={tokens.styles.liquidCard.reflectionColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -771,9 +775,10 @@ const styles = StyleSheet.create({
   statCard: { 
     flex: 1, 
     padding: scale(12),
-    borderRadius: tokens.radius.xl, 
-    borderWidth: 1, 
-    borderColor: tokens.colors.borderLight,
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius, 
+    borderWidth: tokens.styles.liquidCard.borderWidth, 
+    borderColor: tokens.styles.liquidCard.borderColor,
     justifyContent: 'center',
     minHeight: verticalScale(90),
     overflow: 'hidden',
@@ -853,17 +858,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   sectionCard: { 
-    borderRadius: tokens.radius.xl, 
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius, 
     padding: tokens.spacing.lg,
-    borderWidth: 1, 
-    borderColor: tokens.colors.glass.border,
+    borderWidth: tokens.styles.liquidCard.borderWidth, 
+    borderColor: tokens.styles.liquidCard.borderColor,
     overflow: 'hidden',
   },
   financialGrid: {
-    borderRadius: tokens.radius.xl,
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
     padding: scale(16),
-    borderWidth: 1,
-    borderColor: tokens.colors.borderLight,
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
     gap: verticalScale(14),
     overflow: 'hidden',
   },
@@ -901,6 +908,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.sage,
+    textShadowColor: 'rgba(109, 184, 138, 0.4)', // Subtle sage glow
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   financialValue: {
     fontFamily: FontNames.jetBrainsMono,
@@ -914,12 +924,18 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.coral,
+    textShadowColor: 'rgba(201, 107, 107, 0.4)', // Subtle coral glow
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   financialValueProfit: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(22),
     fontWeight: '800',
     color: tokens.colors.sage,
+    textShadowColor: 'rgba(109, 184, 138, 0.4)', // Subtle sage glow
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   financialValueReceived: {
     fontFamily: FontNames.jetBrainsMono,
@@ -933,6 +949,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.amber,
     lineHeight: moderateScale(20),
+    textShadowColor: 'rgba(232, 181, 96, 0.4)', // Subtle amber/yellow glow
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   labelWithBadge: {
     flexDirection: 'row',

@@ -1,10 +1,10 @@
 import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verticalScale } from '../lib/responsive';
 import { headerTranslateY, initScrollHideAnimation, resetScrollState, cleanupScrollListener } from '../store/uiStore';
 import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
-import { Navbar } from './Navbar';
 import { POSScreen } from './index';
 import { DashboardPanel } from './DashboardPanel';
 import { InventoryPanel } from './InventoryPanel';
@@ -41,9 +41,8 @@ export default function MainApp() {
   const insets = useSafeAreaInsets();
   const isMobile = width < 768;
   
-  const HEADER_HEIGHT = verticalScale(60) + insets.top;
-  const NAVBAR_HEIGHT = verticalScale(64);
-  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT + NAVBAR_HEIGHT;
+  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const CAT_HEIGHT = verticalScale(44);
   const scrollHideHeight = currentScreen === 'pos' ? TOTAL_NAV_HEIGHT + CAT_HEIGHT : TOTAL_NAV_HEIGHT;
 
@@ -61,6 +60,10 @@ export default function MainApp() {
   return (
     <ToastProvider>
       <View style={styles.container}>
+        <LinearGradient
+          colors={[tokens.colors.bg, tokens.colors.bg]}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={styles.content}>
           <Animated.View style={{
             position: 'absolute',
@@ -68,11 +71,11 @@ export default function MainApp() {
             left: 0,
             right: 0,
             zIndex: 20,
-            transform: [{ translateY: headerTranslateY }]
+            transform: [{ translateY: headerTranslateY }],
+            backgroundColor: tokens.colors.bg,
           }}>
-            <Header />
-            <Navbar
-              current={currentScreen}
+            <Header 
+              currentScreen={currentScreen}
               onNavigate={setCurrentScreen}
             />
           </Animated.View>

@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
 import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
@@ -83,8 +84,15 @@ export function SaleSummaryModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <BlurView tint="dark" intensity={25} style={styles.overlay}>
         <View style={styles.modal}>
+          <BlurView tint="dark" intensity={35} style={StyleSheet.absoluteFill} />
+          <View style={{
+            ...StyleSheet.absoluteFillObject,
+            borderWidth: 1,
+            borderColor: tokens.colors.glass.liquidHighlight,
+            borderRadius: tokens.radius.modal,
+          }} />
           <LinearGradient
             colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
             start={{ x: 0, y: 0 }}
@@ -161,7 +169,7 @@ export function SaleSummaryModal({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </BlurView>
     </Modal>
   );
 }
@@ -178,9 +186,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: scale(380),
     borderRadius: tokens.radius.modal,
-    backgroundColor: tokens.colors.bg,
-    borderWidth: 1,
-    borderColor: tokens.colors.borderAccent,
+    backgroundColor: 'rgba(10, 10, 12, 0.85)',
     overflow: 'hidden',
   },
   header: {

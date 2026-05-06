@@ -47,7 +47,7 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
         <Icon 
           name={iconName} 
           size={20} 
-          color={isActive ? tokens.colors.text : tokens.colors.textMuted} 
+          color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
         />
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
           {label}
@@ -82,10 +82,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(6),
-    gap: scale(8),
-    minHeight: verticalScale(44),
+    paddingHorizontal: scale(12),
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(6), // Reduced to make space for search
+    gap: scale(10),
   },
   tab: {
     flexDirection: 'row',
@@ -95,21 +95,25 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(8),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: tokens.colors.border,
+    borderColor: 'transparent',
     backgroundColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: tokens.colors.surfaceElevated,
-    borderColor: tokens.colors.borderMedium,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: tokens.colors.mahogany, 
   },
   tabText: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(13),
-    fontWeight: '500',
+    fontSize: moderateScale(14),
+    fontWeight: '600',
     color: tokens.colors.textMuted,
+    letterSpacing: 0.2,
   },
   tabTextActive: {
-    color: tokens.colors.text,
-    fontWeight: '600',
+    color: tokens.colors.mahogany,
+    fontWeight: '800',
+    textShadowColor: 'transparent',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 0,
   },
 });

@@ -7,11 +7,15 @@ const PRODUCTS_TABLE = 'products';
 
 export type Category = string | 'todos';
 
+/**
+ * useProducts Hook
+ * Fetches all active products once and caches them.
+ * Filtering is done client-side for maximum performance and zero latency when switching categories.
+ */
 export function useProducts(category: Category = 'todos') {
   return useQuery({
-    queryKey: ['products', category],
+    queryKey: ['products'], // Stable key to avoid redundant fetches
     queryFn: async (): Promise<Product[]> => {
-      // Always fetch all active products — category filter is applied client-side
       const { data, error } = await supabase
         .from(PRODUCTS_TABLE)
         .select('*, product_categories(categories(name))')
@@ -20,26 +24,20 @@ export function useProducts(category: Category = 'todos') {
 
       if (error) throw error;
 
-      const productsWithCategories = (data ?? []).map((p: any) => ({
+      return (data ?? []).map((p: any) => ({
         ...p,
         categories:
           p.product_categories
             ?.map((pc: any) => pc.categories?.name)
             .filter(Boolean) ?? [],
       }));
-
-      // Client-side category filter (reliable)
-      if (category !== 'todos') {
-        return productsWithCategories.filter((p: Product) =>
-          p.categories?.includes(category)
-        );
-      }
-
-      return productsWithCategories;
     },
-    // 5 minutes — products don't change mid-shift; prevents redundant refetches
-    staleTime: 1000 * 60 * 5,
-    // Keep previous data visible while new category loads (no flash)
+    // Transform data based on category
+    select: (products) => {
+      if (category === 'todos') return products;
+      return products.filter((p) => p.categories?.includes(category));
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
     placeholderData: (prev) => prev,
   });
 }
@@ -58,11 +56,11 @@ export function useCategories() {
       if (error) throw error;
       
       const names = data.map(c => c.name);
-      // Sync with store
-      setCategories(names);
+      // Sync with store - wrap in timeout to avoid state updates during render
+      setTimeout(() => setCategories(names), 0);
       return names;
     },
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 10,
   });
 }
 

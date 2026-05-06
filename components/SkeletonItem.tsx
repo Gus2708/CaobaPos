@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale } from '../lib/responsive';
 
@@ -10,22 +10,25 @@ interface SkeletonItemProps {
 
 /**
  * Modern Skeleton loader using a subtle breathing animation.
- * Follows the layered surface design system.
+ * Follows the Liquid Glass layered surface design system.
  */
 export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
   const opacity = useRef(new Animated.Value(0.3)).current;
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const numColumns = isMobile ? 1 : 3;
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: 0.6,
-          duration: 600,
+          toValue: 0.7,
+          duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
           toValue: 0.3,
-          duration: 600,
+          duration: 800,
           useNativeDriver: true,
         }),
       ])
@@ -39,79 +42,96 @@ export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
   const renderItem = (_: any, index: number) => {
     if (layout === 'card') {
       return (
-        <View key={index} style={styles.card}>
-          <Animated.View style={[styles.cardImage, { opacity }]} />
-          <View style={styles.cardContent}>
-            <Animated.View style={[styles.title, { width: '80%', opacity }]} />
-            <Animated.View style={[styles.subtitle, { width: '40%', opacity }]} />
+        <View key={index} style={[styles.wrapper, !isMobile && { width: `${100 / numColumns}%` }]}>
+          <View style={styles.card}>
+            <Animated.View style={[styles.cardImage, { opacity }]} />
+            <View style={styles.cardContent}>
+              <Animated.View style={[styles.title, { width: '80%', opacity }]} />
+              <Animated.View style={[styles.subtitle, { width: '40%', opacity }]} />
+            </View>
           </View>
         </View>
       );
     }
 
     return (
-      <View key={index} style={styles.row}>
-        <Animated.View style={[styles.rowImage, { opacity }]} />
-        <View style={styles.rowContent}>
-          <Animated.View style={[styles.title, { width: '60%', opacity }]} />
-          <Animated.View style={[styles.subtitle, { width: '30%', opacity }]} />
+      <View key={index} style={styles.wrapper}>
+        <View style={styles.row}>
+          <Animated.View style={[styles.rowImage, { opacity }]} />
+          <View style={styles.rowContent}>
+            <Animated.View style={[styles.title, { width: '60%', opacity }]} />
+            <View style={styles.rowMeta}>
+               <Animated.View style={[styles.subtitle, { width: scale(40), opacity }]} />
+               <Animated.View style={[styles.subtitle, { width: scale(50), borderRadius: tokens.radius.pill, opacity }]} />
+            </View>
+          </View>
+          <Animated.View style={[styles.rowAction, { opacity }]} />
         </View>
-        <Animated.View style={[styles.rowPrice, { opacity }]} />
       </View>
     );
   };
 
-  return <>{items.map((_, i) => renderItem(_, i))}</>;
+  return <View style={layout === 'card' && !isMobile ? styles.grid : undefined}>{items.map((_, i) => renderItem(_, i))}</View>;
 }
 
 const styles = StyleSheet.create({
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  wrapper: {
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(8),
+  },
   card: {
-    backgroundColor: tokens.colors.surface,
-    borderRadius: tokens.radius.card,
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
     aspectRatio: 1,
-    padding: scale(8),
-    marginHorizontal: scale(16),
-    marginBottom: verticalScale(12),
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
+    overflow: 'hidden',
   },
   cardImage: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: tokens.radius.sm,
-    marginBottom: verticalScale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.borderLight,
   },
   cardContent: {
+    padding: scale(12),
     gap: verticalScale(6),
-    paddingHorizontal: scale(4),
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.colors.surface,
-    borderRadius: tokens.radius.card,
-    padding: scale(12),
-    marginHorizontal: scale(16),
-    marginBottom: verticalScale(8),
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    minHeight: verticalScale(76),
+    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
+    padding: scale(16),
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
+    minHeight: verticalScale(84),
+    gap: scale(14),
   },
   rowImage: {
-    width: scale(52),
-    height: scale(52),
-    borderRadius: tokens.radius.sm,
+    width: scale(56),
+    height: scale(56),
+    borderRadius: scale(28),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   rowContent: {
     flex: 1,
-    marginLeft: scale(12),
     gap: verticalScale(6),
   },
-  rowPrice: {
-    width: scale(60),
-    height: verticalScale(24),
-    borderRadius: tokens.radius.xs,
+  rowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    marginTop: verticalScale(2),
+  },
+  rowAction: {
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   title: {
