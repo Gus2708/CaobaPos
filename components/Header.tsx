@@ -129,9 +129,9 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
     inputRange: [0, 1],
     outputRange: [verticalScale(4), -verticalScale(1)],
   });
-  const bottomLineWidth = toggleAnim.interpolate({
+  const bottomLineScaleX = toggleAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [scale(16), scale(22)],
+    outputRange: [scale(16) / scale(22), 1],
   });
 
   const handleNavigate = (screen: Screen) => {
@@ -185,9 +185,9 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
                 styles.toggleLine,
                 styles.toggleLineAbsolute,
                 {
-                  width: bottomLineWidth,
                   alignSelf: 'flex-end',
                   transform: [
+                    { scaleX: bottomLineScaleX },
                     { translateY: bottomLineTranslate },
                     { rotate: bottomLineRotate },
                   ],
