@@ -26,3 +26,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+
+# Native folders (let EAS use our custom configurations)
+# android/
+# ios/
