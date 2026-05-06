@@ -1,9 +1,9 @@
-import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verticalScale } from '../lib/responsive';
 import { headerTranslateY, initScrollHideAnimation, resetScrollState, cleanupScrollListener } from '../store/uiStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Header } from '../components/Header';
 import { POSScreen } from './index';
 import { DashboardPanel } from './DashboardPanel';
@@ -17,17 +17,46 @@ type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
 export default function MainApp() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
+  // displayScreen lags one frame behind to allow fade-out before content swap
+  const [displayScreen, setDisplayScreen] = useState<Screen>('pos');
+  const screenOpacity = useRef(new Animated.Value(1)).current;
+  const screenTranslateY = useRef(new Animated.Value(0)).current;
+
+  const handleNavigate = useCallback((screen: Screen) => {
+    if (screen === currentScreen) return;
+    setCurrentScreen(screen); // update header active state immediately
+
+    Animated.timing(screenOpacity, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      setDisplayScreen(screen);
+      screenTranslateY.setValue(verticalScale(10));
+      Animated.parallel([
+        Animated.timing(screenOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.spring(screenTranslateY, {
+          toValue: 0,
+          tension: 110,
+          friction: 11,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, [currentScreen, screenOpacity, screenTranslateY]);
 
   const renderScreen = () => {
-    switch (currentScreen) {
+    switch (displayScreen) {
       case 'pos':
         return <POSScreen />;
       case 'dashboard':
         return <DashboardPanel />;
       case 'inventory':
-        return <InventoryPanel 
-          readOnly={false} 
-        />;
+        return <InventoryPanel readOnly={false} />;
       case 'history':
         return <HistoryPanel />;
       case 'clients':
@@ -37,10 +66,8 @@ export default function MainApp() {
     }
   };
 
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const isMobile = width < 768;
-  
+
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const CAT_HEIGHT = verticalScale(44);
@@ -74,13 +101,21 @@ export default function MainApp() {
             transform: [{ translateY: headerTranslateY }],
             backgroundColor: tokens.colors.bg,
           }}>
-            <Header 
+            <Header
               currentScreen={currentScreen}
-              onNavigate={setCurrentScreen}
+              onNavigate={handleNavigate}
             />
           </Animated.View>
-          
-          {renderScreen()}
+
+          <Animated.View style={[
+            styles.screenWrapper,
+            {
+              opacity: screenOpacity,
+              transform: [{ translateY: screenTranslateY }],
+            },
+          ]}>
+            {renderScreen()}
+          </Animated.View>
         </View>
       </View>
     </ToastProvider>
@@ -88,13 +123,16 @@ export default function MainApp() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: tokens.colors.bg,
   },
   content: {
     flex: 1,
     backgroundColor: tokens.colors.bg,
     overflow: 'hidden',
+  },
+  screenWrapper: {
+    flex: 1,
   },
 });

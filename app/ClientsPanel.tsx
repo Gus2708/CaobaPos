@@ -43,7 +43,7 @@ const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (c
 ));
 
 // Animated FlashList component
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 export default function ClientsPanel() {
   const insets = useSafeAreaInsets();
@@ -144,7 +144,7 @@ export default function ClientsPanel() {
         <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredClients}
-          keyExtractor={item => item.id}
+          keyExtractor={(item: ClientBalance) => item.id}
           renderItem={renderClientItem}
           estimatedItemSize={verticalScale(80)}
           contentContainerStyle={[
@@ -188,6 +188,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: tokens.colors.bg,
+  },
+  listHeader: {
+    // wrapper for the FlashList ListHeaderComponent
   },
   header: {
     paddingHorizontal: scale(4),

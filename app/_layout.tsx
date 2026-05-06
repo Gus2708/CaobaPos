@@ -1,3 +1,4 @@
+// @ts-expect-error expo-router types not installed — this file is unused (app uses manual navigation via MainApp)
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';

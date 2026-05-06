@@ -1,4 +1,4 @@
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { memo } from 'react';
@@ -7,6 +7,7 @@ import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { PressableScale } from './PressableScale';
 
 interface CartItemProps {
   item: CartItemType;
@@ -49,36 +50,36 @@ export const CartItemRow = memo(function CartItemRow({
       
       <View style={styles.rightSection}>
         <View style={styles.controls}>
-          <TouchableOpacity 
-            style={styles.button} 
+          <PressableScale
+            style={styles.button}
             onPress={onDecrement}
-            activeOpacity={0.7}
+            scaleTo={0.85}
           >
             <Icon name="minus" size={14} color={tokens.colors.text} />
-          </TouchableOpacity>
-          
+          </PressableScale>
+
           <View style={styles.quantityContainer}>
             <Text style={styles.quantity}>{item.quantity}</Text>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.button} 
+
+          <PressableScale
+            style={styles.button}
             onPress={onIncrement}
-            activeOpacity={0.7}
+            scaleTo={0.85}
           >
             <Icon name="plus" size={14} color={tokens.colors.text} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={styles.totalAndAction}>
           <Text style={styles.total}>${totalPrice}</Text>
-          <TouchableOpacity 
-            style={styles.removeButton} 
+          <PressableScale
+            style={styles.removeButton}
             onPress={onRemove}
-            activeOpacity={0.7}
+            scaleTo={0.88}
           >
             <Icon name="trash" size={18} color={tokens.colors.coral} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </View>
     </View>

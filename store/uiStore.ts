@@ -10,6 +10,9 @@ let _hidden = false;
 let _navHeight = 0;
 let _listenerId: string | null = null;
 
+/** Spring config for snappy header reveal */
+const REVEAL_SPRING = { tension: 140, friction: 14, useNativeDriver: true } as const;
+
 /**
  * Called once from MainApp to set the total nav height and start listening.
  */
@@ -24,35 +27,31 @@ export function initScrollHideAnimation(totalNavHeight: number) {
   _listenerId = globalScrollY.addListener(({ value }) => {
     const diff = value - _lastY;
 
-    // Ignore noise (< 3px)
-    if (Math.abs(diff) < 3) return;
+    // Ignore noise (< 2px)
+    if (Math.abs(diff) < 2) return;
 
-    if (value <= 5 && _hidden) {
-      // Near top → always show
+    if (value <= 8 && _hidden) {
+      // Near top → always show with spring
       _hidden = false;
-      Animated.timing(headerTranslateY, {
+      Animated.spring(headerTranslateY, {
         toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        ...REVEAL_SPRING,
       }).start();
-    } else if (diff > 6 && !_hidden && value > 30) {
-      // Scrolling down past threshold → hide
+    } else if (diff > 5 && !_hidden && value > 40) {
+      // Scrolling down past threshold → hide smoothly
       _hidden = true;
       Animated.timing(headerTranslateY, {
         toValue: -_navHeight,
-        duration: 260,
+        duration: 240,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
-    } else if (diff < -6 && _hidden) {
-      // Scrolling up → show
+    } else if (diff < -5 && _hidden) {
+      // Scrolling up → spring reveal
       _hidden = false;
-      Animated.timing(headerTranslateY, {
+      Animated.spring(headerTranslateY, {
         toValue: 0,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        ...REVEAL_SPRING,
       }).start();
     }
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { Icon } from '../components/Icon';
 import { tokens } from '../lib/designTokens';
 import { generateReport } from '../lib/pdfReportGenerator';
 import { useToast } from '../components/Toast';
+import { SkeletonItem } from '../components/SkeletonItem';
 import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
@@ -185,16 +186,30 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const { data: saleItems } = useQuery<SaleItem[]>({
     queryKey: ['dashboard', 'sale_items', period, dateRange],
     queryFn: async () => {
-      let query = supabase.from('sale_items').select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal, sales!inner(created_at)');
+      // PostgREST does not support dot-notation filters on joined tables via .gte().
+      // Instead fetch sale_ids from the already-loaded sales and query items by those IDs.
+      // This avoids a broken cross-table filter that silently returns all rows.
+      let salesQuery = supabase.from('sales').select('id');
       if (period === 'personalizado') {
-        query = query.gte('sales.created_at', dateRange.start).lte('sales.created_at', dateRange.end);
+        salesQuery = salesQuery.gte('created_at', dateRange.start!).lte('created_at', dateRange.end!);
       } else if (dateRange.start) {
-        query = query.gte('sales.created_at', dateRange.start);
+        salesQuery = salesQuery.gte('created_at', dateRange.start);
       }
-      const { data, error } = await query;
+      const { data: salesData, error: salesError } = await salesQuery;
+      if (salesError) throw salesError;
+
+      const saleIds = (salesData ?? []).map(s => s.id);
+      if (saleIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
+        .in('sale_id', saleIds);
+
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!sales, // wait until the sales query has resolved
   });
 
   const { data: allPayments } = useQuery<ClientPayment[]>({
@@ -367,13 +382,12 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
 
 
-  if (loadingSales) {
+  // Show skeleton while any core query is loading
+  const isLoading = loadingSales || !saleItems || !products;
+  if (isLoading) {
     return (
-      <View style={styles.loading}>
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-          <Text style={styles.loadingText}>Cargando panel...</Text>
-        </View>
+      <View style={[styles.container, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(16), paddingHorizontal: scale(16) }]}>
+        <SkeletonItem layout="card" count={6} />
       </View>
     );
   }
