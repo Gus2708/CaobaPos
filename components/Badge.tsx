@@ -101,7 +101,6 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(6),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    alignSelf: 'flex-start',
   },
   iconContainer: {
     marginRight: scale(8),
