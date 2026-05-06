@@ -8,6 +8,7 @@ import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
+import { usePressAnimation } from '../hooks/usePressAnimation';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -21,6 +22,62 @@ const TABS: { key: Screen; label: string; icon: string; description: string }[] 
   { key: 'clients', label: 'Clientes', icon: 'users', description: 'Directorio de clientes' },
 ];
 
+interface MenuItemRowProps {
+  tab: { key: Screen; label: string; icon: string; description: string };
+  index: number;
+  isActive: boolean;
+  menuAnim: RNAnimated.Value;
+  onPress: () => void;
+}
+
+function MenuItemRow({ tab, index, isActive, menuAnim, onPress }: MenuItemRowProps) {
+  const { scale: pressScale, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
+
+  const itemAnim = menuAnim.interpolate({
+    inputRange: [0, Math.min(0.4 + index * 0.12, 0.95), 1],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  });
+  const itemTranslate = itemAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [verticalScale(20), 0],
+  });
+
+  return (
+    <RNAnimated.View
+      style={{
+        opacity: itemAnim,
+        transform: [{ translateY: itemTranslate }, { scale: pressScale }],
+      }}
+    >
+      <TouchableOpacity
+        style={[styles.menuItem, isActive && styles.menuItemActive]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        activeOpacity={0.9}
+      >
+        <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
+          <Icon
+            name={tab.icon}
+            size={24}
+            color={isActive ? tokens.colors.amberGold : tokens.colors.textMuted}
+          />
+        </View>
+        <View style={styles.itemTextContainer}>
+          <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
+            {tab.label}
+          </Text>
+          <Text style={styles.itemDescription} numberOfLines={1}>
+            {tab.description}
+          </Text>
+        </View>
+        {isActive && <View style={styles.activeDot} />}
+      </TouchableOpacity>
+    </RNAnimated.View>
+  );
+}
+
 interface HeaderProps {
   currentScreen: Screen;
   onNavigate: (s: Screen) => void;
@@ -31,19 +88,51 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuAnim = useRef(new RNAnimated.Value(0)).current;
 
+  const toggleAnim = useRef(new RNAnimated.Value(0)).current;
+
   const toggleMenu = () => {
     const toValue = isMenuOpen ? 0 : 1;
     if (!isMenuOpen) setIsMenuOpen(true);
-    
-    RNAnimated.spring(menuAnim, {
-      toValue,
-      useNativeDriver: true,
-      tension: 60,
-      friction: 10,
-    }).start(() => {
+
+    RNAnimated.parallel([
+      RNAnimated.spring(menuAnim, {
+        toValue,
+        useNativeDriver: true,
+        tension: 60,
+        friction: 10,
+      }),
+      RNAnimated.spring(toggleAnim, {
+        toValue,
+        useNativeDriver: true,
+        tension: 120,
+        friction: 11,
+      }),
+    ]).start(() => {
       if (isMenuOpen) setIsMenuOpen(false);
     });
   };
+
+  // Hamburger → X morph
+  const topLineRotate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '45deg'],
+  });
+  const topLineTranslate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-verticalScale(4), verticalScale(1)],
+  });
+  const bottomLineRotate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-45deg'],
+  });
+  const bottomLineTranslate = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [verticalScale(4), -verticalScale(1)],
+  });
+  const bottomLineWidth = toggleAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [scale(16), scale(22)],
+  });
 
   const handleNavigate = (screen: Screen) => {
     onNavigate(screen);
@@ -73,13 +162,38 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
 
         {/* Action Section */}
         <View style={styles.actionSection}>
-          <TouchableOpacity 
-            style={styles.toggleContainer} 
+          <TouchableOpacity
+            style={styles.toggleContainer}
             onPress={toggleMenu}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <View style={styles.toggleLine} />
-            <View style={[styles.toggleLine, { width: scale(16), alignSelf: 'flex-end' }]} />
+            <RNAnimated.View
+              style={[
+                styles.toggleLine,
+                styles.toggleLineAbsolute,
+                {
+                  transform: [
+                    { translateY: topLineTranslate },
+                    { rotate: topLineRotate },
+                  ],
+                },
+              ]}
+            />
+            <RNAnimated.View
+              style={[
+                styles.toggleLine,
+                styles.toggleLineAbsolute,
+                {
+                  width: bottomLineWidth,
+                  alignSelf: 'flex-end',
+                  transform: [
+                    { translateY: bottomLineTranslate },
+                    { rotate: bottomLineRotate },
+                  ],
+                },
+              ]}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -91,7 +205,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         animationType="none"
         onRequestClose={toggleMenu}
       >
-        <View style={styles.modalContainer}>
+        <RNAnimated.View style={[styles.modalContainer, { opacity: menuAnim }]}>
           <AppBlurView
             tint="dark"
             intensity={80}
@@ -112,42 +226,22 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
           </View>
 
           <View style={styles.menuContent}>
-            {TABS.map((tab, index) => {
-              const isActive = currentScreen === tab.key;
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  style={[styles.menuItem, isActive && styles.menuItemActive]}
-                  onPress={() => handleNavigate(tab.key)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
-                    <Icon 
-                      name={tab.icon} 
-                      size={24} 
-                      color={isActive ? tokens.colors.amberGold : tokens.colors.textMuted} 
-                    />
-                  </View>
-                  <View style={styles.itemTextContainer}>
-                    <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
-                      {tab.label}
-                    </Text>
-                    <Text style={styles.itemDescription} numberOfLines={1}>
-                      {tab.description}
-                    </Text>
-                  </View>
-                  {isActive && (
-                    <View style={styles.activeDot} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+            {TABS.map((tab, index) => (
+              <MenuItemRow
+                key={tab.key}
+                tab={tab}
+                index={index}
+                isActive={currentScreen === tab.key}
+                menuAnim={menuAnim}
+                onPress={() => handleNavigate(tab.key)}
+              />
+            ))}
           </View>
 
           <View style={styles.menuFooter}>
             <Text style={styles.footerText}>CaobaPOS v2026</Text>
           </View>
-        </View>
+        </RNAnimated.View>
       </Modal>
     </View>
   );
@@ -189,6 +283,9 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: tokens.colors.text,
     borderRadius: 1,
+  },
+  toggleLineAbsolute: {
+    position: 'absolute',
   },
   
   // Modal Styles

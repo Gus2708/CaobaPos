@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, Animated, useWindowDimensions, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale } from '../lib/responsive';
 
@@ -8,34 +9,60 @@ interface SkeletonItemProps {
   count?: number;
 }
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
 /**
- * Modern Skeleton loader using a subtle breathing animation.
- * Follows the Liquid Glass layered surface design system.
+ * Shimmer skeleton: a translating highlight gradient sweeps across each
+ * placeholder block. Uses native driver for 60fps loop.
  */
+function Shimmer({ style }: { style: any }) {
+  const translate = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(translate, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [translate]);
+
+  const x = translate.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-SCREEN_WIDTH, SCREEN_WIDTH],
+  });
+
+  return (
+    <View style={[style, styles.shimmerContainer]}>
+      <View style={styles.shimmerBase} />
+      <AnimatedLinearGradient
+        colors={[
+          'rgba(255, 255, 255, 0)',
+          'rgba(255, 255, 255, 0.06)',
+          'rgba(255, 255, 255, 0.12)',
+          'rgba(255, 255, 255, 0.06)',
+          'rgba(255, 255, 255, 0)',
+        ]}
+        locations={[0, 0.35, 0.5, 0.65, 1]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={[
+          StyleSheet.absoluteFill,
+          { transform: [{ translateX: x }] },
+        ]}
+      />
+    </View>
+  );
+}
+
 export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const numColumns = isMobile ? 1 : 3;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [opacity]);
 
   const items = Array.from({ length: count });
 
@@ -44,10 +71,10 @@ export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
       return (
         <View key={index} style={[styles.wrapper, !isMobile && { width: `${100 / numColumns}%` }]}>
           <View style={styles.card}>
-            <Animated.View style={[styles.cardImage, { opacity }]} />
+            <Shimmer style={styles.cardImage} />
             <View style={styles.cardContent}>
-              <Animated.View style={[styles.title, { width: '80%', opacity }]} />
-              <Animated.View style={[styles.subtitle, { width: '40%', opacity }]} />
+              <Shimmer style={[styles.title, { width: '80%' }]} />
+              <Shimmer style={[styles.subtitle, { width: '40%' }]} />
             </View>
           </View>
         </View>
@@ -57,15 +84,15 @@ export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
     return (
       <View key={index} style={styles.wrapper}>
         <View style={styles.row}>
-          <Animated.View style={[styles.rowImage, { opacity }]} />
+          <Shimmer style={styles.rowImage} />
           <View style={styles.rowContent}>
-            <Animated.View style={[styles.title, { width: '60%', opacity }]} />
+            <Shimmer style={[styles.title, { width: '60%' }]} />
             <View style={styles.rowMeta}>
-               <Animated.View style={[styles.subtitle, { width: scale(40), opacity }]} />
-               <Animated.View style={[styles.subtitle, { width: scale(50), borderRadius: tokens.radius.pill, opacity }]} />
+              <Shimmer style={[styles.subtitle, { width: scale(40) }]} />
+              <Shimmer style={[styles.subtitle, { width: scale(50), borderRadius: tokens.radius.pill }]} />
             </View>
           </View>
-          <Animated.View style={[styles.rowAction, { opacity }]} />
+          <Shimmer style={styles.rowAction} />
         </View>
       </View>
     );
@@ -93,7 +120,6 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.borderLight,
   },
@@ -116,7 +142,6 @@ const styles = StyleSheet.create({
     width: scale(56),
     height: scale(56),
     borderRadius: scale(28),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   rowContent: {
     flex: 1,
@@ -132,16 +157,20 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: scale(22),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   title: {
     height: verticalScale(14),
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
     borderRadius: scale(4),
   },
   subtitle: {
     height: verticalScale(10),
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: scale(4),
+  },
+  shimmerContainer: {
+    overflow: 'hidden',
+  },
+  shimmerBase: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
   },
 });

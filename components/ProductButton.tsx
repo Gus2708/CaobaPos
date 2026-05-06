@@ -1,4 +1,4 @@
-import React, { memo, useRef, useCallback } from 'react';
+import React, { memo } from 'react';
 import { CachedImage } from './CachedImage';
 import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,7 @@ import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { usePressAnimation } from '../hooks/usePressAnimation';
 
 interface ProductButtonProps {
   product: Product;
@@ -18,24 +19,12 @@ interface ProductButtonProps {
 function ProductButtonComponent({ product, onPress, compact = false }: ProductButtonProps) {
   const isLowStock = product.stock_quantity < 5;
   const isOutOfStock = product.stock_quantity <= 0;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
 
-  const handlePress = useCallback(() => {
+  const handlePress = () => {
     if (isOutOfStock) return;
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 0.97,
-        useNativeDriver: true,
-        ...tokens.animation.spring,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        ...tokens.animation.spring,
-      }),
-    ]).start();
     onPress();
-  }, [isOutOfStock, onPress, scaleAnim]);
+  };
 
   const stockColor = isOutOfStock
     ? tokens.colors.coral
@@ -52,6 +41,8 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         <TouchableOpacity
           style={[styles.cardContainer, isOutOfStock && styles.containerDisabled]}
           onPress={handlePress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
           activeOpacity={0.85}
           disabled={isOutOfStock}
         >
@@ -101,6 +92,8 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
       <TouchableOpacity
         style={[styles.container, isOutOfStock && styles.containerDisabled]}
         onPress={handlePress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         activeOpacity={0.85}
         accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
         accessibilityRole="button"
