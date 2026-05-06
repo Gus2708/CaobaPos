@@ -29,7 +29,7 @@ const ITEM_HEIGHT = verticalScale(84) + verticalScale(16);
 const LOW_STOCK_THRESHOLD = 10;
 
 // Create animated component at module level to avoid remount on every render
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 export function POSScreen() {
   const [selectedCategory, setSelectedCategory] = useState<Category>('todos');
@@ -46,7 +46,7 @@ export function POSScreen() {
   const items = useCartStore((state) => state.items);
   const { showToast } = useToast();
   const barcodeInputRef = useRef<TextInput>(null);
-  const bufferTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bufferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -292,20 +292,15 @@ export function POSScreen() {
               scrollEventThrottle={16}
               contentContainerStyle={[
                 styles.productGrid,
-                { 
-                  paddingTop: TOTAL_NAV_HEIGHT + verticalScale(210), 
-                  paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom 
+                {
+                  paddingTop: TOTAL_NAV_HEIGHT + verticalScale(210),
+                  paddingBottom: (isMobile && items.length > 0 ? verticalScale(96) : verticalScale(20)) + insets.bottom
                 }
               ]}
               ListHeaderComponent={
                 <View style={{ height: verticalScale(16) }} />
               }
               showsVerticalScrollIndicator={false}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
-                { useNativeDriver: true }
-              )}
-              scrollEventThrottle={16}
               refreshControl={
                 <RefreshControl refreshing={false} onRefresh={refetch} tintColor={tokens.colors.mahogany} />
               }

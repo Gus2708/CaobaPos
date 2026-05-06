@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions, ActivityIndicator } from 'react-native';
 
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
@@ -23,7 +23,7 @@ import { useCategories } from '../hooks/useProducts';
 import { globalScrollY } from '../store/uiStore';
 
 // Create animated component at module level to avoid remount on every render
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface EditState {
   id: string;
@@ -443,17 +443,26 @@ export const InventoryPanel = memo(function InventoryPanel({
         .eq('product_id', item.id);
       if (deleteError) throw deleteError;
 
-      for (const catName of item.categories) {
-        const { data: catData } = await supabase
+      if (item.categories.length > 0) {
+        // Upsert all category names in one call, then fetch their IDs in one call
+        const normalizedCats = item.categories.map(c => ({ name: c.toLowerCase().trim() }));
+        const { error: upsertError } = await supabase
           .from('categories')
-          .upsert({ name: catName.toLowerCase().trim() }, { onConflict: 'name' })
-          .select()
-          .single();
-        
-        if (catData) {
-          await supabase
+          .upsert(normalizedCats, { onConflict: 'name' });
+        if (upsertError) throw upsertError;
+
+        const catNames = normalizedCats.map(c => c.name);
+        const { data: catRows, error: catFetchError } = await supabase
+          .from('categories')
+          .select('id')
+          .in('name', catNames);
+        if (catFetchError) throw catFetchError;
+
+        if (catRows && catRows.length > 0) {
+          const { error: linkError } = await supabase
             .from('product_categories')
-            .insert({ product_id: item.id, category_id: catData.id });
+            .insert(catRows.map(c => ({ product_id: item.id, category_id: c.id })));
+          if (linkError) throw linkError;
         }
       }
 
@@ -537,17 +546,25 @@ export const InventoryPanel = memo(function InventoryPanel({
       if (insertError) throw insertError;
       if (!data) throw new Error('No se creó el producto');
 
-      for (const catName of newProduct.categories) {
-        const { data: catData } = await supabase
+      if (newProduct.categories.length > 0) {
+        const normalizedCats = newProduct.categories.map(c => ({ name: c.toLowerCase().trim() }));
+        const { error: upsertError } = await supabase
           .from('categories')
-          .upsert({ name: catName.toLowerCase().trim() }, { onConflict: 'name' })
-          .select()
-          .single();
-        
-        if (catData) {
-          await supabase
+          .upsert(normalizedCats, { onConflict: 'name' });
+        if (upsertError) throw upsertError;
+
+        const catNames = normalizedCats.map(c => c.name);
+        const { data: catRows, error: catFetchError } = await supabase
+          .from('categories')
+          .select('id')
+          .in('name', catNames);
+        if (catFetchError) throw catFetchError;
+
+        if (catRows && catRows.length > 0) {
+          const { error: linkError } = await supabase
             .from('product_categories')
-            .insert({ product_id: data.id, category_id: catData.id });
+            .insert(catRows.map(c => ({ product_id: data.id, category_id: c.id })));
+          if (linkError) throw linkError;
         }
       }
 
@@ -736,9 +753,11 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const renderItem = useCallback(({ item }: { item: Product }) => {
     const isEditing = editing?.id === item.id;
-    
+    // Only pass quickCat state to the item currently being edited.
+    // For all other rows the props are empty/stable, so React.memo on
+    // ProductItem prevents those rows from re-rendering on every keystroke.
     return (
-      <ProductItem 
+      <ProductItem
         item={isEditing ? (editing as unknown as Product) : item}
         isEditing={isEditing}
         readOnly={readOnly}
@@ -751,16 +770,16 @@ export const InventoryPanel = memo(function InventoryPanel({
         onPickImage={handlePickImage}
         onToggleCategory={toggleCategory}
         setEditing={setEditing}
-        isAddingQuickCat={isAddingQuickCat}
+        isAddingQuickCat={isEditing ? isAddingQuickCat : null}
         setIsAddingQuickCat={setIsAddingQuickCat}
-        quickCatText={quickCatText}
+        quickCatText={isEditing ? quickCatText : ''}
         setQuickCatText={setQuickCatText}
         handleQuickAdd={handleQuickAdd}
       />
     );
   }, [editing, categories, readOnly, updateMutation.isPending, handlePickImage, toggleCategory, startEdit, handleDelete, saveEdit, isAddingQuickCat, quickCatText, handleQuickAdd]);
 
-  const ListHeader = useMemo(() => (
+  const ListHeader = useCallback(() => (
     <View style={{ marginBottom: verticalScale(16) }}>
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
@@ -1048,7 +1067,7 @@ export const InventoryPanel = memo(function InventoryPanel({
         </View>
       )}
     </View>
-  ), [showCategoryManager, newCategoryName, categories, search, filteredProducts.length, showAddForm, readOnly, newProduct, createMutation.isPending, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, createMutation]);
+  ), [showCategoryManager, newCategoryName, categories, search, filteredProducts.length, showAddForm, readOnly, newProduct, createMutation.isPending, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, isAddingQuickCat, quickCatText, handleQuickAdd]);
 
   return (
     <KeyboardAvoidingView 
@@ -1068,10 +1087,9 @@ export const InventoryPanel = memo(function InventoryPanel({
         <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredProducts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: any) => item.id}
           renderItem={renderItem}
           contentContainerStyle={[styles.list, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), paddingBottom: verticalScale(32) + insets.bottom }]}
-          // @ts-ignore
           estimatedItemSize={scale(96)}
           ListEmptyComponent={() => {
             if (isLoading) {
