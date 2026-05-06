@@ -1,5 +1,5 @@
 import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView } from 'react-native';
-import { BlurView } from '@sbaiahmed1/react-native-blur';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -235,10 +235,10 @@ export function POSScreen() {
           borderColor: tokens.styles.liquidCard.borderColor,
           overflow: 'hidden',
         }]}>
-          <BlurView 
-            blurType="dark"
-            blurAmount={25}
-            style={StyleSheet.absoluteFill} 
+          <BlurView
+            tint="dark"
+            intensity={25}
+            style={StyleSheet.absoluteFill}
           />
           <View style={styles.islandContent}>
             <CategoryTabs 
