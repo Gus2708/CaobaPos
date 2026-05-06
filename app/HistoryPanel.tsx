@@ -184,20 +184,20 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const PAGE_SIZE = 20;
 
-  const { 
-    data, 
-    isLoading, 
-    refetch, 
-    isRefetching, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
+  const {
+    data,
+    isLoading,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ['sales-history', selectedMethod, period, dateRange],
+    queryKey: ['sales-history', selectedMethod, period, dateRange.start, dateRange.end],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       let query = supabase.from('sales').select('*');
-      
+
       if (dateRange.start) {
         query = query.gte('created_at', dateRange.start);
       }
@@ -211,7 +211,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
-        
+
       if (error) throw error;
       return data ?? [];
     },
@@ -232,10 +232,10 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   }, [sales, search]);
 
   const { data: totalSum, isLoading: loadingTotal } = useQuery({
-    queryKey: ['sales-history-total', selectedMethod, period, dateRange],
+    queryKey: ['sales-history-total', selectedMethod, period, dateRange.start, dateRange.end],
     queryFn: async () => {
       let query = supabase.from('sales').select('total_amount');
-      
+
       if (dateRange.start) {
         query = query.gte('created_at', dateRange.start);
       }
@@ -261,7 +261,10 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           .select('product_id, quantity')
           .eq('sale_id', sale.id);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error('Error fetching sale items:', itemsError);
+          throw itemsError;
+        }
 
         // 2. Restore stock using RPC
         if (items && items.length > 0) {
@@ -270,15 +273,23 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
               p_product_id: item.product_id,
               p_quantity: item.quantity,
             });
-            if (rpcError) throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+            if (rpcError) {
+              console.error('Error restoring stock:', rpcError);
+              throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+            }
           }
         }
 
         // 3. Delete linked payments (explicit until cascade is applied)
-        await supabase
+        const { error: paymentsError } = await supabase
           .from('client_payments')
           .delete()
           .eq('sale_id', sale.id);
+
+        if (paymentsError) {
+          console.error('Error deleting payments:', paymentsError);
+          throw paymentsError;
+        }
 
         // 4. Delete the sale (cascades to sale_items)
         const { error: saleError } = await supabase
@@ -286,15 +297,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           .delete()
           .eq('id', sale.id);
 
-        if (saleError) throw saleError;
-        
+        if (saleError) {
+          console.error('Error deleting sale:', saleError);
+          throw saleError;
+        }
+
         return { success: true };
       } catch (error: any) {
         console.error('Delete mutation error:', error);
         throw error;
       }
     },
-    onSuccess: (_, deletedSale) => {
+    onSuccess: async (_, deletedSale) => {
+      // Close modal first
+      setShowDetail(false);
+      setSelectedSale(null);
+
       // 1. Optimistically remove from infinite query cache for instant feedback
       queryClient.setQueriesData({ queryKey: ['sales-history'] }, (oldData: any) => {
         if (!oldData) return oldData;
@@ -310,20 +328,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       queryClient.removeQueries({ queryKey: ['sale-items', deletedSale.id] });
 
       // 3. Invalidate dependent queries
-      queryClient.invalidateQueries({ queryKey: ['sales-history'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      await queryClient.invalidateQueries({ queryKey: ['sales-history'], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ['sales-history-total'], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       if (deletedSale.payment_method === 'credito') {
-        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        await queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
         if (deletedSale.client_id) {
-          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', deletedSale.client_id] });
-          queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_credit_sales', deletedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
         }
       }
 
-      setShowDetail(false);
-      setSelectedSale(null);
+      // Trigger immediate refetch for current history view
+      refetch();
+
       showToast('Venta eliminada y stock restaurado', 'success');
     },
     onError: () => showToast('No se pudo eliminar la venta', 'error'),
@@ -406,19 +426,33 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .eq('id', saleId);
       if (updateError) throw updateError;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       // Invalidate cached items for this sale so re-opening shows updated data
       queryClient.removeQueries({ queryKey: ['sale-items', variables.saleId] });
-      queryClient.invalidateQueries({ queryKey: ['sales-history'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      if (selectedSale?.payment_method === 'credito') {
-        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
-        if (selectedSale?.client_id) {
-          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', selectedSale.client_id] });
-        }
-      }
+
       setShowDetail(false);
       setSelectedSale(null);
+
+      await queryClient.invalidateQueries({
+        queryKey: ['sales-history'],
+        exact: false
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['sales-history-total'],
+        exact: false
+      });
+      await queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      if (selectedSale?.payment_method === 'credito') {
+        await queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        if (selectedSale?.client_id) {
+          await queryClient.invalidateQueries({ queryKey: ['client_credit_sales', selectedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_payments', selectedSale.client_id] });
+        }
+      }
+
+      refetch();
       showToast('Venta actualizada', 'success');
     },
     onError: () => showToast('No se pudo actualizar la venta', 'error'),
@@ -444,6 +478,15 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
+      // Fetch complete sale details to ensure we have client_id and all fields
+      const { data: fullSale, error: saleError } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('id', sale.id)
+        .single();
+
+      if (saleError) throw saleError;
+
       // Use queryClient to cache sale items per sale ID so re-opening is instant
       const items = await queryClient.fetchQuery({
         queryKey: ['sale-items', sale.id],
@@ -457,9 +500,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         },
         staleTime: 1000 * 60 * 5, // 5 min — sale items rarely change
       });
-      setSelectedSale({ ...sale, sale_items: items });
+
+      setSelectedSale({ ...fullSale, sale_items: items });
       setShowDetail(true);
-    } catch {
+    } catch (error) {
+      console.error('Error loading sale details:', error);
       showToast('No se pudieron cargar los detalles', 'error');
     }
   }, [queryClient, showToast]);
