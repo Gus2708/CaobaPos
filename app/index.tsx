@@ -229,7 +229,7 @@ export function POSScreen() {
               extrapolate: 'clamp'
             }) 
           }],
-          backgroundColor: tokens.styles.liquidCard.backgroundColor,
+          backgroundColor: 'rgba(18, 18, 20, 0.88)',
           borderRadius: tokens.styles.liquidCard.borderRadius,
           borderWidth: tokens.styles.liquidCard.borderWidth,
           borderColor: tokens.styles.liquidCard.borderColor,
@@ -237,7 +237,7 @@ export function POSScreen() {
         }]}>
           <BlurView
             tint="dark"
-            intensity={25}
+            intensity={80}
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.islandContent}>
