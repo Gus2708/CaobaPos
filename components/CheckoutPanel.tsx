@@ -1,4 +1,5 @@
-import { View, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
+import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
+import { PressableScale } from './PressableScale';
 import { AppBlurView as BlurView } from './AppBlurView';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,7 +27,7 @@ const PAYMENT_METHODS = [
   { key: 'credito', label: 'Crédito', icon: 'user' },
 ] as const;
 
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface SaleResult {
   id: string;
@@ -210,9 +211,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <Text style={styles.itemCount}>{items.length}</Text>
             </View>
             {onCloseMobile && (
-              <TouchableOpacity onPress={onCloseMobile} style={styles.closeButton}>
+              <PressableScale onPress={onCloseMobile} style={styles.closeButton} scaleTo={0.88}>
                 <Icon name="close" size={24} color={tokens.colors.text} />
-              </TouchableOpacity>
+              </PressableScale>
             )}
           </View>
         </View>
@@ -221,7 +222,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       <AnimatedFlashList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         estimatedItemSize={verticalScale(84)}
         extraData={items}
         showsVerticalScrollIndicator={false}
@@ -246,10 +247,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.ivaRow} 
+          <PressableScale
+            style={styles.ivaRow}
             onPress={toggleIva}
-            activeOpacity={0.7}
+            scaleTo={0.98}
           >
             <View style={styles.ivaLabelContainer}>
               <View style={[styles.checkbox, ivaEnabled && styles.checkboxActive]}>
@@ -260,7 +261,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
               ${tax.toFixed(2)}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </Animated.View>
 
         <Animated.View style={[
@@ -285,26 +286,26 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           {PAYMENT_METHODS.map((method) => {
             const isActive = selectedPayment === method.key;
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={method.key}
                 style={[styles.paymentChip, isActive && styles.paymentChipActive]}
                 onPress={() => setSelectedPayment(method.key)}
-                activeOpacity={0.7}
+                scaleTo={0.94}
               >
                 <View style={[
                   styles.paymentChipIconCircle,
                   isActive && { backgroundColor: 'rgba(184, 123, 90, 0.2)' }
                 ]}>
-                  <Icon 
-                    name={method.icon} 
-                    size={18} 
-                    color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
+                  <Icon
+                    name={method.icon}
+                    size={18}
+                    color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
                   />
                 </View>
                 <Text style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
                   {method.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             );
           })}
         </View>
@@ -317,31 +318,31 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                   <Icon name="user" size={20} color={tokens.colors.text} />
                   <Text style={styles.selectedClientName}>{selectedClient.name}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn}>
+                <PressableScale onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn} scaleTo={0.92}>
                   <Text style={styles.changeClientText}>Cambiar</Text>
-                </TouchableOpacity>
+                </PressableScale>
               </View>
             ) : (
-              <TouchableOpacity style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)}>
+              <PressableScale style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)} scaleTo={0.97}>
                 <Icon name="user-plus" size={22} color="#B87B5A" />
                 <Text style={styles.selectClientText}>Seleccionar Cliente</Text>
-              </TouchableOpacity>
+              </PressableScale>
             )}
           </View>
         )}
       </View>
 
-      <TouchableOpacity
+      <PressableScale
         style={[
           styles.checkoutButton,
           (!selectedPayment || items.length === 0 || createSale.isPending) && styles.checkoutButtonDisabled,
         ]}
         onPress={handleCheckout}
         disabled={!selectedPayment || items.length === 0 || createSale.isPending}
-        activeOpacity={0.85}
+        scaleTo={0.97}
       >
         <View style={[
-          styles.checkoutContent, 
+          styles.checkoutContent,
           (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
         ]}>
           <Icon name="check" size={22} color="#F0F0F2" />
@@ -349,7 +350,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
           </Text>
         </View>
-      </TouchableOpacity>
+      </PressableScale>
       </Animated.View>
       </View>
 
