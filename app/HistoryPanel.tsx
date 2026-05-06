@@ -1,5 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { AppBlurView as BlurView } from '../components/AppBlurView';
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

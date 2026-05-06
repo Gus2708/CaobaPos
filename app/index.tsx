@@ -1,5 +1,5 @@
 import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { AppBlurView } from '../components/AppBlurView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
@@ -229,13 +229,13 @@ export function POSScreen() {
               extrapolate: 'clamp'
             }) 
           }],
-          backgroundColor: 'rgba(18, 18, 20, 0.88)',
+          backgroundColor: tokens.styles.liquidCard.backgroundColor,
           borderRadius: tokens.styles.liquidCard.borderRadius,
           borderWidth: tokens.styles.liquidCard.borderWidth,
           borderColor: tokens.styles.liquidCard.borderColor,
           overflow: 'hidden',
         }]}>
-          <BlurView
+          <AppBlurView
             tint="dark"
             intensity={80}
             style={StyleSheet.absoluteFill}
