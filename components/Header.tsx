@@ -2,7 +2,7 @@ import { View, StyleSheet, Platform, StatusBar, Image, TouchableOpacity, Modal, 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import { useState, useRef, useEffect } from 'react';
-import { BlurView } from 'expo-blur';
+import { AppBlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
@@ -92,13 +92,13 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         onRequestClose={toggleMenu}
       >
         <View style={styles.modalContainer}>
-          <BlurView
+          <AppBlurView
             tint="dark"
             intensity={80}
             style={StyleSheet.absoluteFill}
           />
           <LinearGradient
-            colors={['rgba(10, 10, 12, 0.82)', 'rgba(10, 10, 12, 0.92)']}
+            colors={['rgba(10, 10, 12, 0.35)', 'rgba(10, 10, 12, 0.55)']}
             style={StyleSheet.absoluteFill}
           />
           
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(10, 10, 12, 0.6)',
   },
   menuHeader: {
     paddingHorizontal: scale(24),

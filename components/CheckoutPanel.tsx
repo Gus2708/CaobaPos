@@ -1,5 +1,5 @@
 import { View, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { AppBlurView as BlurView } from './AppBlurView';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
