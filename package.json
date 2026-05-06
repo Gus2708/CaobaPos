@@ -62,6 +62,10 @@
     ],
     "setupFilesAfterEnv": [
       "./jest.setup.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.claude/"
     ]
   }
 }

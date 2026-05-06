@@ -12,10 +12,14 @@ import { HistoryPanel } from './HistoryPanel';
 import ClientsPanel from './ClientsPanel';
 import { ToastProvider } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
+import { useRealtimeSync } from '../hooks/useRealtimeSync';
 
 type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
 export default function MainApp() {
+  // Subscribe to Supabase Realtime — keeps all devices in sync
+  useRealtimeSync();
+
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
   // displayScreen lags one frame behind to allow fade-out before content swap
   const [displayScreen, setDisplayScreen] = useState<Screen>('pos');

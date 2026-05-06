@@ -313,22 +313,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       setShowDetail(false);
       setSelectedSale(null);
 
-      // 1. Optimistically remove from infinite query cache for instant feedback
-      queryClient.setQueriesData({ queryKey: ['sales-history'] }, (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: any) =>
-            page.filter((sale: any) => sale.id !== deletedSale.id)
-          ),
-        };
-      });
+      // 1. Cancel any in-flight sales-history fetches so they don't overwrite our cache
+      await queryClient.cancelQueries({ queryKey: ['sales-history'] });
 
       // 2. Remove cached sale items for this sale
       queryClient.removeQueries({ queryKey: ['sale-items', deletedSale.id] });
 
-      // 3. Invalidate dependent queries
-      await queryClient.invalidateQueries({ queryKey: ['sales-history'], exact: false });
+      // 3. Reset the infinite query to force a clean refetch (not a stale-merge)
+      await queryClient.resetQueries({ queryKey: ['sales-history'], exact: false });
       await queryClient.invalidateQueries({ queryKey: ['sales-history-total'], exact: false });
       await queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
@@ -340,9 +332,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           await queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
         }
       }
-
-      // Trigger immediate refetch for current history view
-      refetch();
 
       showToast('Venta eliminada y stock restaurado', 'success');
     },

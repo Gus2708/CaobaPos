@@ -37,7 +37,7 @@ export function useProducts(category: Category = 'todos') {
       if (category === 'todos') return products;
       return products.filter((p) => p.categories?.includes(category));
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30, // 30s — Realtime handles instant sync, this is the fallback
     placeholderData: (prev) => prev,
   });
 }
@@ -56,7 +56,7 @@ export function useCategories() {
       if (error) throw error;
       return data.map(c => c.name as string);
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60, // 1 min — categories change rarely
   });
 
   // Sync fetched categories to the Zustand store whenever fresh data arrives.
