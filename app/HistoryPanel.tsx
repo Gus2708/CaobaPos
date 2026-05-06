@@ -21,7 +21,7 @@ import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 
 // Create animated component at module level to avoid remount on every render
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface SaleItem {
   id: string;
@@ -295,22 +295,25 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       }
     },
     onSuccess: (_, deletedSale) => {
-      // 1. Actualizar el cache de la consulta infinita manualmente para respuesta instantánea
+      // 1. Optimistically remove from infinite query cache for instant feedback
       queryClient.setQueriesData({ queryKey: ['sales-history'] }, (oldData: any) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          pages: oldData.pages.map((page: any) => 
+          pages: oldData.pages.map((page: any) =>
             page.filter((sale: any) => sale.id !== deletedSale.id)
-          )
+          ),
         };
       });
 
-      // 2. Invalidar para asegurar sincronización con DB
+      // 2. Remove cached sale items for this sale
+      queryClient.removeQueries({ queryKey: ['sale-items', deletedSale.id] });
+
+      // 3. Invalidate dependent queries
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); 
-      
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       if (deletedSale.payment_method === 'credito') {
         queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
         if (deletedSale.client_id) {
@@ -343,10 +346,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
       if (oldItems) {
         for (const item of oldItems) {
-          await supabase.rpc('increment_stock', {
+          const { error: restoreError } = await supabase.rpc('increment_stock', {
             p_product_id: item.product_id,
             p_quantity: item.quantity,
           });
+          if (restoreError) throw new Error(`Error restaurando stock: ${restoreError.message}`);
         }
       }
 
@@ -361,7 +365,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .from('products')
         .select('id, name, stock_quantity')
         .in('id', productIds);
-      
+
       if (stockCheckError) throw stockCheckError;
 
       for (const item of items) {
@@ -371,21 +375,25 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         }
       }
 
-      for (const item of items) {
-        const { error: insertError } = await supabase.from('sale_items').insert({
+      // Batch-insert the updated sale items in a single call
+      const { error: insertError } = await supabase.from('sale_items').insert(
+        items.map(item => ({
           sale_id: saleId,
           product_id: item.product_id,
           product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           subtotal: item.subtotal,
-        });
-        if (insertError) throw insertError;
+        }))
+      );
+      if (insertError) throw insertError;
 
-        await supabase.rpc('decrement_stock', {
+      for (const item of items) {
+        const { error: decrementError } = await supabase.rpc('decrement_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
         });
+        if (decrementError) throw new Error(`Error decrementando stock: ${decrementError.message}`);
       }
 
       const { error: updateError } = await supabase
@@ -399,6 +407,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       if (updateError) throw updateError;
     },
     onSuccess: (_, variables) => {
+      // Invalidate cached items for this sale so re-opening shows updated data
+      queryClient.removeQueries({ queryKey: ['sale-items', variables.saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       if (selectedSale?.payment_method === 'credito') {
@@ -434,18 +444,25 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
-      const { data: items, error } = await supabase
-        .from('sale_items')
-        .select('*')
-        .eq('sale_id', sale.id);
-
-      if (error) throw error;
-      setSelectedSale({ ...sale, sale_items: items ?? [] });
+      // Use queryClient to cache sale items per sale ID so re-opening is instant
+      const items = await queryClient.fetchQuery({
+        queryKey: ['sale-items', sale.id],
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('sale_items')
+            .select('*')
+            .eq('sale_id', sale.id);
+          if (error) throw error;
+          return data ?? [];
+        },
+        staleTime: 1000 * 60 * 5, // 5 min — sale items rarely change
+      });
+      setSelectedSale({ ...sale, sale_items: items });
       setShowDetail(true);
-    } catch (error) {
+    } catch {
       showToast('No se pudieron cargar los detalles', 'error');
     }
-  }, [showToast]);
+  }, [queryClient, showToast]);
 
   const renderItem = useCallback(({ item }: { item: Sale }) => (
     <SaleCard 
@@ -455,7 +472,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     />
   ), [handleView, handleDelete]);
 
-  const ListHeader = useMemo(() => (
+  const ListHeader = useCallback(() => (
     <View style={styles.listHeader}>
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
@@ -531,7 +548,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         </View>
       </View>
     </View>
-  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search]);
+  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search, periodOptions, paymentMethods, periodLabels]);
 
   return (
     <View style={styles.container}>
@@ -542,7 +559,6 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         style={StyleSheet.absoluteFill}
       />
       
-      {/* @ts-ignore */}
       <AnimatedFlashList
         ListHeaderComponent={ListHeader}
         data={filteredSales}
@@ -772,11 +788,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 });
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: tokens.colors.bg,
   },
-  header: { 
+  listHeader: {
+    // wrapper for the FlashList ListHeaderComponent
+  },
+  header: {
     marginBottom: verticalScale(28),
     paddingHorizontal: scale(4),
   },
