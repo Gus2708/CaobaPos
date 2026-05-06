@@ -94,11 +94,11 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         <View style={styles.modalContainer}>
           <BlurView
             tint="dark"
-            intensity={25}
+            intensity={80}
             style={StyleSheet.absoluteFill}
           />
           <LinearGradient
-            colors={['rgba(10, 10, 12, 0.3)', 'rgba(10, 10, 12, 0.6)']}
+            colors={['rgba(10, 10, 12, 0.82)', 'rgba(10, 10, 12, 0.92)']}
             style={StyleSheet.absoluteFill}
           />
           
@@ -194,6 +194,7 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalContainer: {
     flex: 1,
+    backgroundColor: 'rgba(10, 10, 12, 0.6)',
   },
   menuHeader: {
     paddingHorizontal: scale(24),
