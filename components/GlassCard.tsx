@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ViewProps, StyleSheet } from 'react-native';
-import { BlurView } from '@sbaiahmed1/react-native-blur';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/designTokens';
 import { scale } from '../lib/responsive';
@@ -38,8 +38,8 @@ export function GlassCard({
       {...props}
     >
       <BlurView
-        blurType="dark"
-        blurAmount={finalBlurAmount}
+        tint="dark"
+        intensity={finalBlurAmount}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
