@@ -1,6 +1,6 @@
 import React from 'react';
-import FontAwesome from '@react-native-vector-icons/fontawesome-free-solid';
-import EvilIcons from '@react-native-vector-icons/evil-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { EvilIcons } from '@expo/vector-icons';
 import { moderateScale } from '../lib/responsive';
 
 interface IconProps {
@@ -9,89 +9,89 @@ interface IconProps {
   color?: string;
 }
 
-const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; component: any; libraryName?: string }> = {
-  'money-bill': { lib: 'fontawesome', component: FontAwesome, libraryName: 'money-bill' },
-  'credit-card': { lib: 'fontawesome', component: FontAwesome, libraryName: 'credit-card' },
-  'mobile-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'mobile-alt' },
-  'trash-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'trash-alt' },
-  'edit': { lib: 'fontawesome', component: FontAwesome, libraryName: 'edit' },
-  'file-pdf': { lib: 'fontawesome', component: FontAwesome, libraryName: 'file-pdf' },
-  'folder': { lib: 'fontawesome', component: FontAwesome, libraryName: 'folder' },
-  'camera': { lib: 'fontawesome', component: FontAwesome, libraryName: 'camera' },
-  'image': { lib: 'fontawesome', component: FontAwesome, libraryName: 'image' },
-  'barcode': { lib: 'fontawesome', component: FontAwesome, libraryName: 'barcode' },
-  'qrcode': { lib: 'fontawesome', component: FontAwesome, libraryName: 'qrcode' },
-  'box': { lib: 'fontawesome', component: FontAwesome, libraryName: 'box' },
-  'archive': { lib: 'fontawesome', component: FontAwesome, libraryName: 'archive' },
-  'clock': { lib: 'fontawesome', component: FontAwesome, libraryName: 'clock' },
-  'chart-bar': { lib: 'fontawesome', component: FontAwesome, libraryName: 'chart-bar' },
-  'chart-line': { lib: 'fontawesome', component: FontAwesome, libraryName: 'chart-line' },
-  'chart-pie': { lib: 'fontawesome', component: FontAwesome, libraryName: 'chart-pie' },
-  'exclamation-triangle': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exclamation-triangle' },
-  'trending-up': { lib: 'fontawesome', component: FontAwesome, libraryName: 'chart-line' },
-  'history': { lib: 'fontawesome', component: FontAwesome, libraryName: 'history' },
-  'list': { lib: 'fontawesome', component: FontAwesome, libraryName: 'list' },
-  'th-list': { lib: 'fontawesome', component: FontAwesome, libraryName: 'th-list' },
-  'shopping-cart': { lib: 'fontawesome', component: FontAwesome, libraryName: 'shopping-cart' },
-  'shopping-bag': { lib: 'fontawesome', component: FontAwesome, libraryName: 'shopping-bag' },
-  'scan': { lib: 'fontawesome', component: FontAwesome, libraryName: 'barcode' },
-  'bars': { lib: 'fontawesome', component: FontAwesome, libraryName: 'bars' },
-  'receipt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'file-invoice-dollar' },
-  'coffee': { lib: 'fontawesome', component: FontAwesome, libraryName: 'coffee' },
-  'ice-cream': { lib: 'fontawesome', component: FontAwesome, libraryName: 'ice-cream' },
-  'bread-slice': { lib: 'fontawesome', component: FontAwesome, libraryName: 'bread-slice' },
-  'glass-martini': { lib: 'fontawesome', component: FontAwesome, libraryName: 'glass-martini-alt' },
-  'cookie-bite': { lib: 'fontawesome', component: FontAwesome, libraryName: 'cookie-bite' },
-  'filter': { lib: 'fontawesome', component: FontAwesome, libraryName: 'filter' },
-  'calculator': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calculator' },
-  'calendar-day': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-day' },
-  'calendar-week': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-week' },
-  'calendar-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'calendar-alt' },
-  'user': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user' },
-  'users': { lib: 'fontawesome', component: FontAwesome, libraryName: 'users' },
-  'user-plus': { lib: 'fontawesome', component: FontAwesome, libraryName: 'user-plus' },
-  'wallet': { lib: 'fontawesome', component: FontAwesome, libraryName: 'wallet' },
-  'phone': { lib: 'fontawesome', component: FontAwesome, libraryName: 'phone' },
-  'money-bill-wave': { lib: 'fontawesome', component: FontAwesome, libraryName: 'money-bill-wave' },
-  'exchange-alt': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exchange-alt' },
-  'exclamation-circle': { lib: 'fontawesome', component: FontAwesome, libraryName: 'exclamation-circle' },
-  'loader': { lib: 'fontawesome', component: FontAwesome, libraryName: 'spinner' },
-  'cog': { lib: 'fontawesome', component: FontAwesome, libraryName: 'cog' },
+const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }> = {
+  'money-bill': { lib: 'fontawesome', iconName: 'money-bill' },
+  'credit-card': { lib: 'fontawesome', iconName: 'credit-card' },
+  'mobile-alt': { lib: 'fontawesome', iconName: 'mobile-alt' },
+  'trash-alt': { lib: 'fontawesome', iconName: 'trash-alt' },
+  'edit': { lib: 'fontawesome', iconName: 'edit' },
+  'file-pdf': { lib: 'fontawesome', iconName: 'file-pdf' },
+  'folder': { lib: 'fontawesome', iconName: 'folder' },
+  'camera': { lib: 'fontawesome', iconName: 'camera' },
+  'image': { lib: 'fontawesome', iconName: 'image' },
+  'barcode': { lib: 'fontawesome', iconName: 'barcode' },
+  'qrcode': { lib: 'fontawesome', iconName: 'qrcode' },
+  'box': { lib: 'fontawesome', iconName: 'box' },
+  'archive': { lib: 'fontawesome', iconName: 'archive' },
+  'clock': { lib: 'fontawesome', iconName: 'clock' },
+  'chart-bar': { lib: 'fontawesome', iconName: 'chart-bar' },
+  'chart-line': { lib: 'fontawesome', iconName: 'chart-line' },
+  'chart-pie': { lib: 'fontawesome', iconName: 'chart-pie' },
+  'exclamation-triangle': { lib: 'fontawesome', iconName: 'exclamation-triangle' },
+  'trending-up': { lib: 'fontawesome', iconName: 'chart-line' },
+  'history': { lib: 'fontawesome', iconName: 'history' },
+  'list': { lib: 'fontawesome', iconName: 'list' },
+  'th-list': { lib: 'fontawesome', iconName: 'th-list' },
+  'shopping-cart': { lib: 'fontawesome', iconName: 'shopping-cart' },
+  'shopping-bag': { lib: 'fontawesome', iconName: 'shopping-bag' },
+  'scan': { lib: 'fontawesome', iconName: 'barcode' },
+  'bars': { lib: 'fontawesome', iconName: 'bars' },
+  'receipt': { lib: 'fontawesome', iconName: 'file-invoice-dollar' },
+  'coffee': { lib: 'fontawesome', iconName: 'coffee' },
+  'ice-cream': { lib: 'fontawesome', iconName: 'ice-cream' },
+  'bread-slice': { lib: 'fontawesome', iconName: 'bread-slice' },
+  'glass-martini': { lib: 'fontawesome', iconName: 'glass-martini-alt' },
+  'cookie-bite': { lib: 'fontawesome', iconName: 'cookie-bite' },
+  'filter': { lib: 'fontawesome', iconName: 'filter' },
+  'calculator': { lib: 'fontawesome', iconName: 'calculator' },
+  'calendar-day': { lib: 'fontawesome', iconName: 'calendar-day' },
+  'calendar-week': { lib: 'fontawesome', iconName: 'calendar-week' },
+  'calendar-alt': { lib: 'fontawesome', iconName: 'calendar-alt' },
+  'user': { lib: 'fontawesome', iconName: 'user' },
+  'users': { lib: 'fontawesome', iconName: 'users' },
+  'user-plus': { lib: 'fontawesome', iconName: 'user-plus' },
+  'wallet': { lib: 'fontawesome', iconName: 'wallet' },
+  'phone': { lib: 'fontawesome', iconName: 'phone' },
+  'money-bill-wave': { lib: 'fontawesome', iconName: 'money-bill-wave' },
+  'exchange-alt': { lib: 'fontawesome', iconName: 'exchange-alt' },
+  'exclamation-circle': { lib: 'fontawesome', iconName: 'exclamation-circle' },
+  'loader': { lib: 'fontawesome', iconName: 'spinner' },
+  'cog': { lib: 'fontawesome', iconName: 'cog' },
   // EvilIcons
-  'search': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
-  'search-plus': { lib: 'evil', component: EvilIcons, libraryName: 'search' },
-  'trash': { lib: 'evil', component: EvilIcons, libraryName: 'trash' },
-  'pencil': { lib: 'evil', component: EvilIcons, libraryName: 'pencil' },
-  'document': { lib: 'evil', component: EvilIcons, libraryName: 'archive' },
-  'check': { lib: 'evil', component: EvilIcons, libraryName: 'check' },
-  'close': { lib: 'evil', component: EvilIcons, libraryName: 'close' },
-  'plus': { lib: 'evil', component: EvilIcons, libraryName: 'plus' },
-  'minus': { lib: 'evil', component: EvilIcons, libraryName: 'minus' },
-  'cart': { lib: 'evil', component: EvilIcons, libraryName: 'cart' },
-  'chevron-down': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-down' },
-  'chevron-up': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-up' },
-  'chevron-right': { lib: 'evil', component: EvilIcons, libraryName: 'chevron-right' },
-  'times': { lib: 'evil', component: EvilIcons, libraryName: 'close' },
+  'search': { lib: 'evil', iconName: 'search' },
+  'search-plus': { lib: 'evil', iconName: 'search' },
+  'trash': { lib: 'evil', iconName: 'trash' },
+  'pencil': { lib: 'evil', iconName: 'pencil' },
+  'document': { lib: 'evil', iconName: 'archive' },
+  'check': { lib: 'evil', iconName: 'check' },
+  'close': { lib: 'evil', iconName: 'close' },
+  'plus': { lib: 'evil', iconName: 'plus' },
+  'minus': { lib: 'evil', iconName: 'minus' },
+  'cart': { lib: 'evil', iconName: 'cart' },
+  'chevron-down': { lib: 'evil', iconName: 'chevron-down' },
+  'chevron-up': { lib: 'evil', iconName: 'chevron-up' },
+  'chevron-right': { lib: 'evil', iconName: 'chevron-right' },
+  'times': { lib: 'evil', iconName: 'close' },
 };
 
 export function Icon({ name, size = 20, color = '#F0F0F2' }: IconProps) {
   const normalizedName = name?.trim()?.toLowerCase() || '';
   const icon = iconMap[normalizedName];
-  
+
   if (!icon) {
     if (normalizedName) {
       console.warn(`Icon "${name}" not found (normalized: "${normalizedName}")`);
     }
     return null;
   }
-  
-  const IconComponent = icon.component;
-  if (!IconComponent) {
-    console.warn(`Icon component for "${name}" is undefined. Verify library installation.`);
-    return null;
+
+  const scaledSize = moderateScale(size);
+
+  if (icon.lib === 'evil') {
+    return <EvilIcons name={icon.iconName as any} size={scaledSize} color={color} />;
   }
-  
-  return <IconComponent name={icon.libraryName || normalizedName} size={moderateScale(size)} color={color} />;
+
+  return <FontAwesome5 name={icon.iconName as any} size={scaledSize} color={color} solid />;
 }
 
 export default Icon;

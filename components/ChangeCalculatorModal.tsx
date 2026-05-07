@@ -64,12 +64,7 @@ export function ChangeCalculatorModal({
             style={styles.keyboardView}
           >
             <View style={styles.modal}>
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
               <View style={styles.header}>
                 <View style={styles.iconCircle}>
                   <Icon name="calculator" size={22} color={tokens.colors.mahogany} />
@@ -175,7 +170,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: scale(20),
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: tokens.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.borderLight,
   },
@@ -199,7 +194,9 @@ const styles = StyleSheet.create({
     width: scale(32),
     height: scale(32),
     borderRadius: scale(16),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -210,7 +207,7 @@ const styles = StyleSheet.create({
   infoCard: {
     padding: scale(16),
     borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
     alignItems: 'center',
@@ -241,7 +238,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: tokens.colors.borderAccent,
@@ -290,7 +287,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(16),
     alignItems: 'center',
     borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: tokens.colors.bg,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },

@@ -1,5 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
-import { AppBlurView as BlurView } from '../components/AppBlurView';
+
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { Badge } from '../components/Badge';
 import { Text } from '../components/Text';
 
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { SaleDetailModal } from '../components/SaleDetailModal';
@@ -83,25 +83,13 @@ const SaleCard = React.memo(function SaleCard({
       accessibilityRole="button"
       accessibilityLabel={`Venta de ${Number(item.total_amount).toFixed(2)} pesos, realizada el ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
-      <BlurView
-        tint="dark"
-        intensity={20}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
           <Icon name={getPaymentIcon(item.payment_method)} size={20} color={tokens.colors.mahogany} />
         </View>
 
         <View style={styles.saleInfo}>
-          <Text style={styles.saleTotal} numberOfLines={1} adjustsFontSizeToFit>${Number(item.total_amount).toFixed(2)}</Text>
+          <Text style={styles.saleTotal} numberOfLines={1}>${Number(item.total_amount).toFixed(2)}</Text>
           <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
         </View>
 
@@ -586,12 +574,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[tokens.colors.bg, tokens.colors.bg]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
       
       <AnimatedFlashList
         ListHeaderComponent={ListHeader}
@@ -613,7 +596,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Icon name="document" size={64} color="rgba(184, 123, 90, 0.3)" />
+                <Icon name="document" size={64} color={tokens.colors.mahoganyDim} />
               <Text style={styles.empty}>Sin ventas registradas</Text>
             </View>
           )
@@ -642,7 +625,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             refreshing={isRefetching}
             onRefresh={refetch}
             tintColor={tokens.colors.mahogany}
-            progressBackgroundColor={tokens.colors.glass.heavy}
+            progressBackgroundColor={tokens.colors.surface}
           />
         }
       />
@@ -682,11 +665,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setMethodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
-            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
             <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar por pago</Text>
@@ -711,7 +690,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                 >
                   <View style={[
                     styles.methodIconSmall,
-                    { backgroundColor: selectedMethod === m.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                      { backgroundColor: selectedMethod === m.value ? tokens.colors.mahogany : tokens.colors.surface }
                   ]}>
                     <Icon 
                       name={m.icon} 
@@ -747,11 +726,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setPeriodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
-            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
             <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar tiempo</Text>
@@ -782,7 +757,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                 >
                   <View style={[
                     styles.methodIconSmall,
-                    { backgroundColor: period === o.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                      { backgroundColor: period === o.value ? tokens.colors.mahogany : tokens.colors.surface }
                   ]}>
                     <Icon 
                       name={o.icon} 
@@ -842,12 +817,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   countBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(2),
     borderRadius: scale(6),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: tokens.colors.borderLight,
   },
   countText: {
     fontFamily: FontNames.jetBrainsMono,
@@ -893,12 +868,12 @@ const styles = StyleSheet.create({
   },
   headerStats: {
     alignItems: 'flex-end',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: scale(12),
     paddingVertical: verticalScale(8),
     borderRadius: tokens.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     minWidth: scale(90),
   },
   statsLabel: {
@@ -929,11 +904,11 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.surface,
     borderRadius: scale(16),
     paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     gap: scale(12),
     height: verticalScale(54),
   },
@@ -963,13 +938,12 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
   },
   saleCard: {
-    position: 'relative',
     borderRadius: tokens.radius.xl, 
-    marginBottom: verticalScale(16), 
+    marginBottom: verticalScale(12), 
     borderWidth: 1, 
     borderColor: tokens.colors.borderLight,
-    overflow: 'hidden',
-    minHeight: verticalScale(84),
+    backgroundColor: tokens.colors.surface,
+    minHeight: verticalScale(80),
     justifyContent: 'center',
   },
   saleContent: {
@@ -986,7 +960,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.surface,
   },
   saleInfo: {
     flex: 1,
@@ -1059,7 +1033,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   methodIconSmall: {
     width: scale(32),
