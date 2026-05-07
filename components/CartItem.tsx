@@ -1,5 +1,4 @@
 import { View, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { memo } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
@@ -26,16 +25,10 @@ export const CartItemRow = memo(function CartItemRow({
   onRemove 
 }: CartItemProps) {
   const totalPrice = (item.price * item.quantity).toFixed(2);
-  const gradientColors = ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.01)'] as const;
+
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
       
       <View style={styles.itemIconCircle}>
         <Text style={styles.itemInitial}>
@@ -94,10 +87,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     marginVertical: verticalScale(6),
     borderRadius: tokens.radius.lg,
-    backgroundColor: tokens.colors.surfaceElevated,
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    overflow: 'hidden',
   },
   itemIconCircle: {
     width: scale(52),
@@ -140,7 +132,7 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: tokens.radius.pill,
     padding: scale(2),
     borderWidth: 1,

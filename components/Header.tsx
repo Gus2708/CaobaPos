@@ -206,15 +206,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         onRequestClose={toggleMenu}
       >
         <RNAnimated.View style={[styles.modalContainer, { opacity: menuAnim }]}>
-          <AppBlurView
-            tint="dark"
-            intensity={80}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={['rgba(10, 10, 12, 0.35)', 'rgba(10, 10, 12, 0.55)']}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
           
           <View style={[styles.menuHeader, { paddingTop: insets.top + verticalScale(20) }]}>
             <View style={styles.menuHeaderTop}>
@@ -312,7 +304,9 @@ const styles = StyleSheet.create({
     width: scale(44),
     height: scale(44),
     borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -325,25 +319,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: scale(16),
     borderRadius: tokens.radius.xl,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: tokens.colors.borderLight,
   },
   menuItemActive: {
-    backgroundColor: 'rgba(202, 138, 4, 0.08)',
-    borderColor: 'rgba(202, 138, 4, 0.2)',
+    backgroundColor: tokens.colors.mahoganyDim,
+    borderColor: tokens.colors.mahogany,
   },
   iconBox: {
     width: scale(48),
     height: scale(48),
     borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: scale(16),
   },
   iconBoxActive: {
-    backgroundColor: 'rgba(202, 138, 4, 0.15)',
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   itemTextContainer: {
     flex: 1,

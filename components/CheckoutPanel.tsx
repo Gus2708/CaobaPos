@@ -1,6 +1,5 @@
 import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
 import { PressableScale } from './PressableScale';
-import { AppBlurView as BlurView } from './AppBlurView';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
@@ -74,12 +73,6 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
 
   const MAX_HIDE = verticalScale(60);
   const clampedScrollY = Animated.diffClamp(scrollY, 0, MAX_HIDE);
-
-  const bottomTranslateY = clampedScrollY.interpolate({
-    inputRange: [0, MAX_HIDE],
-    outputRange: [0, -MAX_HIDE],
-    extrapolate: 'clamp',
-  });
 
   const subtotalOpacity = clampedScrollY.interpolate({
     inputRange: [0, MAX_HIDE / 2],
@@ -180,16 +173,6 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         styles.container, 
         { paddingBottom: insets.bottom + verticalScale(8) }
       ]}>
-        <BlurView 
-          tint="dark" 
-          intensity={25} 
-          style={StyleSheet.absoluteFill} 
-        />
-        <View style={{
-          ...StyleSheet.absoluteFillObject,
-          borderLeftWidth: 1,
-          borderLeftColor: tokens.colors.glass.liquidHighlight,
-        }} />
   
         <View style={[
           styles.header, 
@@ -264,10 +247,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           </PressableScale>
         </Animated.View>
 
-        <Animated.View style={[
-          styles.summaryBottomSliding,
-          { transform: [{ translateY: bottomTranslateY }] }
-        ]}>
+        <View style={styles.summaryBottomSliding}>
           <View style={styles.totalRow}>
             <View style={styles.totalLabelContainer}>
               <Text style={styles.totalLabel}>Total</Text>
@@ -281,34 +261,53 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           </View>
 
           <View style={styles.paymentSection}>
-        <Text style={styles.sectionTitle}>Método de pago</Text>
-        <View style={styles.paymentChips}>
-          {PAYMENT_METHODS.map((method) => {
-            const isActive = selectedPayment === method.key;
-            return (
-              <PressableScale
-                key={method.key}
-                style={[styles.paymentChip, isActive && styles.paymentChipActive]}
-                onPress={() => setSelectedPayment(method.key)}
-                scaleTo={0.94}
-              >
-                <View style={[
-                  styles.paymentChipIconCircle,
-                  isActive && { backgroundColor: 'rgba(184, 123, 90, 0.2)' }
-                ]}>
-                  <Icon
-                    name={method.icon}
-                    size={18}
-                    color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
-                  />
-                </View>
-                <Text style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
-                  {method.label}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
+            <Text style={styles.sectionTitle}>Método de pago</Text>
+            <View style={styles.paymentRow}>
+              {PAYMENT_METHODS.slice(0, 2).map((method) => {
+                const isActive = selectedPayment === method.key;
+                return (
+                  <PressableScale
+                    key={method.key}
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.paymentChip, isActive && styles.paymentChipActive]}
+                    onPress={() => setSelectedPayment(method.key)}
+                    scaleTo={0.96}
+                  >
+                    <Icon
+                      name={method.icon}
+                      size={18}
+                      color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
+                    />
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                      {method.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <View style={styles.paymentRow}>
+              {PAYMENT_METHODS.slice(2, 4).map((method) => {
+                const isActive = selectedPayment === method.key;
+                return (
+                  <PressableScale
+                    key={method.key}
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.paymentChip, isActive && styles.paymentChipActive]}
+                    onPress={() => setSelectedPayment(method.key)}
+                    scaleTo={0.96}
+                  >
+                    <Icon
+                      name={method.icon}
+                      size={18}
+                      color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
+                    />
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                      {method.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
 
         {selectedPayment === 'credito' && (
           <View style={styles.clientSelectionBox}>
@@ -351,7 +350,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           </Text>
         </View>
       </PressableScale>
-      </Animated.View>
+      </View>
       </View>
 
       {completedSale && (
@@ -394,7 +393,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(16),
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.borderLight,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: tokens.colors.surface,
   },
   headerContent: {
     flexDirection: 'row',
@@ -492,8 +491,6 @@ const styles = StyleSheet.create({
   },
   summaryBottomSliding: {
     backgroundColor: tokens.colors.bg,
-    paddingBottom: verticalScale(70), // Ensures we don't see empty space when translating up
-    marginBottom: verticalScale(-70), // Cancels the padding for normal layout
   },
   summaryRow: {
     flexDirection: 'row',
@@ -583,57 +580,48 @@ const styles = StyleSheet.create({
     color: tokens.colors.sage,
   },
   paymentSection: {
-    paddingBottom: verticalScale(20),
+    marginTop: verticalScale(16),
+    paddingBottom: verticalScale(12),
   },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     fontWeight: '800',
     color: tokens.colors.textDim,
-    marginBottom: verticalScale(14),
+    marginBottom: verticalScale(12),
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+    textAlign: 'center',
   },
-  paymentChips: {
+  paymentRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: scale(10),
+    marginBottom: scale(10),
   },
   paymentChip: {
-    flex: 1,
-    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
-    height: verticalScale(54),
-    borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    gap: scale(8),
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scale(12),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    paddingHorizontal: scale(12),
   },
   paymentChipActive: {
     backgroundColor: tokens.colors.mahoganyDim,
     borderColor: tokens.colors.mahogany,
   },
-  paymentChipIconCircle: {
-     width: scale(32),
-     height: scale(32),
-     borderRadius: scale(16),
-     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 1,
-     borderColor: tokens.colors.borderLight,
-  },
   paymentChipText: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
-    fontWeight: '700',
-    color: tokens.colors.textDim,
+    fontSize: moderateScale(13),
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   paymentChipTextActive: {
-    color: tokens.colors.text,
+    color: tokens.colors.mahogany,
+    fontWeight: '700',
   },
   checkoutButton: {
     marginHorizontal: scale(20),

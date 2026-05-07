@@ -61,7 +61,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           <View style={styles.cardImageWrapper}>
             {isValidImageUrl(product.image_url) ? (
               <CachedImage
-                remoteUri={product.image_url}
+                remoteUri={product.image_url!}
                 style={styles.cardImage}
                 contentFit="cover"
               />
@@ -114,7 +114,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         <View style={styles.imageWrapper}>
           {isValidImageUrl(product.image_url) ? (
             <CachedImage
-              remoteUri={product.image_url}
+              remoteUri={product.image_url!}
               style={styles.image}
               contentFit="cover"
             />

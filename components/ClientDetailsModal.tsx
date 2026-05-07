@@ -379,12 +379,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
         { borderColor: isPaid ? tokens.colors.border : `${statusColor}20` },
         isPaid && { opacity: 0.8 }
       ]}>
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.03)', 'rgba(255, 255, 255, 0.01)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+
         
         <View style={styles.historyCardInner}>
           {/* Icon Box */}
@@ -511,12 +506,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
               paddingBottom: Math.max(insets.bottom, verticalScale(16)) 
             }
           ]}>
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
@@ -613,7 +603,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
                       ]}
                       keyboardType="decimal-pad"
                       placeholder="0.00"
-                      placeholderTextColor="rgba(255,255,255,0.1)"
+                      placeholderTextColor={tokens.colors.textDim}
                       value={paymentAmount}
                       onChangeText={setPaymentAmount}
                       selectionColor={tokens.colors.mahogany}
@@ -793,7 +783,7 @@ const styles = StyleSheet.create({
     width: scale(36),
     height: scale(36),
     borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -801,7 +791,7 @@ const styles = StyleSheet.create({
   },
   balanceContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.surface,
     marginHorizontal: scale(20),
     marginVertical: verticalScale(16),
     borderRadius: tokens.radius.lg,
@@ -857,7 +847,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(10),
     borderRadius: tokens.radius.pill,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },
@@ -928,14 +918,14 @@ const styles = StyleSheet.create({
   balanceTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.surface,
     alignSelf: 'flex-start',
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(2),
     borderRadius: tokens.radius.xs,
     marginTop: verticalScale(6),
     borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: tokens.colors.borderLight,
   },
   balanceTagLabel: {
     fontFamily: FontNames.instrumentSans,
@@ -991,7 +981,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(4),
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: scale(6),
     paddingVertical: verticalScale(2),
     borderRadius: tokens.radius.pill,
@@ -1024,11 +1014,11 @@ const styles = StyleSheet.create({
     width: scale(28),
     height: scale(28),
     borderRadius: tokens.radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: tokens.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.02)',
+    borderColor: tokens.colors.borderLight,
   },
   paymentContainer: {
     padding: scale(24),
@@ -1044,12 +1034,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: verticalScale(16),
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: tokens.colors.surface,
     paddingVertical: verticalScale(16),
     paddingHorizontal: scale(32),
     borderRadius: tokens.radius.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: tokens.colors.borderLight,
   },
   paymentInputWrapper: {
     flexDirection: 'row',
@@ -1149,7 +1139,7 @@ const styles = StyleSheet.create({
     gap: scale(6),
     paddingVertical: verticalScale(12),
     borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },
