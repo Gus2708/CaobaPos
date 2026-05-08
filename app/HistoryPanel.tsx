@@ -294,15 +294,37 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           throw paymentsError;
         }
 
-        // 4. Delete the sale (cascades to sale_items)
-        const { error: saleError } = await supabase
+        // 4. Delete the sale. Use .select() to detect when 0 rows were
+        // affected — Supabase returns success silently when RLS blocks a
+        // delete, so we cannot rely on `error` alone.
+        const { data: deleted, error: saleError } = await supabase
           .from('sales')
           .delete()
-          .eq('id', sale.id);
+          .eq('id', sale.id)
+          .select();
 
         if (saleError) {
-          console.error('Error deleting sale:', saleError);
+          console.error('[Delete] Supabase error deleting sale:', saleError);
           throw saleError;
+        }
+
+        if (!deleted || deleted.length === 0) {
+          // The delete returned success but no rows were removed. Almost
+          // always RLS missing a DELETE policy on sales/sale_items.
+          console.error('[Delete] DELETE affected 0 rows — likely RLS blocking. sale.id:', sale.id);
+          throw new Error('La base de datos rechazó el borrado (revisa RLS en sales)');
+        }
+
+        // Sanity-check: confirm the row is really gone before reporting success
+        const { data: stillThere } = await supabase
+          .from('sales')
+          .select('id')
+          .eq('id', sale.id)
+          .maybeSingle();
+
+        if (stillThere) {
+          console.error('[Delete] Sale still exists in DB after delete. sale.id:', sale.id);
+          throw new Error('La venta no se borró en la base de datos');
         }
 
         return { success: true, stockWarn };
@@ -343,7 +365,10 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         'success'
       );
     },
-    onError: () => showToast('No se pudo eliminar la venta', 'error'),
+    onError: (err: any) => {
+      const msg = err?.message ? `Error: ${err.message}` : 'No se pudo eliminar la venta';
+      showToast(msg, 'error');
+    },
   });
 
   const updateSaleMutation = useMutation({
