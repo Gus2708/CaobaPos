@@ -52,7 +52,22 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
               p_product_id: item.product_id,
               p_quantity: item.quantity,
             });
-            if (rpcError) throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+            if (rpcError) {
+              // Fallback: direct UPDATE if RPC is missing — never block the deletion
+              const { data: prod } = await supabase
+                .from('products')
+                .select('stock_quantity')
+                .eq('id', item.product_id)
+                .single();
+              if (prod) {
+                await supabase
+                  .from('products')
+                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                  .eq('id', item.product_id);
+              } else {
+                console.warn('[Delete credit sale] Stock restore failed:', rpcError.message);
+              }
+            }
           }
         }
 
@@ -106,13 +121,26 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       
       if (fetchError) throw fetchError;
 
-      // 2. Revert old stock
+      // 2. Revert old stock — try RPC, fall back to direct UPDATE if it doesn't exist
       if (oldItems) {
         for (const item of oldItems) {
-          await supabase.rpc('increment_stock', {
+          const { error: rpcError } = await supabase.rpc('increment_stock', {
             p_product_id: item.product_id,
             p_quantity: item.quantity,
           });
+          if (rpcError) {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock_quantity')
+              .eq('id', item.product_id)
+              .single();
+            if (prod) {
+              await supabase
+                .from('products')
+                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                .eq('id', item.product_id);
+            }
+          }
         }
       }
 
