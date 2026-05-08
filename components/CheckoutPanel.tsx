@@ -1,4 +1,4 @@
-import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
+import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -57,6 +57,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const [isClientModalVisible, setIsClientModalVisible] = useState(false);
   const createSale = useCreateSale();
   const { showToast } = useToast();
+  // Synchronous re-entry guard — blocks rapid taps before React commits createSale.isPending
+  const isSubmittingRef = useRef(false);
   
   const subtotal = React.useMemo(() => getTotal(), [items, getTotal]);
 
@@ -98,6 +100,12 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   ), [updateQuantity, removeItem]);
 
   const confirmSale = useCallback(async () => {
+    // Hard guard: if a submission is already in flight, drop the extra tap.
+    // This is synchronous so it catches rapid double-taps that fire before
+    // createSale.isPending propagates through React's render cycle.
+    if (isSubmittingRef.current || createSale.isPending) return;
+    isSubmittingRef.current = true;
+
     try {
       const saleItems = items.map((item: CartItem) => ({
         product_id: item.id,
@@ -133,10 +141,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } catch (error) {
       showToast('No se pudo completar la venta', 'error');
       console.error(error);
+    } finally {
+      isSubmittingRef.current = false;
     }
-  }, [items, total, selectedPayment, createSale, subtotal, tax, clearCart, showToast]);
+  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast]);
 
   const handleCheckout = useCallback(async () => {
+    if (isSubmittingRef.current || createSale.isPending) return;
     if (!selectedPayment) {
       showToast('Selecciona método de pago', 'warning');
       return;
@@ -145,7 +156,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       showToast('Carrito vacío', 'warning');
       return;
     }
-    
+
     if (selectedPayment === 'credito' && !selectedClient) {
       setIsClientModalVisible(true);
       return;
@@ -156,7 +167,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } else {
       await confirmSale();
     }
-  }, [selectedPayment, items, selectedClient, confirmSale, showToast]);
+  }, [selectedPayment, items, selectedClient, confirmSale, showToast, createSale.isPending]);
 
   const handleCloseModal = useCallback(() => {
     setCompletedSale(null);
@@ -344,7 +355,11 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           styles.checkoutContent,
           (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
         ]}>
-          <Icon name="check" size={22} color="#F0F0F2" />
+          {createSale.isPending ? (
+            <ActivityIndicator size="small" color="#F0F0F2" />
+          ) : (
+            <Icon name="check" size={22} color="#F0F0F2" />
+          )}
           <Text style={styles.checkoutText}>
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
           </Text>
@@ -371,6 +386,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         total={total}
         onClose={() => setIsCalculatorVisible(false)}
         onConfirm={confirmSale}
+        loading={createSale.isPending}
       />
 
       <ClientSelectorModal
