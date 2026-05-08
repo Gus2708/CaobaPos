@@ -243,18 +243,18 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const deleteMutation = useMutation({
     mutationFn: async (sale: Sale) => {
       try {
-        // 1. Get items to restore stock
+        // 1. Get items to restore stock (best-effort — failures here must not block the delete)
         const { data: items, error: itemsError } = await supabase
           .from('sale_items')
           .select('product_id, quantity')
           .eq('sale_id', sale.id);
 
         if (itemsError) {
-          console.error('Error fetching sale items:', itemsError);
-          throw itemsError;
+          console.warn('[Delete] Could not fetch sale items, skipping stock restore:', itemsError.message);
         }
 
-        // 2. Restore stock using RPC
+        // 2. Restore stock — try RPC, fall back to direct UPDATE, never block deletion
+        let stockWarn = false;
         if (items && items.length > 0) {
           for (const item of items) {
             const { error: rpcError } = await supabase.rpc('increment_stock', {
@@ -262,8 +262,23 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
               p_quantity: item.quantity,
             });
             if (rpcError) {
-              console.error('Error restoring stock:', rpcError);
-              throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+              const { data: prod } = await supabase
+                .from('products')
+                .select('stock_quantity')
+                .eq('id', item.product_id)
+                .single();
+              if (prod) {
+                const { error: updErr } = await supabase
+                  .from('products')
+                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                  .eq('id', item.product_id);
+                if (updErr) {
+                  console.warn('[Delete] Stock restore failed (rpc + update):', updErr.message);
+                  stockWarn = true;
+                }
+              } else {
+                stockWarn = true;
+              }
             }
           }
         }
@@ -290,13 +305,13 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           throw saleError;
         }
 
-        return { success: true };
+        return { success: true, stockWarn };
       } catch (error: any) {
         console.error('Delete mutation error:', error);
         throw error;
       }
     },
-    onSuccess: async (_, deletedSale) => {
+    onSuccess: async (result, deletedSale) => {
       // Close modal first
       setShowDetail(false);
       setSelectedSale(null);
@@ -321,7 +336,12 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         }
       }
 
-      showToast('Venta eliminada y stock restaurado', 'success');
+      showToast(
+        result?.stockWarn
+          ? 'Venta eliminada (revisa stock manualmente)'
+          : 'Venta eliminada y stock restaurado',
+        'success'
+      );
     },
     onError: () => showToast('No se pudo eliminar la venta', 'error'),
   });
@@ -347,7 +367,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             p_product_id: item.product_id,
             p_quantity: item.quantity,
           });
-          if (restoreError) throw new Error(`Error restaurando stock: ${restoreError.message}`);
+          if (restoreError) {
+            // Fallback: direct UPDATE if RPC is missing/unavailable
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock_quantity')
+              .eq('id', item.product_id)
+              .single();
+            if (prod) {
+              await supabase
+                .from('products')
+                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                .eq('id', item.product_id);
+            } else {
+              console.warn('[Update] Stock restore failed:', restoreError.message);
+            }
+          }
         }
       }
 
