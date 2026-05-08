@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, 
-  StyleSheet, 
-  Modal, 
-  TouchableOpacity, 
-  TextInput, 
-  KeyboardAvoidingView, 
+  View,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  ActivityIndicator
 } from 'react-native';
 import { Text } from './Text';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,7 @@ interface ChangeCalculatorModalProps {
   total: number;
   onClose: () => void;
   onConfirm: () => void;
+  loading?: boolean;
 }
 
 export function ChangeCalculatorModal({
@@ -30,6 +32,7 @@ export function ChangeCalculatorModal({
   total,
   onClose,
   onConfirm,
+  loading = false,
 }: ChangeCalculatorModalProps) {
   const [receivedAmount, setReceivedAmount] = useState<string>('');
   const inputRef = useRef<TextInput>(null);
@@ -128,13 +131,20 @@ export function ChangeCalculatorModal({
                 <TouchableOpacity
                   style={[
                     styles.confirmButton,
-                    (received < total || received === 0) && styles.confirmButtonDisabled
+                    (received < total || received === 0 || loading) && styles.confirmButtonDisabled
                   ]}
                   onPress={onConfirm}
-                  disabled={received < total || received === 0}
+                  disabled={received < total || received === 0 || loading}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.confirmText}>Completar Venta</Text>
+                  {loading ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(10) }}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.confirmText}>Procesando...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.confirmText}>Completar Venta</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
