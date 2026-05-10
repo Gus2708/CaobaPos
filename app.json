@@ -6,7 +6,7 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -32,6 +32,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/withAgpVersion.js",
       "expo-font",
       [
         "expo-build-properties",
@@ -41,16 +42,17 @@
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
             "enableProguardInReleaseBuilds": false,
-            "enableShrinkResourcesInReleaseBuilds": false
+            "enableShrinkResourcesInReleaseBuilds": false,
+            "enableMinifyInReleaseBuilds": false
           }
         }
       ]
     ],
+    "owner": "gusdev27",
     "extra": {
       "eas": {
-        "projectId": "7e1458fc-8c2e-4fab-a9ad-25b3ca4f7734"
+        "projectId": "8db7ca9e-d037-4d51-8b6f-257dd189314a"
       }
-    },
-    "owner": "gusdev2708"
+    }
   }
 }
