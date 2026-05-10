@@ -55,6 +55,8 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'money-bill-wave': { lib: 'fontawesome', iconName: 'money-bill-wave' },
   'exchange-alt': { lib: 'fontawesome', iconName: 'exchange-alt' },
   'exclamation-circle': { lib: 'fontawesome', iconName: 'exclamation-circle' },
+  'check-circle': { lib: 'fontawesome', iconName: 'check-circle' },
+  'info-circle': { lib: 'fontawesome', iconName: 'info-circle' },
   'loader': { lib: 'fontawesome', iconName: 'spinner' },
   'cog': { lib: 'fontawesome', iconName: 'cog' },
   // EvilIcons
