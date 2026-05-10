@@ -20,7 +20,7 @@ import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useCategories } from '../hooks/useProducts';
-import { globalScrollY } from '../store/uiStore';
+import { globalScrollY, headerTranslateY } from '../store/uiStore';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -354,6 +354,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   const isMobile = width < 768;
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
+  const hideOffset = TOTAL_NAV_HEIGHT;
 
   // Use the new hook to fetch and sync categories from Supabase
   useCategories();
@@ -893,26 +894,6 @@ export const InventoryPanel = memo(function InventoryPanel({
         </View>
       )}
 
-      <View style={styles.searchRow}>
-         <View style={styles.searchInputContainer}>
-          <Icon name="search" size={20} color={tokens.colors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar por nombre, código o categoría..."
-            placeholderTextColor={tokens.colors.textDim}
-            value={search}
-            onChangeText={setSearch}
-            accessibilityRole="search"
-            accessibilityLabel="Buscar productos"
-          />
-        </View>
-        <View style={styles.countContainer}>
-          <Badge variant="mahogany">
-            {filteredProducts.length}
-          </Badge>
-        </View>
-      </View>
-
       {showAddForm && !readOnly && (
         <View style={styles.addForm} testID="add-form">
           <LinearGradient
@@ -937,146 +918,143 @@ export const InventoryPanel = memo(function InventoryPanel({
                   source={{ uri: newProduct.imageUri }}
                   style={styles.imagePickerThumbImg}
                   transition={200}
-                  cachePolicy="disk"
                 />
               ) : (
-                <View style={styles.imagePickerThumbEmpty}>
-                  <Icon name="image" size={28} color={tokens.colors.mahogany} />
+                <View style={styles.imagePickerPlaceholder}>
+                  <Icon name="camera" size={24} color={tokens.colors.textMuted} />
+                  <Text style={styles.imagePickerPlaceholderText}>Foto</Text>
                 </View>
               )}
-              <View style={styles.imagePickerCamBadge}>
-                <Icon name="camera" size={12} color="#FFF" />
-              </View>
             </View>
-            <View style={styles.imagePickerInfo}>
-              <Text style={styles.imagePickerLabel}>Foto del producto</Text>
-              <Text style={styles.imagePickerSub}>
-                {newProduct.imageUri ? 'Imagen seleccionada ✓' : 'Toca para agregar una imagen'}
-              </Text>
-            </View>
-            <View style={styles.imagePickerArrow}>
-              <Icon name="chevron-right" size={18} color={tokens.colors.textMuted} />
+            <View style={styles.imagePickerLabel}>
+              <Icon name="chevron-right" size={16} color={tokens.colors.textMuted} />
             </View>
           </TouchableOpacity>
 
-          <Text style={styles.inputLabel}>Nombre</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del producto"
-            placeholderTextColor="#6A6A72"
-            value={newProduct.name}
-            onChangeText={(v) => setNewProduct((p) => ({ ...p, name: v }))}
-          />
-          <View style={styles.row}>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Precio Venta</Text>
+          <View style={styles.formRow}>
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Nombre</Text>
               <TextInput
-                style={styles.input}
+                style={styles.formInput}
+                placeholder="Ej: Café Latte"
+                placeholderTextColor={tokens.colors.textDim}
+                value={newProduct.name}
+                onChangeText={(t) => setNewProduct(p => ({ ...p, name: t }))}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.formLabel}>Precio</Text>
+              <TextInput
+                style={styles.formInput}
                 placeholder="0.00"
-                placeholderTextColor="#6A6A72"
+                placeholderTextColor={tokens.colors.textDim}
                 keyboardType="decimal-pad"
                 value={newProduct.price}
-                onChangeText={(v) => setNewProduct((p) => ({ ...p, price: v }))}
+                onChangeText={(t) => setNewProduct(p => ({ ...p, price: t }))}
               />
             </View>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Costo</Text>
+            <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.formLabel}>Costo</Text>
               <TextInput
-                style={styles.input}
+                style={styles.formInput}
                 placeholder="0.00"
-                placeholderTextColor="#6A6A72"
+                placeholderTextColor={tokens.colors.textDim}
                 keyboardType="decimal-pad"
                 value={newProduct.cost}
-                onChangeText={(v) => setNewProduct((p) => ({ ...p, cost: v }))}
+                onChangeText={(t) => setNewProduct(p => ({ ...p, cost: t }))}
               />
             </View>
-            <View style={[styles.flex1, styles.formSection]}>
-              <Text style={styles.inputLabel}>Stock</Text>
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.formLabel}>Stock</Text>
               <TextInput
-                style={styles.input}
+                style={styles.formInput}
                 placeholder="0"
-                placeholderTextColor="#6A6A72"
+                placeholderTextColor={tokens.colors.textDim}
                 keyboardType="number-pad"
                 value={newProduct.stock}
-                onChangeText={(v) => setNewProduct((p) => ({ ...p, stock: v }))}
+                onChangeText={(t) => setNewProduct(p => ({ ...p, stock: t }))}
+              />
+            </View>
+            <View style={[styles.formGroup, { flex: 1 }]}>
+              <Text style={styles.formLabel}>Código de barras</Text>
+              <TextInput
+                style={styles.formInput}
+                placeholder="Opcional"
+                placeholderTextColor={tokens.colors.textDim}
+                value={newProduct.barcode}
+                onChangeText={(t) => setNewProduct(p => ({ ...p, barcode: t }))}
               />
             </View>
           </View>
-          <Text style={styles.inputLabel}>Código de barras</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Código de barras (opcional)"
-            placeholderTextColor="#6A6A72"
-            value={newProduct.barcode}
-            onChangeText={(v) => setNewProduct((p) => ({ ...p, barcode: v }))}
-          />
-          <Text style={styles.inputLabel}>Categorías</Text>
-          <View style={styles.catRow}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.catBtn, newProduct.categories.includes(cat) && styles.catActive]}
-                onPress={() => toggleCategory(cat, true)}
-                activeOpacity={0.7}
-              >
-                {newProduct.categories.includes(cat) && (
-                  <LinearGradient
-                    colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                )}
-                <Text style={[styles.catText, newProduct.categories.includes(cat) && styles.catTextActive]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
 
-            {isAddingQuickCat === 'new' ? (
-              <View style={styles.quickAddContainer}>
-                <TextInput
-                  style={styles.quickAddInput}
-                  placeholder="Categoría..."
-                  placeholderTextColor={tokens.colors.textDim}
-                  value={quickCatText}
-                  onChangeText={setQuickCatText}
-                  autoFocus
-                  onSubmitEditing={() => handleQuickAdd('new')}
-                />
-                <TouchableOpacity onPress={() => handleQuickAdd('new')} style={styles.quickAddActionBtn}>
-                  <Icon name="check" size={18} color={tokens.colors.sage} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsAddingQuickCat(null)} style={styles.quickAddActionBtn}>
-                  <Icon name="close" size={18} color={tokens.colors.coral} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.quickAddToggle} onPress={() => setIsAddingQuickCat('new')}>
-                <Icon name="plus" size={16} color={tokens.colors.mahogany} />
-              </TouchableOpacity>
-            )}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Categorías</Text>
+            <View style={styles.catChipsRow}>
+              {categories.map((cat) => {
+                const selected = newProduct.categories.includes(cat);
+                return (
+                  <Badge 
+                    key={cat} 
+                    variant={selected ? 'mahogany' : 'neutral'}
+                    style={styles.catChip}
+                  >
+                    <TouchableOpacity 
+                      onPress={() => toggleCategory('new', cat)}
+                      style={styles.catChipTouch}
+                    >
+                      <Text style={[styles.catChipText, selected && styles.catChipTextSelected]}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  </Badge>
+                );
+              })}
+              {isAddingQuickCat === 'new' ? (
+                <View style={styles.quickCatRow}>
+                  <TextInput
+                    style={styles.quickCatInput}
+                    placeholder="Nueva"
+                    placeholderTextColor={tokens.colors.textDim}
+                    value={quickCatText}
+                    onChangeText={setQuickCatText}
+                    autoFocus
+                  />
+                  <TouchableOpacity onPress={() => handleQuickAdd('new')} style={styles.quickCatConfirm}>
+                    <Icon name="check" size={16} color="#FFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Badge variant="neutral" style={styles.catChip}>
+                  <TouchableOpacity onPress={() => setIsAddingQuickCat('new')} style={styles.catChipTouch}>
+                    <Icon name="plus" size={14} color={tokens.colors.mahogany} />
+                    <Text style={[styles.catChipText, { color: tokens.colors.mahogany }]}>Nueva</Text>
+                  </TouchableOpacity>
+                </Badge>
+              )}
+            </View>
           </View>
-          <View style={styles.addFormActions}>
-            {/* Primary Action: Crear Producto */}
+
+          <View style={styles.formActions}>
             <TouchableOpacity
-              style={[styles.saveBtn, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0 || createMutation.isPending) && styles.btnDisabled]}
-              onPress={() => createMutation.mutate()}
-              disabled={!newProduct.name || !newProduct.price || newProduct.categories.length === 0 || createMutation.isPending}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Crear Producto"
+              style={[styles.saveBtn, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0) && styles.saveBtnDisabled]}
+              onPress={() => createMutation.mutate(newProduct)}
+              activeOpacity={0.85}
+              disabled={!newProduct.name || !newProduct.price || newProduct.categories.length === 0}
             >
               <LinearGradient
-                colors={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0)
-                  ? ['rgba(184, 123, 90, 0.12)', 'rgba(184, 123, 90, 0.06)']
-                  : [tokens.colors.mahogany, tokens.colors.mahoganyDark]}
+                colors={[tokens.colors.mahogany, tokens.colors.mahoganyDark]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <Icon
-                name={createMutation.isPending ? 'loader' : 'plus'}
+                name="check"
                 size={18}
                 color={(!newProduct.name || !newProduct.price || newProduct.categories.length === 0) ? tokens.colors.textDim : '#FFFFFF'}
               />
@@ -1098,7 +1076,7 @@ export const InventoryPanel = memo(function InventoryPanel({
         </View>
       )}
     </View>
-  ), [showCategoryManager, newCategoryName, categories, search, filteredProducts.length, showAddForm, readOnly, newProduct, createMutation.isPending, isAddingQuickCat, quickCatText, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, handleQuickAdd]);
+  ), [showCategoryManager, newCategoryName, categories, showAddForm, readOnly, newProduct, createMutation.isPending, isAddingQuickCat, quickCatText, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, handleQuickAdd]);
 
   return (
     <KeyboardAvoidingView 
@@ -1115,12 +1093,57 @@ export const InventoryPanel = memo(function InventoryPanel({
         
 
 
+        <Animated.View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          backgroundColor: tokens.colors.bg,
+          paddingTop: TOTAL_NAV_HEIGHT + verticalScale(16),
+          transform: [{
+            translateY: headerTranslateY.interpolate({
+              inputRange: [-(hideOffset + verticalScale(8)), 0],
+              outputRange: [-(hideOffset - verticalScale(4)), 0],
+              extrapolate: 'clamp',
+            })
+          }]
+        }}>
+          <View style={[styles.searchRow, { 
+            paddingHorizontal: scale(16),
+            marginBottom: 0,
+            paddingBottom: verticalScale(16),
+          }]}>
+            <View style={styles.searchInputContainer}>
+              <Icon name="search" size={20} color={tokens.colors.textMuted} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar por nombre, código o categoría..."
+                placeholderTextColor={tokens.colors.textDim}
+                value={search}
+                onChangeText={setSearch}
+                accessibilityRole="search"
+                accessibilityLabel="Buscar productos"
+              />
+            </View>
+            <View style={styles.countContainer}>
+              <Badge variant="mahogany">
+                {filteredProducts.length}
+              </Badge>
+            </View>
+          </View>
+        </Animated.View>
+
         <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredProducts}
           keyExtractor={(item: any) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.list, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), paddingBottom: verticalScale(32) + insets.bottom }]}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.list, { 
+            paddingTop: TOTAL_NAV_HEIGHT + verticalScale(88),
+            paddingBottom: verticalScale(32) + insets.bottom 
+          }]}
           estimatedItemSize={scale(96)}
           ListEmptyComponent={() => {
             if (isLoading) {
