@@ -437,14 +437,11 @@ export const InventoryPanel = memo(function InventoryPanel({
         }
       }
 
-      const { error: deleteError } = await supabase
-        .from('product_categories')
-        .delete()
-        .eq('product_id', item.id);
-      if (deleteError) throw deleteError;
-
+      // Upsert categories first (so we have all IDs), then sync the links table.
+      // We don't trust DELETE-then-INSERT because RLS on product_categories may
+      // silently drop the DELETE, leaving stale rows that collide on PK insert.
+      let desiredCatIds: string[] = [];
       if (item.categories.length > 0) {
-        // Upsert all category names in one call, then fetch their IDs in one call
         const normalizedCats = item.categories.map(c => ({ name: c.toLowerCase().trim() }));
         const { error: upsertError } = await supabase
           .from('categories')
@@ -457,13 +454,39 @@ export const InventoryPanel = memo(function InventoryPanel({
           .select('id')
           .in('name', catNames);
         if (catFetchError) throw catFetchError;
+        desiredCatIds = (catRows ?? []).map(c => c.id);
+      }
 
-        if (catRows && catRows.length > 0) {
-          const { error: linkError } = await supabase
-            .from('product_categories')
-            .insert(catRows.map(c => ({ product_id: item.id, category_id: c.id })));
-          if (linkError) throw linkError;
-        }
+      // Diff existing links vs desired set, then add/remove only what's needed.
+      const { data: existingLinks } = await supabase
+        .from('product_categories')
+        .select('category_id')
+        .eq('product_id', item.id);
+      const existingCatIds = new Set((existingLinks ?? []).map(l => l.category_id));
+      const desiredSet = new Set(desiredCatIds);
+
+      const toRemove = [...existingCatIds].filter(id => !desiredSet.has(id));
+      const toAdd = desiredCatIds.filter(id => !existingCatIds.has(id));
+
+      if (toRemove.length > 0) {
+        const { error: rmError } = await supabase
+          .from('product_categories')
+          .delete()
+          .eq('product_id', item.id)
+          .in('category_id', toRemove);
+        if (rmError) console.warn('[Update] Could not remove old categories:', rmError.message);
+      }
+
+      if (toAdd.length > 0) {
+        // Use upsert with ignoreDuplicates so a stale row left by a failed
+        // delete doesn't crash us with a duplicate-key violation.
+        const { error: linkError } = await supabase
+          .from('product_categories')
+          .upsert(
+            toAdd.map(cid => ({ product_id: item.id, category_id: cid })),
+            { onConflict: 'product_id,category_id', ignoreDuplicates: true }
+          );
+        if (linkError) throw linkError;
       }
 
       const updates: Record<string, any> = {
@@ -561,9 +584,13 @@ export const InventoryPanel = memo(function InventoryPanel({
         if (catFetchError) throw catFetchError;
 
         if (catRows && catRows.length > 0) {
+          // Idempotent link insert — survives stale rows from RLS-blocked deletes
           const { error: linkError } = await supabase
             .from('product_categories')
-            .insert(catRows.map(c => ({ product_id: data.id, category_id: c.id })));
+            .upsert(
+              catRows.map(c => ({ product_id: data.id, category_id: c.id })),
+              { onConflict: 'product_id,category_id', ignoreDuplicates: true }
+            );
           if (linkError) throw linkError;
         }
       }
@@ -779,7 +806,11 @@ export const InventoryPanel = memo(function InventoryPanel({
     );
   }, [editing, categories, readOnly, updateMutation.isPending, handlePickImage, toggleCategory, startEdit, handleDelete, saveEdit, isAddingQuickCat, quickCatText, handleQuickAdd]);
 
-  const ListHeader = useCallback(() => (
+  // useMemo (not useCallback) so we pass a stable React ELEMENT, not a component.
+  // FlashList remounts the header when ListHeaderComponent's function reference
+  // changes, which dismisses the keyboard inside the TextInput on every keystroke.
+  // With an element, React reconciles by JSX shape and preserves the TextInput.
+  const ListHeader = useMemo(() => (
     <View style={{ marginBottom: verticalScale(16) }}>
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
@@ -1067,7 +1098,7 @@ export const InventoryPanel = memo(function InventoryPanel({
         </View>
       )}
     </View>
-  ), [showCategoryManager, newCategoryName, categories, search, filteredProducts.length, showAddForm, readOnly, newProduct, createMutation.isPending, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, isAddingQuickCat, quickCatText, handleQuickAdd]);
+  ), [showCategoryManager, newCategoryName, categories, search, filteredProducts.length, showAddForm, readOnly, newProduct, createMutation.isPending, isAddingQuickCat, quickCatText, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, handleQuickAdd]);
 
   return (
     <KeyboardAvoidingView 
