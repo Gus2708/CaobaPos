@@ -554,7 +554,9 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     />
   ), [handleView, handleDelete]);
 
-  const ListHeader = useCallback(() => (
+  // useMemo so we pass a React element (stable identity for the TextInput inside)
+  // instead of a component reference that FlashList would remount on each keystroke.
+  const ListHeader = useMemo(() => (
     <View style={styles.listHeader}>
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
