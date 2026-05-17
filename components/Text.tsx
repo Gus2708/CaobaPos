@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text as RNText, TextProps as RNTextProps, StyleSheet } from 'react-native';
+import { Text as RNText, TextProps as RNTextProps, StyleSheet, Platform } from 'react-native';
 import { moderateScale } from '../lib/responsive';
 import * as Font from 'expo-font';
 
@@ -61,12 +61,26 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
     resolvedWeight = mapWeight(scaledStyle.fontWeight);
   }
 
-  // Get target custom font string name
-  const targetFont = fontMap[resolvedFamily][resolvedWeight];
+  // Determine font family and weight dynamically by platform
+  let resolvedFontFamily: string | undefined = undefined;
+  let resolvedFontWeight: '400' | '500' | '600' | '700' | undefined = undefined;
 
-  // Safely check if font is loaded; if not, fall back to undefined (system default)
-  const isLoaded = Font.isLoaded(targetFont);
-  const resolvedFontFamily = isLoaded ? targetFont : undefined;
+  if (Platform.OS === 'web') {
+    // Web: Use standard system/CDN font family and numeric weights
+    resolvedFontFamily = resolvedFamily === 'mono' 
+      ? '"JetBrains Mono", monospace' 
+      : '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    
+    if (resolvedWeight === 'regular') resolvedFontWeight = '400';
+    else if (resolvedWeight === 'medium') resolvedFontWeight = '500';
+    else if (resolvedWeight === 'semiBold') resolvedFontWeight = '600';
+    else if (resolvedWeight === 'bold') resolvedFontWeight = '700';
+  } else {
+    // Native (iOS/Android): Use bundled Expo Font keys
+    const targetFont = fontMap[resolvedFamily][resolvedWeight];
+    const isLoaded = Font.isLoaded(targetFont);
+    resolvedFontFamily = isLoaded ? targetFont : undefined;
+  }
 
   // Clean up native properties to prevent font resolver crash / double-styling
   delete scaledStyle.fontFamily;
@@ -86,6 +100,7 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
       style={[
         { 
           fontFamily: resolvedFontFamily,
+          fontWeight: resolvedFontWeight,
         }, 
         scaledStyle
       ]}
