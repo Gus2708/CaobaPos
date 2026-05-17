@@ -7,12 +7,13 @@
   <title>CaobaPOS</title>
   <meta name="description" content="Punto de Venta Premium, Inteligente y Offline-Resiliente" />
   
-  <!-- Manifest Configuration -->
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <!-- Manifest Configuration (crossorigin use-credentials allows loading on protected Vercel previews) -->
+  <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
   <meta name="theme-color" content="#905030" />
   
   <!-- iOS / Apple Web App Settings (iOS Chin Bug fix: status-bar-style must be 'black', never 'black-translucent') -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="CaobaPOS" />
   <link rel="apple-touch-icon" href="/icon-512.png" />
@@ -67,30 +68,12 @@
     }
 
     .splash-logo {
-      width: 96px;
-      height: 96px;
+      width: 110px;
+      height: 110px;
       margin-bottom: 24px;
+      object-fit: contain;
+      filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.4));
       border-radius: 24px;
-      background: linear-gradient(135deg, #A85A38 0%, #6E361D 100%);
-      box-shadow: 0 12px 32px rgba(144, 80, 48, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 36px;
-      color: #FFF;
-      letter-spacing: -1px;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-      position: relative;
-    }
-
-    .splash-logo::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 24px;
-      background: radial-gradient(circle at top left, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
-      pointer-events: none;
     }
 
     .splash-spinner {
@@ -119,7 +102,7 @@
 <body>
   <!-- Inline loading splash screen -->
   <div id="pwa-loading-splash">
-    <div class="splash-logo">C</div>
+    <img class="splash-logo" src="/icon-192.png" alt="CaobaPOS" />
     <div class="splash-spinner"></div>
     <div class="splash-text">Cargando CaobaPOS</div>
   </div>
