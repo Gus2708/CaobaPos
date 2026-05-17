@@ -66,10 +66,11 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
   let resolvedFontWeight: '400' | '500' | '600' | '700' | undefined = undefined;
 
   if (Platform.OS === 'web') {
-    // Web: Use standard system/CDN font family and numeric weights
+    // Web: Use the exact loaded local font name as primary, with fallback to standard system/CDN fonts
+    const targetFont = fontMap[resolvedFamily][resolvedWeight];
     resolvedFontFamily = resolvedFamily === 'mono' 
-      ? '"JetBrains Mono", monospace' 
-      : '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+      ? `${targetFont}, "JetBrains Mono", monospace` 
+      : `${targetFont}, "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
     
     if (resolvedWeight === 'regular') resolvedFontWeight = '400';
     else if (resolvedWeight === 'medium') resolvedFontWeight = '500';
