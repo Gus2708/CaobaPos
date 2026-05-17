@@ -2,6 +2,7 @@
   "version": 2,
   "cleanUrls": true,
   "outputDirectory": "dist",
+  "buildCommand": "npm run build",
   "headers": [
     {
       "source": "/service-worker.js",
