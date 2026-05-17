@@ -1,5 +1,5 @@
 import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
-import { AppBlurView as BlurView } from '../components/AppBlurView';
+
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,7 @@ import { Badge } from '../components/Badge';
 import { Text } from '../components/Text';
 
 import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { SaleDetailModal } from '../components/SaleDetailModal';
@@ -21,7 +21,7 @@ import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 
 // Create animated component at module level to avoid remount on every render
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface SaleItem {
   id: string;
@@ -83,25 +83,13 @@ const SaleCard = React.memo(function SaleCard({
       accessibilityRole="button"
       accessibilityLabel={`Venta de ${Number(item.total_amount).toFixed(2)} pesos, realizada el ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
-      <BlurView
-        tint="dark"
-        intensity={20}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
           <Icon name={getPaymentIcon(item.payment_method)} size={20} color={tokens.colors.mahogany} />
         </View>
 
         <View style={styles.saleInfo}>
-          <Text style={styles.saleTotal} numberOfLines={1} adjustsFontSizeToFit>${Number(item.total_amount).toFixed(2)}</Text>
+          <Text style={styles.saleTotal} numberOfLines={1}>${Number(item.total_amount).toFixed(2)}</Text>
           <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
         </View>
 
@@ -184,20 +172,20 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const PAGE_SIZE = 20;
 
-  const { 
-    data, 
-    isLoading, 
-    refetch, 
-    isRefetching, 
-    fetchNextPage, 
-    hasNextPage, 
-    isFetchingNextPage 
+  const {
+    data,
+    isLoading,
+    refetch,
+    isRefetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ['sales-history', selectedMethod, period, dateRange],
+    queryKey: ['sales-history', selectedMethod, period, dateRange.start, dateRange.end],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       let query = supabase.from('sales').select('*');
-      
+
       if (dateRange.start) {
         query = query.gte('created_at', dateRange.start);
       }
@@ -211,7 +199,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       const { data, error } = await query
         .order('created_at', { ascending: false })
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
-        
+
       if (error) throw error;
       return data ?? [];
     },
@@ -232,10 +220,10 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   }, [sales, search]);
 
   const { data: totalSum, isLoading: loadingTotal } = useQuery({
-    queryKey: ['sales-history-total', selectedMethod, period, dateRange],
+    queryKey: ['sales-history-total', selectedMethod, period, dateRange.start, dateRange.end],
     queryFn: async () => {
       let query = supabase.from('sales').select('total_amount');
-      
+
       if (dateRange.start) {
         query = query.gte('created_at', dateRange.start);
       }
@@ -255,75 +243,132 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const deleteMutation = useMutation({
     mutationFn: async (sale: Sale) => {
       try {
-        // 1. Get items to restore stock
+        // 1. Get items to restore stock (best-effort — failures here must not block the delete)
         const { data: items, error: itemsError } = await supabase
           .from('sale_items')
           .select('product_id, quantity')
           .eq('sale_id', sale.id);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.warn('[Delete] Could not fetch sale items, skipping stock restore:', itemsError.message);
+        }
 
-        // 2. Restore stock using RPC
+        // 2. Restore stock — try RPC, fall back to direct UPDATE, never block deletion
+        let stockWarn = false;
         if (items && items.length > 0) {
           for (const item of items) {
             const { error: rpcError } = await supabase.rpc('increment_stock', {
               p_product_id: item.product_id,
               p_quantity: item.quantity,
             });
-            if (rpcError) throw new Error(`Error al restaurar stock: ${rpcError.message}`);
+            if (rpcError) {
+              const { data: prod } = await supabase
+                .from('products')
+                .select('stock_quantity')
+                .eq('id', item.product_id)
+                .single();
+              if (prod) {
+                const { error: updErr } = await supabase
+                  .from('products')
+                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                  .eq('id', item.product_id);
+                if (updErr) {
+                  console.warn('[Delete] Stock restore failed (rpc + update):', updErr.message);
+                  stockWarn = true;
+                }
+              } else {
+                stockWarn = true;
+              }
+            }
           }
         }
 
         // 3. Delete linked payments (explicit until cascade is applied)
-        await supabase
+        const { error: paymentsError } = await supabase
           .from('client_payments')
           .delete()
           .eq('sale_id', sale.id);
 
-        // 4. Delete the sale (cascades to sale_items)
-        const { error: saleError } = await supabase
+        if (paymentsError) {
+          console.error('Error deleting payments:', paymentsError);
+          throw paymentsError;
+        }
+
+        // 4. Delete the sale. Use .select() to detect when 0 rows were
+        // affected — Supabase returns success silently when RLS blocks a
+        // delete, so we cannot rely on `error` alone.
+        const { data: deleted, error: saleError } = await supabase
           .from('sales')
           .delete()
-          .eq('id', sale.id);
+          .eq('id', sale.id)
+          .select();
 
-        if (saleError) throw saleError;
-        
-        return { success: true };
+        if (saleError) {
+          console.error('[Delete] Supabase error deleting sale:', saleError);
+          throw saleError;
+        }
+
+        if (!deleted || deleted.length === 0) {
+          // The delete returned success but no rows were removed. Almost
+          // always RLS missing a DELETE policy on sales/sale_items.
+          console.error('[Delete] DELETE affected 0 rows — likely RLS blocking. sale.id:', sale.id);
+          throw new Error('La base de datos rechazó el borrado (revisa RLS en sales)');
+        }
+
+        // Sanity-check: confirm the row is really gone before reporting success
+        const { data: stillThere } = await supabase
+          .from('sales')
+          .select('id')
+          .eq('id', sale.id)
+          .maybeSingle();
+
+        if (stillThere) {
+          console.error('[Delete] Sale still exists in DB after delete. sale.id:', sale.id);
+          throw new Error('La venta no se borró en la base de datos');
+        }
+
+        return { success: true, stockWarn };
       } catch (error: any) {
         console.error('Delete mutation error:', error);
         throw error;
       }
     },
-    onSuccess: (_, deletedSale) => {
-      // 1. Actualizar el cache de la consulta infinita manualmente para respuesta instantánea
-      queryClient.setQueriesData({ queryKey: ['sales-history'] }, (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          pages: oldData.pages.map((page: any) => 
-            page.filter((sale: any) => sale.id !== deletedSale.id)
-          )
-        };
-      });
+    onSuccess: async (result, deletedSale) => {
+      // Close modal first
+      setShowDetail(false);
+      setSelectedSale(null);
 
-      // 2. Invalidar para asegurar sincronización con DB
-      queryClient.invalidateQueries({ queryKey: ['sales-history'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); 
-      
+      // 1. Cancel any in-flight sales-history fetches so they don't overwrite our cache
+      await queryClient.cancelQueries({ queryKey: ['sales-history'] });
+
+      // 2. Remove cached sale items for this sale
+      queryClient.removeQueries({ queryKey: ['sale-items', deletedSale.id] });
+
+      // 3. Reset the infinite query to force a clean refetch (not a stale-merge)
+      await queryClient.resetQueries({ queryKey: ['sales-history'], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ['sales-history-total'], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
       if (deletedSale.payment_method === 'credito') {
-        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        await queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
         if (deletedSale.client_id) {
-          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', deletedSale.client_id] });
-          queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_credit_sales', deletedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_payments', deletedSale.client_id] });
         }
       }
 
-      setShowDetail(false);
-      setSelectedSale(null);
-      showToast('Venta eliminada y stock restaurado', 'success');
+      showToast(
+        result?.stockWarn
+          ? 'Venta eliminada (revisa stock manualmente)'
+          : 'Venta eliminada y stock restaurado',
+        'success'
+      );
     },
-    onError: () => showToast('No se pudo eliminar la venta', 'error'),
+    onError: (err: any) => {
+      const msg = err?.message ? `Error: ${err.message}` : 'No se pudo eliminar la venta';
+      showToast(msg, 'error');
+    },
   });
 
   const updateSaleMutation = useMutation({
@@ -343,10 +388,26 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
       if (oldItems) {
         for (const item of oldItems) {
-          await supabase.rpc('increment_stock', {
+          const { error: restoreError } = await supabase.rpc('increment_stock', {
             p_product_id: item.product_id,
             p_quantity: item.quantity,
           });
+          if (restoreError) {
+            // Fallback: direct UPDATE if RPC is missing/unavailable
+            const { data: prod } = await supabase
+              .from('products')
+              .select('stock_quantity')
+              .eq('id', item.product_id)
+              .single();
+            if (prod) {
+              await supabase
+                .from('products')
+                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
+                .eq('id', item.product_id);
+            } else {
+              console.warn('[Update] Stock restore failed:', restoreError.message);
+            }
+          }
         }
       }
 
@@ -361,7 +422,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .from('products')
         .select('id, name, stock_quantity')
         .in('id', productIds);
-      
+
       if (stockCheckError) throw stockCheckError;
 
       for (const item of items) {
@@ -371,21 +432,25 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         }
       }
 
-      for (const item of items) {
-        const { error: insertError } = await supabase.from('sale_items').insert({
+      // Batch-insert the updated sale items in a single call
+      const { error: insertError } = await supabase.from('sale_items').insert(
+        items.map(item => ({
           sale_id: saleId,
           product_id: item.product_id,
           product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
           subtotal: item.subtotal,
-        });
-        if (insertError) throw insertError;
+        }))
+      );
+      if (insertError) throw insertError;
 
-        await supabase.rpc('decrement_stock', {
+      for (const item of items) {
+        const { error: decrementError } = await supabase.rpc('decrement_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
         });
+        if (decrementError) throw new Error(`Error decrementando stock: ${decrementError.message}`);
       }
 
       const { error: updateError } = await supabase
@@ -398,17 +463,33 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .eq('id', saleId);
       if (updateError) throw updateError;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['sales-history'] });
-      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
-      if (selectedSale?.payment_method === 'credito') {
-        queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
-        if (selectedSale?.client_id) {
-          queryClient.invalidateQueries({ queryKey: ['client_credit_sales', selectedSale.client_id] });
-        }
-      }
+    onSuccess: async (_, variables) => {
+      // Invalidate cached items for this sale so re-opening shows updated data
+      queryClient.removeQueries({ queryKey: ['sale-items', variables.saleId] });
+
       setShowDetail(false);
       setSelectedSale(null);
+
+      await queryClient.invalidateQueries({
+        queryKey: ['sales-history'],
+        exact: false
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['sales-history-total'],
+        exact: false
+      });
+      await queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+
+      if (selectedSale?.payment_method === 'credito') {
+        await queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+        if (selectedSale?.client_id) {
+          await queryClient.invalidateQueries({ queryKey: ['client_credit_sales', selectedSale.client_id] });
+          await queryClient.invalidateQueries({ queryKey: ['client_payments', selectedSale.client_id] });
+        }
+      }
+
+      refetch();
       showToast('Venta actualizada', 'success');
     },
     onError: () => showToast('No se pudo actualizar la venta', 'error'),
@@ -434,18 +515,36 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
-      const { data: items, error } = await supabase
-        .from('sale_items')
+      // Fetch complete sale details to ensure we have client_id and all fields
+      const { data: fullSale, error: saleError } = await supabase
+        .from('sales')
         .select('*')
-        .eq('sale_id', sale.id);
+        .eq('id', sale.id)
+        .single();
 
-      if (error) throw error;
-      setSelectedSale({ ...sale, sale_items: items ?? [] });
+      if (saleError) throw saleError;
+
+      // Use queryClient to cache sale items per sale ID so re-opening is instant
+      const items = await queryClient.fetchQuery({
+        queryKey: ['sale-items', sale.id],
+        queryFn: async () => {
+          const { data, error } = await supabase
+            .from('sale_items')
+            .select('*')
+            .eq('sale_id', sale.id);
+          if (error) throw error;
+          return data ?? [];
+        },
+        staleTime: 1000 * 60 * 5, // 5 min — sale items rarely change
+      });
+
+      setSelectedSale({ ...fullSale, sale_items: items });
       setShowDetail(true);
     } catch (error) {
+      console.error('Error loading sale details:', error);
       showToast('No se pudieron cargar los detalles', 'error');
     }
-  }, [showToast]);
+  }, [queryClient, showToast]);
 
   const renderItem = useCallback(({ item }: { item: Sale }) => (
     <SaleCard 
@@ -455,6 +554,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     />
   ), [handleView, handleDelete]);
 
+  // useMemo so we pass a React element (stable identity for the TextInput inside)
+  // instead of a component reference that FlashList would remount on each keystroke.
   const ListHeader = useMemo(() => (
     <View style={styles.listHeader}>
       <View style={styles.header}>
@@ -531,18 +632,12 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         </View>
       </View>
     </View>
-  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search]);
+  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search, periodOptions, paymentMethods, periodLabels]);
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[tokens.colors.bg, tokens.colors.bg]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
       
-      {/* @ts-ignore */}
       <AnimatedFlashList
         ListHeaderComponent={ListHeader}
         data={filteredSales}
@@ -563,7 +658,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             </View>
           ) : (
             <View style={styles.emptyContainer}>
-              <Icon name="document" size={64} color="rgba(184, 123, 90, 0.3)" />
+                <Icon name="document" size={64} color={tokens.colors.mahoganyDim} />
               <Text style={styles.empty}>Sin ventas registradas</Text>
             </View>
           )
@@ -592,7 +687,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             refreshing={isRefetching}
             onRefresh={refetch}
             tintColor={tokens.colors.mahogany}
-            progressBackgroundColor={tokens.colors.glass.heavy}
+            progressBackgroundColor={tokens.colors.surface}
           />
         }
       />
@@ -632,11 +727,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setMethodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
-            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
             <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar por pago</Text>
@@ -661,7 +752,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                 >
                   <View style={[
                     styles.methodIconSmall,
-                    { backgroundColor: selectedMethod === m.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                      { backgroundColor: selectedMethod === m.value ? tokens.colors.mahogany : tokens.colors.surface }
                   ]}>
                     <Icon 
                       name={m.icon} 
@@ -697,11 +788,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           onPress={() => setPeriodModalVisible(false)}
         >
           <View style={styles.dropdownContainer}>
-            <BlurView tint="dark" intensity={50} style={StyleSheet.absoluteFill} />
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)']}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
             <View style={styles.dropdownGradient}>
               <View style={styles.dropdownHeader}>
                 <Text style={styles.dropdownTitle}>Filtrar tiempo</Text>
@@ -732,7 +819,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                 >
                   <View style={[
                     styles.methodIconSmall,
-                    { backgroundColor: period === o.value ? tokens.colors.mahogany : 'rgba(255,255,255,0.05)' }
+                      { backgroundColor: period === o.value ? tokens.colors.mahogany : tokens.colors.surface }
                   ]}>
                     <Icon 
                       name={o.icon} 
@@ -772,11 +859,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 });
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     backgroundColor: tokens.colors.bg,
   },
-  header: { 
+  listHeader: {
+    // wrapper for the FlashList ListHeaderComponent
+  },
+  header: {
     marginBottom: verticalScale(28),
     paddingHorizontal: scale(4),
   },
@@ -789,12 +879,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   countBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(2),
     borderRadius: scale(6),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: tokens.colors.borderLight,
   },
   countText: {
     fontFamily: FontNames.jetBrainsMono,
@@ -840,12 +930,12 @@ const styles = StyleSheet.create({
   },
   headerStats: {
     alignItems: 'flex-end',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.surface,
     paddingHorizontal: scale(12),
     paddingVertical: verticalScale(8),
     borderRadius: tokens.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     minWidth: scale(90),
   },
   statsLabel: {
@@ -876,11 +966,11 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.surface,
     borderRadius: scale(16),
     paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     gap: scale(12),
     height: verticalScale(54),
   },
@@ -910,13 +1000,12 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
   },
   saleCard: {
-    position: 'relative',
     borderRadius: tokens.radius.xl, 
-    marginBottom: verticalScale(16), 
+    marginBottom: verticalScale(12), 
     borderWidth: 1, 
     borderColor: tokens.colors.borderLight,
-    overflow: 'hidden',
-    minHeight: verticalScale(84),
+    backgroundColor: tokens.colors.surface,
+    minHeight: verticalScale(80),
     justifyContent: 'center',
   },
   saleContent: {
@@ -933,7 +1022,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.surface,
   },
   saleInfo: {
     flex: 1,
@@ -1006,7 +1095,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.1)',
+    backgroundColor: tokens.colors.mahoganyDim,
   },
   methodIconSmall: {
     width: scale(32),

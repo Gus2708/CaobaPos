@@ -84,21 +84,9 @@ export function SaleSummaryModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <BlurView tint="dark" intensity={25} style={styles.overlay}>
+      <View style={styles.overlay}>
         <View style={styles.modal}>
-          <BlurView tint="dark" intensity={35} style={StyleSheet.absoluteFill} />
-          <View style={{
-            ...StyleSheet.absoluteFillObject,
-            borderWidth: 1,
-            borderColor: tokens.colors.glass.liquidHighlight,
-            borderRadius: tokens.radius.modal,
-          }} />
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           <View style={styles.header}>
             <View style={styles.iconCircle}>
                <Icon name="check-circle" size={32} color="#FFFFFF" />
@@ -169,7 +157,7 @@ export function SaleSummaryModal({
             </TouchableOpacity>
           </View>
         </View>
-      </BlurView>
+      </View>
     </Modal>
   );
 }
@@ -186,7 +174,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: scale(380),
     borderRadius: tokens.radius.modal,
-    backgroundColor: 'rgba(10, 10, 12, 0.85)',
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
   },
   header: {
@@ -199,11 +189,11 @@ const styles = StyleSheet.create({
      width: scale(64),
      height: scale(64),
      borderRadius: scale(32),
-     backgroundColor: 'rgba(255, 255, 255, 0.25)',
+     backgroundColor: tokens.colors.surface,
      justifyContent: 'center',
      alignItems: 'center',
      borderWidth: 2,
-     borderColor: 'rgba(255, 255, 255, 0.4)',
+     borderColor: '#FFFFFF',
   },
   headerTitle: {
     fontFamily: FontNames.instrumentSans,
@@ -215,8 +205,8 @@ const styles = StyleSheet.create({
   receiptId: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
-    color: 'rgba(255, 255, 255, 0.8)',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    color: '#FFFFFF',
+    backgroundColor: tokens.colors.mahoganyDim,
     paddingHorizontal: scale(12),
     paddingVertical: verticalScale(2),
     borderRadius: tokens.radius.pill,
@@ -267,7 +257,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   summaryCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: tokens.radius.lg,
     padding: scale(16),
     borderWidth: 1,

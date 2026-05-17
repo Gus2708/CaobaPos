@@ -1,5 +1,4 @@
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, StyleSheet } from 'react-native';
 import { Text } from './Text';
 import { memo } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
@@ -7,6 +6,7 @@ import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { PressableScale } from './PressableScale';
 
 interface CartItemProps {
   item: CartItemType;
@@ -25,16 +25,10 @@ export const CartItemRow = memo(function CartItemRow({
   onRemove 
 }: CartItemProps) {
   const totalPrice = (item.price * item.quantity).toFixed(2);
-  const gradientColors = ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.01)'] as const;
+
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
       
       <View style={styles.itemIconCircle}>
         <Text style={styles.itemInitial}>
@@ -49,36 +43,36 @@ export const CartItemRow = memo(function CartItemRow({
       
       <View style={styles.rightSection}>
         <View style={styles.controls}>
-          <TouchableOpacity 
-            style={styles.button} 
+          <PressableScale
+            style={styles.button}
             onPress={onDecrement}
-            activeOpacity={0.7}
+            scaleTo={0.85}
           >
             <Icon name="minus" size={14} color={tokens.colors.text} />
-          </TouchableOpacity>
-          
+          </PressableScale>
+
           <View style={styles.quantityContainer}>
             <Text style={styles.quantity}>{item.quantity}</Text>
           </View>
-          
-          <TouchableOpacity 
-            style={styles.button} 
+
+          <PressableScale
+            style={styles.button}
             onPress={onIncrement}
-            activeOpacity={0.7}
+            scaleTo={0.85}
           >
             <Icon name="plus" size={14} color={tokens.colors.text} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={styles.totalAndAction}>
           <Text style={styles.total}>${totalPrice}</Text>
-          <TouchableOpacity 
-            style={styles.removeButton} 
+          <PressableScale
+            style={styles.removeButton}
             onPress={onRemove}
-            activeOpacity={0.7}
+            scaleTo={0.88}
           >
             <Icon name="trash" size={18} color={tokens.colors.coral} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </View>
     </View>
@@ -93,10 +87,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     marginVertical: verticalScale(6),
     borderRadius: tokens.radius.lg,
-    backgroundColor: tokens.colors.surfaceElevated,
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    overflow: 'hidden',
   },
   itemIconCircle: {
     width: scale(52),
@@ -139,7 +132,7 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: tokens.radius.pill,
     padding: scale(2),
     borderWidth: 1,

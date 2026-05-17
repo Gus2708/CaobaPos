@@ -27,17 +27,21 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
 describe('InventoryPanel', () => {
   it('renders correctly and wait for data', async () => {
     await render(<InventoryPanel readOnly={true} />, { wrapper: AllTheProviders });
-    
-    expect(await screen.findByText('Inventario')).toBeOnTheScreen();
-    expect(screen.getByRole('search', { name: 'Buscar productos' })).toBeOnTheScreen();
+
+    // Wait for initial render, then re-query to avoid stale references after FlashList re-renders
+    await screen.findByText('Inventario');
+    await waitFor(() => {
+      expect(screen.getByText('Inventario')).toBeOnTheScreen();
+      expect(screen.getByRole('search', { name: 'Buscar productos' })).toBeOnTheScreen();
+    });
   });
 
   it('toggles the add form using accessibility roles', async () => {
     await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
-    
-    // Find by role for initial state
-    const addBtn = await screen.findByRole('button', { name: 'Agregar nuevo producto' });
-    fireEvent.press(addBtn);
+
+    // Wait for the button to appear, then re-query to avoid stale reference before press
+    await screen.findByRole('button', { name: 'Agregar nuevo producto' });
+    fireEvent.press(screen.getByRole('button', { name: 'Agregar nuevo producto' }));
     
     await waitFor(() => {
       expect(screen.getByTestId('add-form')).toBeOnTheScreen();
@@ -63,8 +67,10 @@ describe('InventoryPanel', () => {
 
   it('disables the "Crear" button if required fields are empty', async () => {
     await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
-    
-    fireEvent.press(await screen.findByRole('button', { name: 'Agregar nuevo producto' }));
+
+    // Re-query after findByRole to avoid pressing a stale reference
+    await screen.findByRole('button', { name: 'Agregar nuevo producto' });
+    fireEvent.press(screen.getByRole('button', { name: 'Agregar nuevo producto' }));
     
     await waitFor(() => {
       expect(screen.getByTestId('add-form')).toBeOnTheScreen();

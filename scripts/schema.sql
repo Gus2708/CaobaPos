@@ -59,6 +59,18 @@ BEGIN
 END;
 $$;
 
+-- 7. Create stock increment function (used when deleting/editing sales to restore stock)
+CREATE OR REPLACE FUNCTION increment_stock(p_product_id UUID, p_quantity INTEGER)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE products
+  SET stock_quantity = stock_quantity + p_quantity
+  WHERE id = p_product_id;
+END;
+$$;
+
 -- ============================================
 -- Seed Data (sample products)
 -- ============================================
