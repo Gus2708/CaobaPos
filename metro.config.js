@@ -1,6 +1,10 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
 
 const config = getDefaultConfig(__dirname);
+
+// Use custom transformer to polyfill import.meta during bundling
+config.transformer.babelTransformerPath = path.resolve(__dirname, 'scripts/metro-transformer.js');
 
 // Exclude Gradle plugin build output dirs that don't exist on Windows,
 // causing Metro's FallbackWatcher to crash with ENOENT.
