@@ -14,6 +14,11 @@ const queryClient = new QueryClient({
       staleTime: 1000 * 30, // 30s default — Realtime pushes instant invalidations
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
+      networkMode: 'offlineFirst',
+      gcTime: 1000 * 60 * 60 * 24, // Keep offline cache valid for 24 hours
+    },
+    mutations: {
+      networkMode: 'offlineFirst',
     },
   },
 });
