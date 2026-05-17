@@ -184,8 +184,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
             ]}
           >
             <View style={styles.blurContainer}>
-               <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
-               <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10, 10, 12, 0.75)' }]} />
+               <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
             </View>
             
             <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
@@ -349,7 +348,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: tokens.radius.xl * 1.5,
     borderTopRightRadius: tokens.radius.xl * 1.5,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
@@ -367,7 +366,7 @@ const styles = StyleSheet.create({
     width: scale(36),
     height: verticalScale(4),
     borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: tokens.colors.borderLight,
   },
   header: {
     paddingHorizontal: scale(20),
@@ -375,7 +374,7 @@ const styles = StyleSheet.create({
     paddingTop: scale(8),
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: tokens.colors.borderLight,
   },
   headerTop: {
     flexDirection: 'row',
@@ -399,7 +398,7 @@ const styles = StyleSheet.create({
     width: scale(40),
     height: scale(40),
     borderRadius: scale(20),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -411,12 +410,12 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.bg,
     height: verticalScale(52),
     borderRadius: tokens.radius.lg,
     paddingHorizontal: scale(16),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
   },
   searchInput: {
     flex: 1,
@@ -519,7 +518,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: tokens.colors.bg,
     height: verticalScale(48),
     borderRadius: tokens.radius.lg,
     paddingHorizontal: scale(16),
@@ -542,7 +541,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },

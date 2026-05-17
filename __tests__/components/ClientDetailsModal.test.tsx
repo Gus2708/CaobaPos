@@ -39,6 +39,7 @@ describe('ClientDetailsModal - Debts Calculations', () => {
       total_credit_sales: 15.50,
       total_paid: 5.50,
       balance_due: 10.00, // They owe $10
+      is_active: true,
     };
 
     // 2. Act: Render the modal
@@ -67,6 +68,7 @@ describe('ClientDetailsModal - Debts Calculations', () => {
       total_credit_sales: 10.00,
       total_paid: 10.00,
       balance_due: 0.00, // fully paid
+      is_active: true,
     };
 
     await renderWithProviders(
@@ -90,6 +92,7 @@ describe('ClientDetailsModal - Debts Calculations', () => {
       total_credit_sales: 10.00,
       total_paid: 15.00,
       balance_due: -5.00, // overpaid
+      is_active: true,
     };
 
     await renderWithProviders(
@@ -114,6 +117,7 @@ describe('ClientDetailsModal - Payment Validation', () => {
       total_credit_sales: 10.00,
       total_paid: 0,
       balance_due: 10.00,
+      is_active: true,
     };
 
     await renderWithProviders(

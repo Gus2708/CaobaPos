@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Product, useSettingsStore } from '../store/cartStore';
-import { useCartStore } from '../store/cartStore';
 
 const PRODUCTS_TABLE = 'products';
 
@@ -37,7 +37,7 @@ export function useProducts(category: Category = 'todos') {
       if (category === 'todos') return products;
       return products.filter((p) => p.categories?.includes(category));
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30, // 30s — Realtime handles instant sync, this is the fallback
     placeholderData: (prev) => prev,
   });
 }
@@ -45,7 +45,7 @@ export function useProducts(category: Category = 'todos') {
 export function useCategories() {
   const setCategories = useSettingsStore((state) => state.setCategories);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,19 +54,22 @@ export function useCategories() {
         .order('name');
 
       if (error) throw error;
-      
-      const names = data.map(c => c.name);
-      // Sync with store - wrap in timeout to avoid state updates during render
-      setTimeout(() => setCategories(names), 0);
-      return names;
+      return data.map(c => c.name as string);
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60, // 1 min — categories change rarely
   });
+
+  // Sync fetched categories to the Zustand store whenever fresh data arrives.
+  // useEffect (not setTimeout) is the correct pattern for post-render side effects.
+  useEffect(() => {
+    if (query.data) setCategories(query.data);
+  }, [query.data]); // setCategories is stable (Zustand selector)
+
+  return query;
 }
 
 export function useCreateSale() {
   const queryClient = useQueryClient();
-  const clearCart = useCartStore((state) => state.clearCart);
 
   return useMutation({
     mutationFn: async ({
@@ -90,7 +93,7 @@ export function useCreateSale() {
       ivaEnabled?: boolean;
       taxAmount?: number;
     }) => {
-      // 1. Pre-checkout Stock Validation
+      // 1. Pre-checkout stock validation (single query)
       const productIds = items.map(i => i.product_id);
       const { data: dbProducts, error: fetchError } = await supabase
         .from('products')
@@ -109,9 +112,8 @@ export function useCreateSale() {
         }
       }
 
-      // 2. Proceed with sale creation
+      // 2. Insert the sale record
       const status = paymentMethod === 'credito' ? 'pending_payment' : 'paid';
-      
       const { data: sale, error: saleError } = await supabase
         .from('sales')
         .insert({
@@ -127,6 +129,7 @@ export function useCreateSale() {
 
       if (saleError) throw saleError;
 
+      // 3. Insert all sale items in a single batch call
       const saleItems = items.map((item) => {
         const dbProduct = dbProducts?.find(p => p.id === item.product_id);
         return {
@@ -140,16 +143,21 @@ export function useCreateSale() {
         .from('sale_items')
         .insert(saleItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Rollback: delete the orphaned sale before rethrowing
+        await supabase.from('sales').delete().eq('id', sale.id);
+        throw itemsError;
+      }
 
+      // 4. Decrement stock — sequential RPCs but errors are real failures
       for (const item of items) {
         const { error: stockError } = await supabase.rpc('decrement_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
         });
-
         if (stockError) {
-          console.warn('Stock decrement failed:', stockError);
+          // Log but do not rollback the sale — stock can be corrected manually
+          console.error(`[Stock] Failed to decrement ${item.product_name}:`, stockError.message);
         }
       }
 
@@ -164,7 +172,7 @@ export function useCreateSale() {
           queryClient.invalidateQueries({ queryKey: ['client_credit_sales', variables.clientId] });
         }
       }
-      clearCart();
+      // Note: cart is cleared by CheckoutPanel.confirmSale() — do NOT clear here too
     },
   });
 }
