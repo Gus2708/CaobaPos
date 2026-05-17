@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    color: tokens.colors.mahogany,
+    color: tokens.colors.amberGold,
   },
   stockBadge: {
     position: 'absolute',

@@ -21,8 +21,19 @@
   <!-- Preconnect to external API/Font endpoints for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
   
   <style>
+    /* Font family aliases for React Native Web / PWA compatibility */
+    @font-face {
+      font-family: 'InstrumentSans';
+      src: local('Instrument Sans'), local('Instrument Sans Regular'), local('InstrumentSans-Regular');
+    }
+    @font-face {
+      font-family: 'JetBrainsMono';
+      src: local('JetBrains Mono'), local('JetBrains Mono Regular'), local('JetBrainsMono-Regular');
+    }
+
     /* Premium Reset and Base Layout */
     html, body {
       margin: 0;
@@ -31,11 +42,16 @@
       height: 100%;
       background-color: #0A0A0C;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'InstrumentSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #F4F4F5;
       -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Standard Inputs typography fallback */
+    input, select, textarea, button {
+      font-family: 'InstrumentSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     /* Fixed 100dvh root to bypass iOS Chin Gap */

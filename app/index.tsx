@@ -51,7 +51,14 @@ export function POSScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const numColumns = isMobile ? 1 : 3;
+  const numColumns = useMemo(() => {
+    if (isMobile) return 1;
+    // 75% of screen width goes to leftPanel on web/desktop, 25% to right panel
+    const availableWidth = width * 0.75;
+    // Target card width of ~210px for a beautiful and highly aligned premium POS grid
+    const computedColumns = Math.floor(availableWidth / 210);
+    return Math.max(2, Math.min(6, computedColumns));
+  }, [width, isMobile]);
 
   const [showMobileCart, setShowMobileCart] = useState(false);
 
