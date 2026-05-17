@@ -1,5 +1,5 @@
-import { View, TouchableOpacity, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated } from 'react-native';
-import { AppBlurView as BlurView } from './AppBlurView';
+import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator } from 'react-native';
+import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
@@ -26,7 +26,7 @@ const PAYMENT_METHODS = [
   { key: 'credito', label: 'Crédito', icon: 'user' },
 ] as const;
 
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface SaleResult {
   id: string;
@@ -57,6 +57,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const [isClientModalVisible, setIsClientModalVisible] = useState(false);
   const createSale = useCreateSale();
   const { showToast } = useToast();
+  // Synchronous re-entry guard — blocks rapid taps before React commits createSale.isPending
+  const isSubmittingRef = useRef(false);
   
   const subtotal = React.useMemo(() => getTotal(), [items, getTotal]);
 
@@ -73,12 +75,6 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
 
   const MAX_HIDE = verticalScale(60);
   const clampedScrollY = Animated.diffClamp(scrollY, 0, MAX_HIDE);
-
-  const bottomTranslateY = clampedScrollY.interpolate({
-    inputRange: [0, MAX_HIDE],
-    outputRange: [0, -MAX_HIDE],
-    extrapolate: 'clamp',
-  });
 
   const subtotalOpacity = clampedScrollY.interpolate({
     inputRange: [0, MAX_HIDE / 2],
@@ -104,6 +100,12 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   ), [updateQuantity, removeItem]);
 
   const confirmSale = useCallback(async () => {
+    // Hard guard: if a submission is already in flight, drop the extra tap.
+    // This is synchronous so it catches rapid double-taps that fire before
+    // createSale.isPending propagates through React's render cycle.
+    if (isSubmittingRef.current || createSale.isPending) return;
+    isSubmittingRef.current = true;
+
     try {
       const saleItems = items.map((item: CartItem) => ({
         product_id: item.id,
@@ -139,10 +141,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } catch (error) {
       showToast('No se pudo completar la venta', 'error');
       console.error(error);
+    } finally {
+      isSubmittingRef.current = false;
     }
-  }, [items, total, selectedPayment, createSale, subtotal, tax, clearCart, showToast]);
+  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast]);
 
   const handleCheckout = useCallback(async () => {
+    if (isSubmittingRef.current || createSale.isPending) return;
     if (!selectedPayment) {
       showToast('Selecciona método de pago', 'warning');
       return;
@@ -151,7 +156,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       showToast('Carrito vacío', 'warning');
       return;
     }
-    
+
     if (selectedPayment === 'credito' && !selectedClient) {
       setIsClientModalVisible(true);
       return;
@@ -162,7 +167,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } else {
       await confirmSale();
     }
-  }, [selectedPayment, items, selectedClient, confirmSale, showToast]);
+  }, [selectedPayment, items, selectedClient, confirmSale, showToast, createSale.isPending]);
 
   const handleCloseModal = useCallback(() => {
     setCompletedSale(null);
@@ -179,16 +184,6 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         styles.container, 
         { paddingBottom: insets.bottom + verticalScale(8) }
       ]}>
-        <BlurView 
-          tint="dark" 
-          intensity={25} 
-          style={StyleSheet.absoluteFill} 
-        />
-        <View style={{
-          ...StyleSheet.absoluteFillObject,
-          borderLeftWidth: 1,
-          borderLeftColor: tokens.colors.glass.liquidHighlight,
-        }} />
   
         <View style={[
           styles.header, 
@@ -210,9 +205,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <Text style={styles.itemCount}>{items.length}</Text>
             </View>
             {onCloseMobile && (
-              <TouchableOpacity onPress={onCloseMobile} style={styles.closeButton}>
+              <PressableScale onPress={onCloseMobile} style={styles.closeButton} scaleTo={0.88}>
                 <Icon name="close" size={24} color={tokens.colors.text} />
-              </TouchableOpacity>
+              </PressableScale>
             )}
           </View>
         </View>
@@ -221,7 +216,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       <AnimatedFlashList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         estimatedItemSize={verticalScale(84)}
         extraData={items}
         showsVerticalScrollIndicator={false}
@@ -246,10 +241,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.ivaRow} 
+          <PressableScale
+            style={styles.ivaRow}
             onPress={toggleIva}
-            activeOpacity={0.7}
+            scaleTo={0.98}
           >
             <View style={styles.ivaLabelContainer}>
               <View style={[styles.checkbox, ivaEnabled && styles.checkboxActive]}>
@@ -260,13 +255,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
               ${tax.toFixed(2)}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </Animated.View>
 
-        <Animated.View style={[
-          styles.summaryBottomSliding,
-          { transform: [{ translateY: bottomTranslateY }] }
-        ]}>
+        <View style={styles.summaryBottomSliding}>
           <View style={styles.totalRow}>
             <View style={styles.totalLabelContainer}>
               <Text style={styles.totalLabel}>Total</Text>
@@ -280,34 +272,53 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           </View>
 
           <View style={styles.paymentSection}>
-        <Text style={styles.sectionTitle}>Método de pago</Text>
-        <View style={styles.paymentChips}>
-          {PAYMENT_METHODS.map((method) => {
-            const isActive = selectedPayment === method.key;
-            return (
-              <TouchableOpacity
-                key={method.key}
-                style={[styles.paymentChip, isActive && styles.paymentChipActive]}
-                onPress={() => setSelectedPayment(method.key)}
-                activeOpacity={0.7}
-              >
-                <View style={[
-                  styles.paymentChipIconCircle,
-                  isActive && { backgroundColor: 'rgba(184, 123, 90, 0.2)' }
-                ]}>
-                  <Icon 
-                    name={method.icon} 
-                    size={18} 
-                    color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
-                  />
-                </View>
-                <Text style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
-                  {method.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+            <Text style={styles.sectionTitle}>Método de pago</Text>
+            <View style={styles.paymentRow}>
+              {PAYMENT_METHODS.slice(0, 2).map((method) => {
+                const isActive = selectedPayment === method.key;
+                return (
+                  <PressableScale
+                    key={method.key}
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.paymentChip, isActive && styles.paymentChipActive]}
+                    onPress={() => setSelectedPayment(method.key)}
+                    scaleTo={0.96}
+                  >
+                    <Icon
+                      name={method.icon}
+                      size={18}
+                      color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
+                    />
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                      {method.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <View style={styles.paymentRow}>
+              {PAYMENT_METHODS.slice(2, 4).map((method) => {
+                const isActive = selectedPayment === method.key;
+                return (
+                  <PressableScale
+                    key={method.key}
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.paymentChip, isActive && styles.paymentChipActive]}
+                    onPress={() => setSelectedPayment(method.key)}
+                    scaleTo={0.96}
+                  >
+                    <Icon
+                      name={method.icon}
+                      size={18}
+                      color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
+                    />
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                      {method.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
 
         {selectedPayment === 'credito' && (
           <View style={styles.clientSelectionBox}>
@@ -317,40 +328,44 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                   <Icon name="user" size={20} color={tokens.colors.text} />
                   <Text style={styles.selectedClientName}>{selectedClient.name}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn}>
+                <PressableScale onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn} scaleTo={0.92}>
                   <Text style={styles.changeClientText}>Cambiar</Text>
-                </TouchableOpacity>
+                </PressableScale>
               </View>
             ) : (
-              <TouchableOpacity style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)}>
+              <PressableScale style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)} scaleTo={0.97}>
                 <Icon name="user-plus" size={22} color="#B87B5A" />
                 <Text style={styles.selectClientText}>Seleccionar Cliente</Text>
-              </TouchableOpacity>
+              </PressableScale>
             )}
           </View>
         )}
       </View>
 
-      <TouchableOpacity
+      <PressableScale
         style={[
           styles.checkoutButton,
           (!selectedPayment || items.length === 0 || createSale.isPending) && styles.checkoutButtonDisabled,
         ]}
         onPress={handleCheckout}
         disabled={!selectedPayment || items.length === 0 || createSale.isPending}
-        activeOpacity={0.85}
+        scaleTo={0.97}
       >
         <View style={[
-          styles.checkoutContent, 
+          styles.checkoutContent,
           (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
         ]}>
-          <Icon name="check" size={22} color="#F0F0F2" />
+          {createSale.isPending ? (
+            <ActivityIndicator size="small" color="#F0F0F2" />
+          ) : (
+            <Icon name="check" size={22} color="#F0F0F2" />
+          )}
           <Text style={styles.checkoutText}>
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
           </Text>
         </View>
-      </TouchableOpacity>
-      </Animated.View>
+      </PressableScale>
+      </View>
       </View>
 
       {completedSale && (
@@ -371,6 +386,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         total={total}
         onClose={() => setIsCalculatorVisible(false)}
         onConfirm={confirmSale}
+        loading={createSale.isPending}
       />
 
       <ClientSelectorModal
@@ -393,7 +409,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(16),
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.borderLight,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: tokens.colors.surface,
   },
   headerContent: {
     flexDirection: 'row',
@@ -491,8 +507,6 @@ const styles = StyleSheet.create({
   },
   summaryBottomSliding: {
     backgroundColor: tokens.colors.bg,
-    paddingBottom: verticalScale(70), // Ensures we don't see empty space when translating up
-    marginBottom: verticalScale(-70), // Cancels the padding for normal layout
   },
   summaryRow: {
     flexDirection: 'row',
@@ -582,57 +596,48 @@ const styles = StyleSheet.create({
     color: tokens.colors.sage,
   },
   paymentSection: {
-    paddingBottom: verticalScale(20),
+    marginTop: verticalScale(16),
+    paddingBottom: verticalScale(12),
   },
   sectionTitle: {
     fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     fontWeight: '800',
     color: tokens.colors.textDim,
-    marginBottom: verticalScale(14),
+    marginBottom: verticalScale(12),
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+    textAlign: 'center',
   },
-  paymentChips: {
+  paymentRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: scale(10),
+    marginBottom: scale(10),
   },
   paymentChip: {
-    flex: 1,
-    minWidth: '45%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
-    height: verticalScale(54),
-    borderRadius: tokens.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    justifyContent: 'center',
+    gap: scale(8),
+    paddingVertical: verticalScale(14),
+    paddingHorizontal: scale(12),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    paddingHorizontal: scale(12),
   },
   paymentChipActive: {
     backgroundColor: tokens.colors.mahoganyDim,
     borderColor: tokens.colors.mahogany,
   },
-  paymentChipIconCircle: {
-     width: scale(32),
-     height: scale(32),
-     borderRadius: scale(16),
-     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-     justifyContent: 'center',
-     alignItems: 'center',
-     borderWidth: 1,
-     borderColor: tokens.colors.borderLight,
-  },
   paymentChipText: {
-    fontFamily: FontNames.instrumentSans,
-    fontSize: moderateScale(14),
-    fontWeight: '700',
-    color: tokens.colors.textDim,
+    fontSize: moderateScale(13),
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   paymentChipTextActive: {
-    color: tokens.colors.text,
+    color: tokens.colors.mahogany,
+    fontWeight: '700',
   },
   checkoutButton: {
     marginHorizontal: scale(20),

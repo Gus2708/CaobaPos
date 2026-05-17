@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from '../components/Icon';
 import { tokens } from '../lib/designTokens';
 import { generateReport } from '../lib/pdfReportGenerator';
 import { useToast } from '../components/Toast';
+import { SkeletonItem } from '../components/SkeletonItem';
 import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
@@ -82,14 +83,9 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
       accessibilityRole={onPress ? 'button' : 'none'}
       accessibilityLabel={onPress ? `Ver detalles de ${label}: ${value}` : `${label}: ${value}`}
     >
-      <LinearGradient
-        colors={tokens.styles.liquidCard.reflectionColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
       <View style={styles.statContent}>
-        <View style={[styles.statIconCircle, { backgroundColor: `${c.accent}08`, borderColor: `${c.accent}15` }]}>
+        <View style={[styles.statIconCircle, { backgroundColor: tokens.colors.bg, borderColor: tokens.colors.borderLight }]}>
           <Icon name={icon} size={20} color={c.accent} />
         </View>
         <View style={styles.statInfo}>
@@ -185,16 +181,30 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const { data: saleItems } = useQuery<SaleItem[]>({
     queryKey: ['dashboard', 'sale_items', period, dateRange],
     queryFn: async () => {
-      let query = supabase.from('sale_items').select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal, sales!inner(created_at)');
+      // PostgREST does not support dot-notation filters on joined tables via .gte().
+      // Instead fetch sale_ids from the already-loaded sales and query items by those IDs.
+      // This avoids a broken cross-table filter that silently returns all rows.
+      let salesQuery = supabase.from('sales').select('id');
       if (period === 'personalizado') {
-        query = query.gte('sales.created_at', dateRange.start).lte('sales.created_at', dateRange.end);
+        salesQuery = salesQuery.gte('created_at', dateRange.start!).lte('created_at', dateRange.end!);
       } else if (dateRange.start) {
-        query = query.gte('sales.created_at', dateRange.start);
+        salesQuery = salesQuery.gte('created_at', dateRange.start);
       }
-      const { data, error } = await query;
+      const { data: salesData, error: salesError } = await salesQuery;
+      if (salesError) throw salesError;
+
+      const saleIds = (salesData ?? []).map(s => s.id);
+      if (saleIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('sale_items')
+        .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
+        .in('sale_id', saleIds);
+
       if (error) throw error;
       return data ?? [];
     },
+    enabled: !!sales, // wait until the sales query has resolved
   });
 
   const { data: allPayments } = useQuery<ClientPayment[]>({
@@ -367,25 +377,19 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
 
 
-  if (loadingSales) {
+  // Show skeleton while any core query is loading
+  const isLoading = loadingSales || !saleItems || !products;
+  if (isLoading) {
     return (
-      <View style={styles.loading}>
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-          <Text style={styles.loadingText}>Cargando panel...</Text>
-        </View>
+      <View style={[styles.container, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(16), paddingHorizontal: scale(16) }]}>
+        <SkeletonItem layout="card" count={6} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[tokens.colors.bg, tokens.colors.bg]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
       
       <Animated.ScrollView 
         showsVerticalScrollIndicator={false}
@@ -469,18 +473,13 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-           <View style={[styles.sectionIcon, { backgroundColor: `${tokens.colors.sage}15`, borderColor: `${tokens.colors.sage}25` }]}>
+           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.borderLight }]}>
             <Icon name="chart-pie" size={20} color={tokens.colors.sage} />
           </View>
           <Text style={styles.sectionTitle}>Resumen Financiero</Text>
         </View>
         <View style={styles.financialGrid}>
-          <LinearGradient
-            colors={tokens.styles.liquidCard.reflectionColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
             <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
@@ -497,7 +496,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           <View style={styles.financialItem}>
             <View style={styles.labelWithBadge}>
               <Text style={styles.financialLabel}>Tarjeta / Transferencia (BS)</Text>
-              <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: 'rgba(184, 123, 90, 0.2)' }]}>
+              <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.borderLight }]}>
                 <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
               </View>
             </View>
@@ -563,12 +562,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           <Text style={styles.sectionTitle}>Top Productos</Text>
         </View>
         <View style={styles.sectionCard}>
-          <LinearGradient
-            colors={tokens.styles.liquidCard.reflectionColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           {topProducts.length === 0 ? (
             <Text style={styles.empty}>Sin datos</Text>
           ) : (
@@ -598,21 +592,16 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
             <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock Bajo</Text>
           </View>
           <View style={styles.sectionCard}>
-            <LinearGradient
-              colors={tokens.styles.liquidCard.reflectionColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
             {lowStock.map((p, i) => (
               <View key={i} style={styles.listItem}>
                 <View style={styles.listItemLeft}>
-                   <View style={[styles.rankBadge, { backgroundColor: 'rgba(201, 107, 107, 0.15)' }]}>
+                   <View style={[styles.rankBadge, { backgroundColor: tokens.colors.coralDim }]}>
                     <Icon name="box" size={16} color="#C96B6B" />
                   </View>
                   <Text style={styles.listText}>{p.name}</Text>
                 </View>
-                <View style={[styles.listValueContainer, { backgroundColor: 'rgba(201, 107, 107, 0.1)' }]}>
+                <View style={[styles.listValueContainer, { backgroundColor: tokens.colors.bg }]}>
                   <Text style={[styles.listValue, { color: '#C96B6B' }]}>
                     {p.stock_quantity} uds
                   </Text>
@@ -631,12 +620,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           <Text style={styles.sectionTitle}>Ventas Recientes</Text>
         </View>
         <View style={styles.sectionCard}>
-          <LinearGradient
-            colors={tokens.styles.liquidCard.reflectionColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           {(sales ?? []).slice(0, 10).map((sale) => (
             <View key={sale.id} style={styles.saleItem}>
               <View style={styles.saleLeft}>
@@ -733,7 +717,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(14),
     paddingVertical: verticalScale(8),
     borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },
@@ -752,7 +736,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.pill,
     gap: scale(6),
     borderWidth: 1,
-    borderColor: 'rgba(109, 184, 138, 0.2)',
+    borderColor: tokens.colors.borderLight,
   },
   statusDot: {
     width: scale(8),
@@ -825,7 +809,7 @@ const styles = StyleSheet.create({
   },
   subtitleContainer: {
     marginTop: verticalScale(4),
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: scale(4),
     paddingVertical: verticalScale(1),
     borderRadius: scale(4),
@@ -885,7 +869,7 @@ const styles = StyleSheet.create({
     gap: scale(4),
   },
   financialItemHighlight: {
-    backgroundColor: 'rgba(109, 184, 138, 0.05)',
+    backgroundColor: tokens.colors.surface,
     marginHorizontal: scale(-16),
     marginBottom: verticalScale(-16),
     paddingHorizontal: scale(16),
@@ -894,7 +878,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: tokens.radius.xl,
     borderBottomRightRadius: tokens.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(109, 184, 138, 0.1)',
+    borderTopColor: tokens.colors.borderLight,
   },
   financialLabel: {
     fontFamily: FontNames.instrumentSans,
@@ -908,9 +892,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.sage,
-    textShadowColor: 'rgba(109, 184, 138, 0.4)', // Subtle sage glow
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
   financialValue: {
     fontFamily: FontNames.jetBrainsMono,
@@ -924,18 +905,12 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.coral,
-    textShadowColor: 'rgba(201, 107, 107, 0.4)', // Subtle coral glow
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
   financialValueProfit: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(22),
     fontWeight: '800',
     color: tokens.colors.sage,
-    textShadowColor: 'rgba(109, 184, 138, 0.4)', // Subtle sage glow
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
   financialValueReceived: {
     fontFamily: FontNames.jetBrainsMono,
@@ -949,9 +924,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.amber,
     lineHeight: moderateScale(20),
-    textShadowColor: 'rgba(232, 181, 96, 0.4)', // Subtle amber/yellow glow
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
   },
   labelWithBadge: {
     flexDirection: 'row',
@@ -964,7 +936,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(109, 184, 138, 0.2)',
+    borderColor: tokens.colors.borderLight,
   },
   receivedBadgeText: {
     fontFamily: FontNames.instrumentSans,
@@ -979,7 +951,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: verticalScale(14),
     borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: tokens.colors.borderLight,
     flexWrap: 'wrap',
     gap: scale(8),
   },
@@ -997,7 +969,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.borderLight,
   },
   rankText: {
     fontFamily: FontNames.jetBrainsMono,
@@ -1018,7 +990,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(6),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.2)',
+    borderColor: tokens.colors.borderLight,
   },
   listValue: { 
     fontFamily: FontNames.jetBrainsMono, 
@@ -1032,7 +1004,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     paddingVertical: verticalScale(16),
     borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomColor: tokens.colors.borderLight,
   },
   saleLeft: {
     gap: verticalScale(8),
@@ -1044,7 +1016,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   paymentBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: scale(10),
     paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,

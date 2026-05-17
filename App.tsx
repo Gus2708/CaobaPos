@@ -11,8 +11,9 @@ import { scale, verticalScale, moderateScale } from './lib/responsive';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60,
+      staleTime: 1000 * 30, // 30s default — Realtime pushes instant invalidations
       refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
     },
   },
 });

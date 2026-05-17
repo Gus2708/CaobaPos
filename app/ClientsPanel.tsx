@@ -14,16 +14,10 @@ import { Text } from '../components/Text';
 
 const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (client: ClientBalance) => void }) => (
   <TouchableOpacity 
-    style={styles.clientCard}
+    style={[styles.clientCard, { backgroundColor: tokens.colors.surface }]}
     onPress={() => onSelect(item)}
     activeOpacity={0.7}
   >
-    <LinearGradient
-      colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={StyleSheet.absoluteFill}
-    />
     <View style={styles.clientAvatar}>
       <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
     </View>
@@ -43,7 +37,7 @@ const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (c
 ));
 
 // Animated FlashList component
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as unknown as typeof FlashList;
+const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 export default function ClientsPanel() {
   const insets = useSafeAreaInsets();
@@ -79,12 +73,6 @@ export default function ClientsPanel() {
         <Text style={styles.sectionLabel}>Estado de cuenta global</Text>
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
-            <LinearGradient
-              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
             <View style={styles.summaryIconBox}>
               <Icon name="wallet" size={24} color={tokens.colors.mahogany} />
             </View>
@@ -94,12 +82,6 @@ export default function ClientsPanel() {
             </View>
           </View>
           <View style={styles.debtorsBadge}>
-            <LinearGradient
-              colors={[tokens.colors.glass.light, 'rgba(255, 255, 255, 0.02)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
             <Text style={styles.debtorsCount}>{debtorsCount}</Text>
             <Text style={styles.debtorsLabel}>Deudores</Text>
           </View>
@@ -144,7 +126,7 @@ export default function ClientsPanel() {
         <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredClients}
-          keyExtractor={item => item.id}
+          keyExtractor={(item: ClientBalance) => item.id}
           renderItem={renderClientItem}
           estimatedItemSize={verticalScale(80)}
           contentContainerStyle={[
@@ -188,6 +170,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: tokens.colors.bg,
+  },
+  listHeader: {
+    // wrapper for the FlashList ListHeaderComponent
   },
   header: {
     paddingHorizontal: scale(4),
@@ -241,7 +226,7 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.lg,
     borderWidth: 1,
     borderColor: tokens.colors.glass.border,
-    overflow: 'hidden',
+    backgroundColor: tokens.colors.surface,
   },
   summaryIconBox: {
     width: scale(48),
@@ -276,7 +261,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.glass.border,
     minWidth: scale(80),
-    overflow: 'hidden',
+    backgroundColor: tokens.colors.surface,
   },
   debtorsCount: {
     fontFamily: FontNames.jetBrainsMono,
@@ -298,7 +283,7 @@ const styles = StyleSheet.create({
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.colors.glass.light,
+    backgroundColor: tokens.colors.surface,
     borderRadius: tokens.radius.md,
     paddingHorizontal: tokens.spacing.lg,
     borderWidth: 1,
@@ -324,16 +309,16 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.card,
     borderWidth: 1,
     borderColor: tokens.colors.glass.border,
-    overflow: 'hidden',
     minHeight: verticalScale(84),
     justifyContent: 'center',
     gap: scale(14),
+    backgroundColor: tokens.colors.surface,
   },
   clientAvatar: {
     width: scale(48),
     height: scale(48),
     borderRadius: tokens.radius.btn,
-    backgroundColor: tokens.colors.glass.light,
+    backgroundColor: tokens.colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

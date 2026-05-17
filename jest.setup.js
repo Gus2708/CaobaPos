@@ -49,9 +49,11 @@ jest.mock('expo-linear-gradient', () => {
   };
 });
 
-// Mock react-native-vector-icons (used internally by component Icon)
-jest.mock('@react-native-vector-icons/evil-icons', () => 'Icon');
-jest.mock('@react-native-vector-icons/fontawesome-free-solid', () => 'Icon');
+// Mock @expo/vector-icons (used internally by component Icon)
+jest.mock('@expo/vector-icons', () => ({
+  FontAwesome5: 'FontAwesome5',
+  EvilIcons: 'EvilIcons',
+}));
 
 // Mock Expo FileSystem
 jest.mock('expo-file-system', () => ({
