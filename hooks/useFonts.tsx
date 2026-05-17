@@ -1,6 +1,6 @@
-import { useFonts, InstrumentSans_400Regular, InstrumentSans_500Medium, InstrumentSans_600SemiBold, InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans';
-import { JetBrainsMono_400Regular, JetBrainsMono_500Medium, JetBrainsMono_600SemiBold, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
+import { useFonts } from 'expo-font';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
 
 export const fonts = {
   instrumentSans: {
@@ -19,23 +19,34 @@ export const fonts = {
 
 export function useAppFonts() {
   const [loaded, error] = useFonts({
-    InstrumentSans_400Regular,
-    InstrumentSans_500Medium,
-    InstrumentSans_600SemiBold,
-    InstrumentSans_700Bold,
-    JetBrainsMono_400Regular,
-    JetBrainsMono_500Medium,
-    JetBrainsMono_600SemiBold,
-    JetBrainsMono_700Bold,
+    InstrumentSans_400Regular: require('../assets/fonts/InstrumentSans_400Regular.ttf'),
+    InstrumentSans_500Medium: require('../assets/fonts/InstrumentSans_500Medium.ttf'),
+    InstrumentSans_600SemiBold: require('../assets/fonts/InstrumentSans_600SemiBold.ttf'),
+    InstrumentSans_700Bold: require('../assets/fonts/InstrumentSans_700Bold.ttf'),
+    JetBrainsMono_400Regular: require('../assets/fonts/JetBrainsMono_400Regular.ttf'),
+    JetBrainsMono_500Medium: require('../assets/fonts/JetBrainsMono_500Medium.ttf'),
+    JetBrainsMono_600SemiBold: require('../assets/fonts/JetBrainsMono_600SemiBold.ttf'),
+    JetBrainsMono_700Bold: require('../assets/fonts/JetBrainsMono_700Bold.ttf'),
   });
 
   return { loaded, error };
 }
 
 export function FontLoader({ children }: { children: React.ReactNode }) {
-  const { loaded } = useAppFonts();
+  const { loaded, error } = useAppFonts();
+  const [timedOut, setTimedOut] = useState(false);
 
-  if (!loaded) {
+  useEffect(() => {
+    // If fonts are not loaded within 2.5 seconds, trigger a fallback to system fonts to prevent infinite loading.
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading spinner only while not loaded, no error, and we haven't timed out.
+  if (!loaded && !error && !timedOut) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color="#B87B5A" />

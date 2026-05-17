@@ -173,14 +173,14 @@ export function POSScreen() {
   }, [clearCart, showToast]);
 
   const renderItem = useCallback(({ item }: { item: Product }) => (
-    <View style={[styles.productItem, !isMobile && { width: `${100 / numColumns}%` }]}>
+    <View style={styles.productItem}>
       <ProductButton 
         product={item} 
         onPress={() => handleProductPress(item)}
         compact={!isMobile}
       />
     </View>
-  ), [handleProductPress, isMobile, numColumns]);
+  ), [handleProductPress, isMobile]);
 
   const keyExtractor = useCallback((item: Product) => item.id, []);
 
@@ -427,9 +427,8 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: tokens.colors.text,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.instrumentSansSemiBold,
     fontSize: moderateScale(15),
-    fontWeight: '600',
     height: '100%',
   },
   searchCountBadge: {

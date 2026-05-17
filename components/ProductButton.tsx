@@ -42,7 +42,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   if (compact) {
     // Tablet grid mode: vertical card
     return (
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%', flex: 1 }}>
         <TouchableOpacity
           style={[styles.cardContainer, isOutOfStock && styles.containerDisabled]}
           onPress={handlePress}
@@ -93,7 +93,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
 
   // Mobile list mode: horizontal row — clean card
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
       <TouchableOpacity
         style={[styles.container, isOutOfStock && styles.containerDisabled]}
         onPress={handlePress}
@@ -292,6 +292,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.styles.liquidCard.borderColor,
     overflow: 'hidden',
     flex: 1,
+    width: '100%',
   },
   cardImageWrapper: {
     position: 'relative',

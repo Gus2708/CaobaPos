@@ -24,17 +24,66 @@
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
   
   <style>
-    /* Font family aliases for React Native Web / PWA compatibility */
+    /* Local Offline Google Fonts */
     @font-face {
-      font-family: 'InstrumentSans';
-      src: local('Instrument Sans'), local('Instrument Sans Regular'), local('InstrumentSans-Regular');
+      font-family: 'Instrument Sans';
+      font-weight: 400;
+      font-style: normal;
+      src: local('Instrument Sans Regular'), local('InstrumentSans-Regular'),
+           url('/fonts/InstrumentSans_400Regular.ttf') format('truetype');
     }
     @font-face {
-      font-family: 'JetBrainsMono';
-      src: local('JetBrains Mono'), local('JetBrains Mono Regular'), local('JetBrainsMono-Regular');
+      font-family: 'Instrument Sans';
+      font-weight: 500;
+      font-style: normal;
+      src: local('Instrument Sans Medium'), local('InstrumentSans-Medium'),
+           url('/fonts/InstrumentSans_500Medium.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Instrument Sans';
+      font-weight: 600;
+      font-style: normal;
+      src: local('Instrument Sans SemiBold'), local('InstrumentSans-SemiBold'),
+           url('/fonts/InstrumentSans_600SemiBold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Instrument Sans';
+      font-weight: 700;
+      font-style: normal;
+      src: local('Instrument Sans Bold'), local('InstrumentSans-Bold'),
+           url('/fonts/InstrumentSans_700Bold.ttf') format('truetype');
     }
 
-    /* Premium Reset and Base Layout */
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-weight: 400;
+      font-style: normal;
+      src: local('JetBrains Mono Regular'), local('JetBrainsMono-Regular'),
+           url('/fonts/JetBrainsMono_400Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-weight: 500;
+      font-style: normal;
+      src: local('JetBrains Mono Medium'), local('JetBrainsMono-Medium'),
+           url('/fonts/JetBrainsMono_500Medium.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-weight: 600;
+      font-style: normal;
+      src: local('JetBrains Mono SemiBold'), local('JetBrainsMono-SemiBold'),
+           url('/fonts/JetBrainsMono_600SemiBold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      font-weight: 700;
+      font-style: normal;
+      src: local('JetBrains Mono Bold'), local('JetBrainsMono-Bold'),
+           url('/fonts/JetBrainsMono_700Bold.ttf') format('truetype');
+    }
+
+    /* Premium Mahogany Reset and Base Layout */
     html, body {
       margin: 0;
       padding: 0;
@@ -42,7 +91,7 @@
       height: 100%;
       background-color: #0A0A0C;
       overflow: hidden;
-      font-family: 'InstrumentSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #F4F4F5;
       -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased;
@@ -51,7 +100,7 @@
 
     /* Standard Inputs typography fallback */
     input, select, textarea, button {
-      font-family: 'InstrumentSans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     /* Fixed 100dvh root to bypass iOS Chin Gap */

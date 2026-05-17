@@ -16,4 +16,22 @@ config.resolver.blockList = [
   ...(config.resolver.blockList ? [config.resolver.blockList].flat() : []),
 ];
 
+// Force CommonJS version of Zustand on Web/Desktop to bypass ESM import.meta.env SyntaxError
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'zustand') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(__dirname, 'node_modules/zustand/index.js'),
+    };
+  }
+  if (moduleName.startsWith('zustand/')) {
+    const subpath = moduleName.replace('zustand/', '');
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(__dirname, `node_modules/zustand/${subpath}.js`),
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
