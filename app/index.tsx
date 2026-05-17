@@ -39,7 +39,7 @@ export function POSScreen() {
   const [displayBarcodeBuffer, setDisplayBarcodeBuffer] = useState(''); // Just for the hidden input value
   
   // Single query for all products
-  const { data: allProducts = [], isLoading, refetch } = useProducts('todos');
+  const { data: allProducts = [], isLoading, error, isError, refetch } = useProducts('todos');
   
   const addItem = useCartStore((state) => state.addItem);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -264,7 +264,18 @@ export function POSScreen() {
         </Animated.View>
 
         <View style={styles.productsContainer}>
-          {isLoading ? (
+          {isError ? (
+            <View style={styles.queryErrorContainer}>
+              <Icon name="exclamation-triangle" size={32} color={tokens.colors.mahogany} />
+              <Text style={styles.queryErrorTitle}>No se pudieron cargar los productos</Text>
+              <Text style={styles.queryErrorMessage}>
+                {(error as any)?.message || 'Ocurrió un error inesperado al conectar con la base de datos.'}
+              </Text>
+              <PressableScale style={styles.queryRetryButton} onPress={() => refetch()}>
+                <Text style={styles.queryRetryButtonText}>Reintentar conexión</Text>
+              </PressableScale>
+            </View>
+          ) : isLoading ? (
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={[
@@ -528,5 +539,42 @@ const styles = StyleSheet.create({
   mobileCartOverlay: {
     flex: 1,
     backgroundColor: tokens.colors.bg,
+  },
+  queryErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: scale(32),
+    paddingTop: verticalScale(160),
+    gap: scale(16),
+  },
+  queryErrorTitle: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(18),
+    fontWeight: '800',
+    color: tokens.colors.text,
+    textAlign: 'center',
+  },
+  queryErrorMessage: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(14),
+    color: tokens.colors.textMuted,
+    textAlign: 'center',
+    lineHeight: verticalScale(20),
+  },
+  queryRetryButton: {
+    backgroundColor: tokens.colors.mahogany,
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(10),
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    marginTop: verticalScale(8),
+  },
+  queryRetryButtonText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
