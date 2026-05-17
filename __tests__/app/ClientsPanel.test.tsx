@@ -35,7 +35,7 @@ describe('ClientsPanel - Global Debt Calculations', () => {
     jest.clearAllMocks();
   });
 
-  it('calculates the Total por Cobrar combining only positive balances across all clients', async () => {
+  it('calculates the Total por cobrar combining only positive balances across all clients', async () => {
     // Arrange: Return a mixed set of clients
     (useClientsHook.useClients as jest.Mock).mockReturnValue({
       data: [
@@ -52,7 +52,7 @@ describe('ClientsPanel - Global Debt Calculations', () => {
     await renderWithProviders(<ClientsPanel />);
 
     // Assert: Total should be 10.50 + 20.00 = 30.50
-    expect(screen.getByText('Total por Cobrar')).toBeOnTheScreen();
+    expect(screen.getByText('Total por cobrar')).toBeOnTheScreen();
     expect(screen.getByText('$30.50')).toBeOnTheScreen();
   });
 
@@ -68,7 +68,7 @@ describe('ClientsPanel - Global Debt Calculations', () => {
 
     await renderWithProviders(<ClientsPanel />);
 
-    expect(screen.getByText('Total por Cobrar')).toBeOnTheScreen();
+    expect(screen.getByText('Total por cobrar')).toBeOnTheScreen();
     expect(screen.getAllByText('$0.00')[0]).toBeOnTheScreen();
   });
 });
