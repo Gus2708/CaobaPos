@@ -10,13 +10,18 @@ const ASSETS_TO_CACHE = [
   '/screenshot-desktop.png'
 ];
 
-// Install Event - Pre-cache core files
+// Install Event - Pre-cache core files with individual asset fallbacks
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('📦 Pre-cacheando activos estáticos del Service Worker...');
-        return cache.addAll(ASSETS_TO_CACHE);
+        const cachePromises = ASSETS_TO_CACHE.map(url => {
+          return cache.add(url).catch(err => {
+            console.warn(`⚠️ No se pudo pre-cachear el recurso: ${url}`, err);
+          });
+        });
+        return Promise.all(cachePromises);
       })
       .then(() => self.skipWaiting())
   );
@@ -43,21 +48,85 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // 1. SPA Navigation Redirect: All navigation requests serve the cached index.html
+  // 1. Navegación SPA: Network-First con fallback de caché y página offline amigable
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html')
-        .then(cachedResponse => {
-          return cachedResponse || fetch(request).catch(() => {
-            console.warn('⚠️ Offline: Serviendo index.html fallback...');
-            return caches.match('/index.html');
+      fetch(request)
+        .then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put('/index.html', responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(err => {
+          console.warn('⚠️ Navegación de red falló. Intentando responder con caché de index.html...', err);
+          return caches.match('/index.html').then(cachedResponse => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Respuesta HTML de emergencia si no hay red ni caché
+            return new Response(
+              `<!DOCTYPE html>
+              <html lang="es">
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Sin Conexión - CaobaPOS</title>
+                <style>
+                  body {
+                    background: #120e0c;
+                    color: #f7f3f0;
+                    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    margin: 0;
+                    text-align: center;
+                    padding: 20px;
+                    box-sizing: border-box;
+                  }
+                  .container {
+                    max-width: 400px;
+                  }
+                  h1 { color: #d4a373; font-size: 1.8rem; margin-bottom: 10px; }
+                  p { color: #a89f98; font-size: 1rem; line-height: 1.5; margin-bottom: 20px; }
+                  .btn {
+                    background: #d4a373;
+                    color: #120e0c;
+                    border: none;
+                    padding: 10px 20px;
+                    font-weight: bold;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    text-decoration: none;
+                    display: inline-block;
+                  }
+                  .btn:hover { background: #e6b88a; }
+                </style>
+              </head>
+              <body>
+                <div class="container">
+                  <h1>Estás sin conexión</h1>
+                  <p>CaobaPOS no pudo conectarse al servidor y no hay una copia local guardada aún en este navegador.</p>
+                  <button class="btn" onclick="window.location.reload()">Reintentar</button>
+                </div>
+              </body>
+              </html>`,
+              {
+                status: 503,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+              }
+            );
           });
         })
     );
     return;
   }
 
-  // 2. Local static assets (Scripts, CSS, Images, Fonts) - Cache-First
+  // 2. Activos locales estáticos - Cache-First con fallback a Response 503 seguro
   const isLocalAsset = url.origin === self.location.origin;
   const isStaticExtension = /\.(js|css|png|jpg|jpeg|svg|webp|woff2?|eot|ttf|otf|json)$/i.test(url.pathname) || url.pathname.includes('manifest');
 
@@ -86,6 +155,11 @@ self.addEventListener('fetch', event => {
           return networkResponse;
         }).catch(err => {
           console.warn('❌ Fallo al descargar activo estático offline:', request.url, err);
+          // Retornar un Response de error de red normal para que el navegador no lance ERR_FAILED
+          return new Response('Activo estático no disponible sin conexión', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         });
       })
     );
