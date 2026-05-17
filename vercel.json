@@ -67,8 +67,48 @@
   ],
   "rewrites": [
     {
+      "source": "/service-worker.js",
+      "destination": "/dist/service-worker.js"
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "destination": "/dist/manifest.webmanifest"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/dist/favicon.ico"
+    },
+    {
+      "source": "/icon-192.png",
+      "destination": "/dist/icon-192.png"
+    },
+    {
+      "source": "/icon-512.png",
+      "destination": "/dist/icon-512.png"
+    },
+    {
+      "source": "/icon-maskable.png",
+      "destination": "/dist/icon-maskable.png"
+    },
+    {
+      "source": "/screenshot-desktop.png",
+      "destination": "/dist/screenshot-desktop.png"
+    },
+    {
+      "source": "/screenshot-mobile.png",
+      "destination": "/dist/screenshot-mobile.png"
+    },
+    {
+      "source": "/_expo/static/(.*)",
+      "destination": "/dist/_expo/static/$1"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/dist/assets/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/dist/index.html"
     }
   ]
 }
