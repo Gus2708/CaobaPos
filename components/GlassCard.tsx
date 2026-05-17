@@ -24,9 +24,6 @@ export function GlassCard({
   style, 
   ...props 
 }: GlassCardProps) {
-  const defaultBlurAmount = intensity === 'strong' ? 30 : intensity === 'medium' ? 20 : 15;
-  const finalBlurAmount = blurAmount ?? defaultBlurAmount;
-
   return (
     <View
       style={[
@@ -37,18 +34,12 @@ export function GlassCard({
       ]}
       {...props}
     >
-      <AppBlurView
-        tint="dark"
-        intensity={finalBlurAmount}
-        style={StyleSheet.absoluteFill}
+      <View 
+        style={[
+          StyleSheet.absoluteFill, 
+          { backgroundColor: tokens.colors.surface }
+        ]} 
       />
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.03)', 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.innerBorder} />
       {children}
     </View>
   );
@@ -60,25 +51,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderWidth: 1,
   },
-  innerBorder: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    opacity: 0.5,
-  },
 });
 
 const intensityStyles = StyleSheet.create({
   subtle: {
-    backgroundColor: 'transparent',
-    borderColor: tokens.colors.border,
+    borderColor: tokens.colors.borderLight,
   },
   medium: {
-    backgroundColor: 'transparent',
     borderColor: tokens.colors.borderMedium,
   },
   strong: {
-    backgroundColor: 'transparent',
     borderColor: tokens.colors.borderMedium,
   },
 });

@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text } from './Text';
 import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
@@ -7,6 +7,7 @@ import { useSettingsStore } from '../store/cartStore';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { PressableScale } from './PressableScale';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -36,23 +37,23 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
   const renderTab = (key: string, label: string, iconName: string) => {
     const isActive = selected === key;
     return (
-      <TouchableOpacity
+      <PressableScale
         key={key}
         style={[styles.tab, isActive && styles.tabActive]}
         onPress={() => onSelect(key as Category)}
-        activeOpacity={0.7}
+        scaleTo={0.92}
         accessibilityRole="button"
         accessibilityState={{ selected: isActive }}
       >
-        <Icon 
-          name={iconName} 
-          size={20} 
-          color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted} 
+        <Icon
+          name={iconName}
+          size={20}
+          color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
         />
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
           {label}
         </Text>
-      </TouchableOpacity>
+      </PressableScale>
     );
   };
 

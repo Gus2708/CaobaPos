@@ -63,14 +63,19 @@ describe('HistoryPanel Filtering', () => {
 
   it('renders correctly and shows the "Todos" filter badge initially', async () => {
     await render(<HistoryPanel />, { wrapper });
-    expect(await screen.findByText('Historial')).toBeOnTheScreen();
-    expect(await screen.findByText('Todos')).toBeOnTheScreen();
+    // Wait for data to stabilize before asserting static text
+    await screen.findByText('2');
+    await waitFor(() => {
+      expect(screen.getByText('Historial')).toBeOnTheScreen();
+      expect(screen.getByText('Todos')).toBeOnTheScreen();
+    });
   });
 
   it('opens the payment method filter menu when the badge is pressed', async () => {
     await render(<HistoryPanel />, { wrapper });
-    const filterBadge = await screen.findByText('Todos');
-    await fireEvent.press(filterBadge);
+    // Wait for the data to load and re-query to avoid stale reference
+    await screen.findByText('2');
+    fireEvent.press(screen.getByText('Todos'));
 
     expect(await screen.findByText('Filtrar por pago')).toBeOnTheScreen();
     expect(screen.getByText('Efectivo')).toBeOnTheScreen();
@@ -100,12 +105,15 @@ describe('HistoryPanel Filtering', () => {
 
   it('filters results by time period', async () => {
     await render(<HistoryPanel />, { wrapper });
-    
-    // Initial state: Historical
-    expect(await screen.findByText('Histórico')).toBeOnTheScreen();
+
+    // Wait for data to stabilize then check period badge
+    await screen.findByText('2');
+    await waitFor(() => {
+      expect(screen.getByText('Histórico')).toBeOnTheScreen();
+    });
 
     // Open period filter
-    await fireEvent.press(screen.getByText('Histórico'));
+    fireEvent.press(screen.getByText('Histórico'));
     expect(await screen.findByText('Filtrar tiempo')).toBeOnTheScreen();
 
     // Select "Hoy"

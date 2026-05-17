@@ -58,11 +58,17 @@ describe('DashboardPanel Metrics', () => {
           filteredData = filteredData.filter(d => (d.created_at || d.sales?.created_at) <= val);
           return mockChain;
         }),
+        in: jest.fn().mockImplementation((col, vals) => {
+          if (col === 'sale_id') {
+            filteredData = filteredData.filter(d => vals.includes(d.sale_id));
+          }
+          return mockChain;
+        }),
         order: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockReturnThis(),
       };
-      
+
       mockChain.then = jest.fn((callback) => {
         return Promise.resolve(callback({ data: filteredData, error: null }));
       });

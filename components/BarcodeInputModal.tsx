@@ -52,12 +52,7 @@ export function BarcodeInputModal({
         onPress={onClose}
       >
         <View style={styles.modal}>
-          <LinearGradient
-            colors={[tokens.colors.glass.heavy, tokens.colors.glass.bg]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           <TouchableOpacity activeOpacity={1}>
             <View style={styles.header}>
               <Text style={styles.title}>{title}</Text>
@@ -132,7 +127,9 @@ const styles = StyleSheet.create({
     width: scale(32),
     height: scale(32),
     borderRadius: scale(16),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: tokens.colors.bg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -143,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(10),
   },
   inputContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.bg,
     borderRadius: scale(12),
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
@@ -169,11 +166,11 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(10),
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    borderColor: tokens.colors.mahogany,
   },
   submitBtnDisabled: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    borderColor: 'rgba(184, 123, 90, 0.05)',
+    backgroundColor: tokens.colors.mahoganyDim,
+    borderColor: tokens.colors.borderLight,
   },
   submitBtnText: {
     color: '#F0F0F2',
