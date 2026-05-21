@@ -1005,7 +1005,7 @@ export const InventoryPanel = memo(function InventoryPanel({
                     style={styles.catChip}
                   >
                     <TouchableOpacity 
-                      onPress={() => toggleCategory('new', cat)}
+                      onPress={() => toggleCategory(cat, true)}
                       style={styles.catChipTouch}
                     >
                       <Text style={[styles.catChipText, selected && styles.catChipTextSelected]}>
@@ -1077,7 +1077,6 @@ export const InventoryPanel = memo(function InventoryPanel({
       )}
     </View>
   ), [showCategoryManager, newCategoryName, categories, showAddForm, readOnly, newProduct, createMutation.isPending, isAddingQuickCat, quickCatText, handleAddCategory, handleDeleteCategory, handlePickImage, toggleCategory, handleQuickAdd]);
-
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 

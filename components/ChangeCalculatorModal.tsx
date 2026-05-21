@@ -60,7 +60,7 @@ export function ChangeCalculatorModal({
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

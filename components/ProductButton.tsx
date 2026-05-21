@@ -3,7 +3,7 @@ import { CachedImage } from './CachedImage';
 import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
-import { Product } from '../store/cartStore';
+import { Product, useCartStore } from '../store/cartStore';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { Icon } from './Icon';
@@ -26,6 +26,13 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const isOutOfStock = product.stock_quantity <= 0;
   const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
 
+  // Zustand Store integrations for active selection and inline quantity management
+  const cartItem = useCartStore((state) => state.items.find((item) => item.id === product.id));
+  const quantityInCart = cartItem ? cartItem.quantity : 0;
+  const updateQuantity = useCartStore((state) => state.updateQuantity);
+
+  const hasQuantity = quantityInCart > 0;
+
   const handlePress = () => {
     if (isOutOfStock) return;
     onPress();
@@ -43,13 +50,12 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
     // Tablet grid mode: vertical card
     return (
       <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%', flex: 1 }}>
-        <TouchableOpacity
-          style={[styles.cardContainer, isOutOfStock && styles.containerDisabled]}
-          onPress={handlePress}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          activeOpacity={0.85}
-          disabled={isOutOfStock}
+        <View 
+          style={[
+            styles.cardContainer, 
+            hasQuantity && styles.cardContainerActive,
+            isOutOfStock && styles.containerDisabled
+          ]}
         >
           <LinearGradient
             colors={gradientColors}
@@ -57,41 +63,179 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Image or placeholder */}
-          <View style={styles.cardImageWrapper}>
-            {isValidImageUrl(product.image_url) ? (
-              <CachedImage
-                remoteUri={product.image_url!}
-                style={styles.cardImage}
-                contentFit="cover"
-              />
-            ) : (
-              <View style={styles.cardPlaceholder}>
-                <Text style={[styles.placeholderText, isOutOfStock && styles.placeholderTextDisabled]}>
-                  {product.name.charAt(0).toUpperCase()}
+          
+          <TouchableOpacity
+            style={styles.cardDetailsPressable}
+            onPress={handlePress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={0.85}
+            disabled={isOutOfStock}
+          >
+            {/* Image or placeholder */}
+            <View style={styles.cardImageWrapper}>
+              {isValidImageUrl(product.image_url) ? (
+                <CachedImage
+                  remoteUri={product.image_url!}
+                  style={styles.cardImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.cardPlaceholder}>
+                  <Text style={[styles.placeholderText, isOutOfStock && styles.placeholderTextDisabled]}>
+                    {product.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Original stock badge */}
+              <View style={[styles.stockBadge, { backgroundColor: `${stockColor}18` }]}>
+                <Text style={[styles.stockText, { color: stockColor }]}>
+                  {isOutOfStock ? '×' : product.stock_quantity}
                 </Text>
               </View>
-            )}
-            <View style={[styles.stockBadge, { backgroundColor: `${stockColor}18` }]}>
-              <Text style={[styles.stockText, { color: stockColor }]}>
-                {isOutOfStock ? '×' : product.stock_quantity}
+
+              {/* Floating premium quantity badge on top right */}
+              {hasQuantity && (
+                <View style={styles.cardQuantityBadge}>
+                  <Text style={styles.cardQuantityBadgeText}>{quantityInCart}</Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.cardInfo}>
+              <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} adjustsFontSizeToFit>
+                {product.name}
+              </Text>
+              <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
+                ${product.price.toFixed(2)}
               </Text>
             </View>
-          </View>
-          <View style={styles.cardInfo}>
-            <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} adjustsFontSizeToFit>
-              {product.name}
-            </Text>
-            <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
-              ${product.price.toFixed(2)}
-            </Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Bottom inline controls */}
+          {hasQuantity && (
+            <View style={styles.cardInlineControls}>
+              <TouchableOpacity
+                style={styles.cardControlBtn}
+                onPress={() => updateQuantity(product.id, quantityInCart - 1)}
+                activeOpacity={0.7}
+              >
+                <Icon name="minus" size={14} color={tokens.colors.text} />
+              </TouchableOpacity>
+              
+              <Text style={styles.cardQuantityText}>{quantityInCart}</Text>
+
+              <TouchableOpacity
+                style={[styles.cardControlBtn, styles.cardControlBtnAdd]}
+                onPress={handlePress}
+                activeOpacity={0.7}
+              >
+                <Icon name="plus" size={14} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </Animated.View>
     );
   }
 
   // Mobile list mode: horizontal row — clean card
+  if (hasQuantity) {
+    return (
+      <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
+        <View style={[styles.container, styles.containerActive, isOutOfStock && styles.containerDisabled]}>
+          <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Left pressable details section */}
+          <TouchableOpacity
+            style={styles.detailsPressable}
+            onPress={handlePress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            activeOpacity={0.85}
+            disabled={isOutOfStock}
+          >
+            {/* Image or placeholder */}
+            <View style={styles.imageWrapper}>
+              {isValidImageUrl(product.image_url) ? (
+                <CachedImage
+                  remoteUri={product.image_url!}
+                  style={styles.image}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                  <Text
+                    style={[
+                      styles.placeholderText,
+                      { color: tokens.colors.mahogany },
+                      isOutOfStock && styles.placeholderTextDisabled,
+                    ]}
+                  >
+                    {product.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Info */}
+            <View style={styles.info}>
+              <Text
+                style={[styles.name, isOutOfStock && styles.nameDisabled]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {product.name}
+              </Text>
+              <View style={styles.itemMeta}>
+                <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                <View style={[
+                  styles.stockDotRow, 
+                  { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
+                ]}>
+                   <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
+                   <Text style={[styles.itemStockText, { color: product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>
+                     {product.stock_quantity} uds
+                   </Text>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {/* Right inline controls section */}
+          <View style={styles.inlineControlsContainer}>
+            <TouchableOpacity
+              style={styles.controlBtn}
+              onPress={() => updateQuantity(product.id, quantityInCart - 1)}
+              activeOpacity={0.7}
+            >
+              <Icon name="minus" size={18} color={tokens.colors.text} />
+            </TouchableOpacity>
+            
+            <Text style={styles.quantityText}>{quantityInCart}</Text>
+
+            <TouchableOpacity
+              style={[styles.controlBtn, styles.controlBtnAdd]}
+              onPress={handlePress}
+              activeOpacity={0.7}
+            >
+              <Icon name="plus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // Default horizontal row when not in cart
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
       <TouchableOpacity
@@ -196,8 +340,18 @@ const styles = StyleSheet.create({
     minHeight: verticalScale(84),
     overflow: 'hidden',
   },
+  containerActive: {
+    borderColor: tokens.colors.mahogany,
+    backgroundColor: 'rgba(184, 123, 90, 0.08)',
+  },
   containerDisabled: {
     opacity: 0.4,
+  },
+  detailsPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(14),
   },
   imageWrapper: {
     width: scale(56),
@@ -283,6 +437,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  inlineControlsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: scale(3),
+  },
+  controlBtn: {
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(17),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  controlBtnAdd: {
+    backgroundColor: tokens.colors.mahogany,
+    borderColor: tokens.colors.mahoganyBright,
+  },
+  quantityText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(14),
+    fontWeight: '800',
+    color: tokens.colors.text,
+    minWidth: scale(20),
+    textAlign: 'center',
+  },
 
   // ─── Compact / Tablet Card (vertical) ──────────────────────────────
   cardContainer: {
@@ -292,6 +478,13 @@ const styles = StyleSheet.create({
     borderColor: tokens.styles.liquidCard.borderColor,
     overflow: 'hidden',
     flex: 1,
+    width: '100%',
+  },
+  cardContainerActive: {
+    borderColor: tokens.colors.mahogany,
+    backgroundColor: 'rgba(184, 123, 90, 0.08)',
+  },
+  cardDetailsPressable: {
     width: '100%',
   },
   cardImageWrapper: {
@@ -343,5 +536,58 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(10),
     fontWeight: '800',
   },
+  cardQuantityBadge: {
+    position: 'absolute',
+    top: scale(8),
+    right: scale(8),
+    backgroundColor: tokens.colors.mahogany,
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  cardQuantityBadgeText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  cardInlineControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(12),
+    paddingBottom: verticalScale(12),
+    marginTop: verticalScale(-4),
+  },
+  cardControlBtn: {
+    width: scale(30),
+    height: scale(30),
+    borderRadius: scale(15),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  cardControlBtnAdd: {
+    backgroundColor: tokens.colors.mahogany,
+    borderColor: tokens.colors.mahoganyBright,
+  },
+  cardQuantityText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(13),
+    fontWeight: '800',
+    color: tokens.colors.text,
+    textAlign: 'center',
+    flex: 1,
+  },
 });
-
