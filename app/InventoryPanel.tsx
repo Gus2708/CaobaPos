@@ -911,37 +911,33 @@ export const InventoryPanel = memo(function InventoryPanel({
             </View>
           </View>
           
-          <TouchableOpacity style={styles.imagePickerCard} onPress={() => handlePickImage('new')} activeOpacity={0.85}>
-            <View style={styles.imagePickerThumb}>
-              {newProduct.imageUri ? (
-                <Image
-                  source={{ uri: newProduct.imageUri }}
-                  style={styles.imagePickerThumbImg}
-                  transition={200}
-                />
-              ) : (
-                <View style={styles.imagePickerPlaceholder}>
-                  <Icon name="camera" size={24} color={tokens.colors.textMuted} />
-                  <Text style={styles.imagePickerPlaceholderText}>Foto</Text>
+          <TouchableOpacity style={styles.photoPickerCard} onPress={() => handlePickImage('new')} activeOpacity={0.82}>
+            {newProduct.imageUri ? (
+              <Image
+                source={{ uri: newProduct.imageUri }}
+                style={styles.photoPickerImg}
+                transition={300}
+              />
+            ) : (
+              <View style={styles.photoPickerEmpty}>
+                <View style={styles.photoPickerIconRing}>
+                  <Icon name="camera" size={26} color={tokens.colors.mahogany} />
                 </View>
-              )}
-            </View>
-            <View style={styles.imagePickerLabel}>
-              <Icon name="chevron-right" size={16} color={tokens.colors.textMuted} />
-            </View>
+                <Text style={styles.photoPickerLabel}>Foto del producto</Text>
+                <Text style={styles.photoPickerSub}>Toca para agregar una imagen</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
-          <View style={styles.formRow}>
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Nombre</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="Ej: Café Latte"
-                placeholderTextColor={tokens.colors.textDim}
-                value={newProduct.name}
-                onChangeText={(t) => setNewProduct(p => ({ ...p, name: t }))}
-              />
-            </View>
+          <View style={[styles.formGroup, { marginBottom: verticalScale(14) }]}>
+            <Text style={styles.formLabel}>Nombre</Text>
+            <TextInput
+              style={styles.formInput}
+              placeholder="Ej: Café Latte"
+              placeholderTextColor={tokens.colors.textDim}
+              value={newProduct.name}
+              onChangeText={(t) => setNewProduct(p => ({ ...p, name: t }))}
+            />
           </View>
 
           <View style={styles.formRow}>
@@ -970,7 +966,7 @@ export const InventoryPanel = memo(function InventoryPanel({
           </View>
 
           <View style={styles.formRow}>
-            <View style={[styles.formGroup, { flex: 1 }]}>
+            <View style={[styles.formGroup, { flex: 0.6 }]}>
               <Text style={styles.formLabel}>Stock</Text>
               <TextInput
                 style={styles.formInput}
@@ -1780,6 +1776,153 @@ const styles = StyleSheet.create({
     height: verticalScale(48),
     alignItems: 'center', 
     justifyContent: 'center',
+  },
+
+  // ── "Nuevo Producto" form ──────────────────────────────────────
+  formRow: {
+    flexDirection: 'row',
+    gap: scale(12),
+    marginBottom: verticalScale(14),
+  },
+  formGroup: {
+    marginBottom: verticalScale(14),
+  },
+  formLabel: {
+    color: tokens.colors.textMuted,
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(11),
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: verticalScale(6),
+  },
+  formInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    color: tokens.colors.text,
+    paddingHorizontal: scale(14),
+    paddingVertical: verticalScale(12),
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    fontFamily: FontNames.instrumentSans,
+    fontWeight: '600',
+    fontSize: moderateScale(14),
+  },
+  formActions: {
+    marginTop: verticalScale(20),
+    gap: verticalScale(10),
+  },
+  saveBtnDisabled: {
+    opacity: 0.4,
+  },
+  // category chips inside new-product form
+  catChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(8),
+    marginTop: verticalScale(4),
+  },
+  catChip: {
+    paddingHorizontal: scale(12),
+    paddingVertical: verticalScale(8),
+    borderRadius: tokens.radius.pill,
+  },
+  catChipTouch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+  },
+  catChipText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
+  },
+  catChipTextSelected: {
+    color: '#FFFFFF',
+  },
+  // quick-add inline input
+  quickCatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
+    paddingRight: scale(4),
+    height: verticalScale(38),
+    minWidth: scale(140),
+    overflow: 'hidden',
+  },
+  quickCatInput: {
+    flex: 1,
+    paddingHorizontal: scale(12),
+    color: tokens.colors.text,
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    height: '100%',
+  },
+  quickCatConfirm: {
+    width: scale(30),
+    height: scale(30),
+    borderRadius: scale(15),
+    backgroundColor: tokens.colors.mahogany,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // image placeholder inside new-product picker
+  imagePickerPlaceholder: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: verticalScale(4),
+  },
+  imagePickerPlaceholderText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: tokens.colors.textMuted,
+  },
+
+  // ── New-product photo picker (full-width card) ──────────────────
+  photoPickerCard: {
+    height: verticalScale(116),
+    borderRadius: tokens.radius.xl,
+    borderWidth: 1.5,
+    borderColor: tokens.colors.mahogany,
+    borderStyle: 'dashed',
+    marginBottom: verticalScale(18),
+    overflow: 'hidden',
+    backgroundColor: tokens.colors.mahoganyDim,
+  },
+  photoPickerEmpty: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: verticalScale(6),
+  },
+  photoPickerIconRing: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: verticalScale(4),
+  },
+  photoPickerLabel: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(14),
+    fontWeight: '700',
+    color: tokens.colors.text,
+  },
+  photoPickerSub: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: moderateScale(12),
+    fontWeight: '500',
+    color: tokens.colors.textMuted,
+  },
+  photoPickerImg: {
+    width: '100%',
+    height: '100%',
   },
 });
 
