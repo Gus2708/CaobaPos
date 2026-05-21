@@ -388,7 +388,9 @@ const styles = StyleSheet.create({
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: scale(10),
+    rowGap: verticalScale(4),
   },
   stockDotRow: {
     flexDirection: 'row',
@@ -440,17 +442,17 @@ const styles = StyleSheet.create({
   inlineControlsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
+    gap: scale(6),
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    padding: scale(3),
+    padding: scale(2),
   },
   controlBtn: {
-    width: scale(34),
-    height: scale(34),
-    borderRadius: scale(17),
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -466,7 +468,7 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '800',
     color: tokens.colors.text,
-    minWidth: scale(20),
+    minWidth: scale(18),
     textAlign: 'center',
   },
 
