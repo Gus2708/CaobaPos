@@ -7,7 +7,6 @@ import {
   TouchableOpacity, 
   TextInput, 
   ActivityIndicator, 
-  FlatList, 
   KeyboardAvoidingView, 
   Platform,
   Animated,
@@ -15,6 +14,7 @@ import {
   Dimensions,
   ScrollView
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
@@ -289,7 +289,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                       <ActivityIndicator size="large" color={tokens.colors.mahogany} />
                     </View>
                   ) : (
-                    <FlatList
+                    <FlashList
                       data={filteredClients}
                       keyExtractor={(item) => item.id}
                       renderItem={renderClient}
@@ -298,7 +298,6 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                         { paddingBottom: Math.max(insets.bottom, verticalScale(40)) }
                       ]}
                       showsVerticalScrollIndicator={false}
-                      initialNumToRender={10}
                       ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                           <View style={styles.emptyIconBox}>

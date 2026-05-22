@@ -3,6 +3,8 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
+      // React Compiler — automatic memoization (React 19+)
+      ['babel-plugin-react-compiler', {}],
       function importMetaTransformPlugin({ types: t }) {
         return {
           visitor: {
@@ -22,7 +24,7 @@ module.exports = function(api) {
             }
           }
         };
-      }
-    ]
+      },
+    ],
   };
 };

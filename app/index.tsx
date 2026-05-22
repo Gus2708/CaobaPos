@@ -44,6 +44,9 @@ export function POSScreen() {
   const addItem = useCartStore((state) => state.addItem);
   const clearCart = useCartStore((state) => state.clearCart);
   const items = useCartStore((state) => state.items);
+  const subtotal = useCartStore((state) =>
+    state.items.reduce((total, item) => total + item.price * item.quantity, 0)
+  );
   const { showToast } = useToast();
   const barcodeInputRef = useRef<TextInput>(null);
   const bufferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,9 +153,19 @@ export function POSScreen() {
     setDisplayBarcodeBuffer('');
   }, [addItem, showToast, checkLowStock, barcodeMap]);
 
+  // Focus barcode input on mount
   useEffect(() => {
     const timer = setTimeout(() => barcodeInputRef.current?.focus(), 1000);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Cleanup buffer timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (bufferTimeoutRef.current) {
+        clearTimeout(bufferTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleBarcodeBlur = useCallback(() => {
@@ -203,9 +216,7 @@ export function POSScreen() {
     );
   }, [searchQuery, isLoading]);
 
-  const getTotal = useCartStore((state) => state.getTotal);
   const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
-  const subtotal = useMemo(() => getTotal(), [items, getTotal]);
   const finalTotal = ivaEnabled ? subtotal * 1.16 : subtotal;
 
   return (
