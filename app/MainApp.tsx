@@ -1,9 +1,9 @@
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verticalScale } from '../lib/responsive';
 import { headerTranslateY, initScrollHideAnimation, resetScrollState, cleanupScrollListener } from '../store/uiStore';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Header } from '../components/Header';
 import { POSScreen } from './index';
 import { DashboardPanel } from './DashboardPanel';
@@ -21,35 +21,51 @@ export default function MainApp() {
   useRealtimeSync();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
-  // displayScreen lags one frame behind to allow fade-out before content swap
   const [displayScreen, setDisplayScreen] = useState<Screen>('pos');
   const screenOpacity = useRef(new Animated.Value(1)).current;
   const screenTranslateY = useRef(new Animated.Value(0)).current;
+  const isAnimating = useRef(false);
 
   const handleNavigate = useCallback((screen: Screen) => {
-    if (screen === currentScreen) return;
-    setCurrentScreen(screen); // update header active state immediately
+    if (screen === currentScreen || isAnimating.current) return;
+    isAnimating.current = true;
+    setCurrentScreen(screen);
 
-    Animated.timing(screenOpacity, {
-      toValue: 0,
-      duration: 100,
-      useNativeDriver: true,
-    }).start(() => {
+    // Fade out + slide down 10px in parallel
+    Animated.parallel([
+      Animated.timing(screenOpacity, {
+        toValue: 0,
+        duration: 100,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(screenTranslateY, {
+        toValue: 10,
+        duration: 100,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       setDisplayScreen(screen);
-      screenTranslateY.setValue(verticalScale(10));
+      screenTranslateY.setValue(10);
+
+      // Fade in + slide up from 10px → 0 in parallel
       Animated.parallel([
         Animated.timing(screenOpacity, {
           toValue: 1,
-          duration: 220,
+          duration: 150,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.spring(screenTranslateY, {
+        Animated.timing(screenTranslateY, {
           toValue: 0,
-          tension: 110,
-          friction: 11,
+          duration: 150,
+          easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        isAnimating.current = false;
+      });
     });
   }, [currentScreen, screenOpacity, screenTranslateY]);
 
@@ -111,13 +127,7 @@ export default function MainApp() {
             />
           </Animated.View>
 
-          <Animated.View style={[
-            styles.screenWrapper,
-            {
-              opacity: screenOpacity,
-              transform: [{ translateY: screenTranslateY }],
-            },
-          ]}>
+          <Animated.View style={[styles.screenWrapper, { opacity: screenOpacity, transform: [{ translateY: screenTranslateY }] }]}>
             {renderScreen()}
           </Animated.View>
         </View>

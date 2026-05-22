@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, useWindowDimensions, Dimensions } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Animated, Easing, StyleSheet, useWindowDimensions, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale } from '../lib/responsive';
@@ -14,24 +14,25 @@ const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
 /**
  * Shimmer skeleton: a translating highlight gradient sweeps across each
- * placeholder block. Uses native driver for 60fps loop.
+ * placeholder block. Runs on the native driver when possible.
  */
 function Shimmer({ style }: { style: any }) {
-  const translate = useRef(new Animated.Value(-1)).current;
+  const translateAnim = useRef(new Animated.Value(-1)).current;
 
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.timing(translate, {
+      Animated.timing(translateAnim, {
         toValue: 1,
         duration: 1400,
+        easing: Easing.linear,
         useNativeDriver: true,
       })
     );
     loop.start();
     return () => loop.stop();
-  }, [translate]);
+  }, [translateAnim]);
 
-  const x = translate.interpolate({
+  const translateX = translateAnim.interpolate({
     inputRange: [-1, 1],
     outputRange: [-SCREEN_WIDTH, SCREEN_WIDTH],
   });
@@ -52,7 +53,7 @@ function Shimmer({ style }: { style: any }) {
         end={{ x: 1, y: 0.5 }}
         style={[
           StyleSheet.absoluteFill,
-          { transform: [{ translateX: x }] },
+          { transform: [{ translateX }] },
         ]}
       />
     </View>

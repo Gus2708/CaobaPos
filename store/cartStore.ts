@@ -26,11 +26,18 @@ interface CartStore {
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  getTotal: () => number;
-  getItemCount: () => number;
   setLastScannedBarcode: (barcode: string | null) => void;
   clearLastScannedBarcode: () => void;
 }
+
+// ── Pure derived selectors (memoized via Zustand equality check) ──
+export const useCartTotal = () => useCartStore((state) =>
+  state.items.reduce((total, item) => total + item.price * item.quantity, 0)
+);
+
+export const useCartItemCount = () => useCartStore((state) =>
+  state.items.reduce((count, item) => count + item.quantity, 0)
+);
 
 interface SettingsStore {
   ivaEnabled: boolean;
@@ -81,17 +88,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
   },
   
   clearCart: () => set({ items: [], lastScannedBarcode: null }),
-  
-  getTotal: () => {
-    return get().items.reduce(
-      (total, item) => total + item.price * item.quantity,
-      0
-    );
-  },
-  
-  getItemCount: () => {
-    return get().items.reduce((count, item) => count + item.quantity, 0);
-  },
   
   setLastScannedBarcode: (barcode: string | null) => {
     set({ lastScannedBarcode: barcode });

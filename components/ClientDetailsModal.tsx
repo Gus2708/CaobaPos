@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, FlatList, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar } from 'react-native';
+import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -604,7 +605,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
                   <ActivityIndicator size="large" color={tokens.colors.mahogany} />
                 </View>
               ) : (
-                <FlatList
+                <FlashList
                   data={combinedHistory}
                   keyExtractor={(item, index) => item.id || `hist-${index}`}
                   showsVerticalScrollIndicator={false}

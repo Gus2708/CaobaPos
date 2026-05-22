@@ -4,7 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useCartStore, CartItem, useSettingsStore } from '../store/cartStore';
+import { useCartStore, CartItem, useSettingsStore, useCartTotal } from '../store/cartStore';
 import { useCreateSale } from '../hooks/useProducts';
 import { CartItemRow } from './CartItem';
 import { PriceDisplay } from './PriceDisplay';
@@ -43,7 +43,7 @@ interface CheckoutPanelProps {
 
 export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }: CheckoutPanelProps) {
   const items = useCartStore((state) => state.items);
-  const getTotal = useCartStore((state) => state.getTotal);
+
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearCart = useCartStore((state) => state.clearCart);
@@ -60,7 +60,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   // Synchronous re-entry guard — blocks rapid taps before React commits createSale.isPending
   const isSubmittingRef = useRef(false);
   
-  const subtotal = React.useMemo(() => getTotal(), [items, getTotal]);
+  const subtotal = useCartTotal();
 
   const tax = React.useMemo(() => {
     return ivaEnabled ? parseFloat((subtotal * TAX_RATE).toFixed(2)) : 0;

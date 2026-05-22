@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, TextInput, Alert, StatusBar, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, StatusBar, Keyboard } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -258,7 +259,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
           <Text style={localStyles.itemsTitle}>Productos ({scannedItems.length})</Text>
         </View>
 
-        <FlatList
+        <FlashList
           data={scannedItems}
           keyExtractor={(item) => item.barcode}
           renderItem={({ item }) => (
