@@ -24,6 +24,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
+import { validateStockAddition } from '../lib/stockUtils';
 
 // Row height = item minHeight (84) + vertical padding (8+8 = 16). Used for getItemLayout.
 const ITEM_HEIGHT = verticalScale(84) + verticalScale(16);
@@ -109,8 +110,13 @@ export function POSScreen() {
   }, [allProducts, selectedCategory, debouncedSearch]);
 
   const checkLowStock = useCallback((product: Product) => {
-    if (product.stock_quantity <= 0) {
-      showToast(`${product.name} sin stock`, 'error');
+    const cartItems = useCartStore.getState().items;
+    const cartItem = cartItems.find((item) => item.id === product.id);
+    const currentQty = cartItem ? cartItem.quantity : 0;
+
+    const validation = validateStockAddition(product.name, product.stock_quantity, currentQty);
+    if (!validation.isValid) {
+      showToast(validation.errorMessage || 'Stock insuficiente', 'error');
       return false;
     }
     return true;

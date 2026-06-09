@@ -13,6 +13,7 @@ import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { useToast } from './Toast';
 import { tokens } from '../lib/designTokens';
+import { validateStockAddition } from '../lib/stockUtils';
 import { ChangeCalculatorModal } from './ChangeCalculatorModal';
 import { ClientSelectorModal } from './ClientSelectorModal';
 import { ClientBalance } from '../hooks/useClients';
@@ -93,11 +94,18 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const renderItem = useCallback(({ item }: { item: CartItem }) => (
     <CartItemRow
       item={item}
-      onIncrement={() => updateQuantity(item.id, item.quantity + 1)}
+      onIncrement={() => {
+        const validation = validateStockAddition(item.name, item.stock_quantity, item.quantity);
+        if (!validation.isValid) {
+          showToast(validation.errorMessage || 'Stock insuficiente', 'error');
+          return;
+        }
+        updateQuantity(item.id, item.quantity + 1);
+      }}
       onDecrement={() => updateQuantity(item.id, item.quantity - 1)}
       onRemove={() => removeItem(item.id)}
     />
-  ), [updateQuantity, removeItem]);
+  ), [updateQuantity, removeItem, showToast]);
 
   const confirmSale = useCallback(async () => {
     // Hard guard: if a submission is already in flight, drop the extra tap.
@@ -138,9 +146,11 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       setSelectedClient(null);
       setIsCalculatorVisible(false);
       showToast('Venta completada con éxito', 'success');
-    } catch (error) {
-      showToast('No se pudo completar la venta', 'error');
-      console.error(error);
+    } catch (error: any) {
+      const errorMsg = error?.message || 'No se pudo completar la venta';
+      setIsCalculatorVisible(false);
+      showToast(errorMsg, 'error');
+      console.error('Checkout failed:', error);
     } finally {
       isSubmittingRef.current = false;
     }
