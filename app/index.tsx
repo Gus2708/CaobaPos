@@ -1,4 +1,4 @@
-import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView } from 'react-native';
+import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView, Platform } from 'react-native';
 import { AppBlurView } from '../components/AppBlurView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
@@ -11,6 +11,7 @@ import { CategoryTabs } from '../components/CategoryTabs';
 import { ProductButton } from '../components/ProductButton';
 import { CheckoutPanel } from '../components/CheckoutPanel';
 import { QuickActions } from '../components/QuickActions';
+import { PressableScale } from '../components/PressableScale';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from '../components/Icon';
 import { Product } from '../store/cartStore';
@@ -50,6 +51,7 @@ export function POSScreen() {
   const { showToast } = useToast();
   const barcodeInputRef = useRef<TextInput>(null);
   const bufferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSearchFocusedRef = useRef(false);
 
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -170,7 +172,11 @@ export function POSScreen() {
 
   const handleBarcodeBlur = useCallback(() => {
     if (!searchQuery && items.length > 0) {
-      setTimeout(() => barcodeInputRef.current?.focus(), 500);
+      setTimeout(() => {
+        if (!isSearchFocusedRef.current) {
+          barcodeInputRef.current?.focus();
+        }
+      }, 500);
     }
   }, [searchQuery, items.length]);
 
@@ -272,6 +278,19 @@ export function POSScreen() {
                   placeholderTextColor={tokens.colors.textDim}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
+                  onFocus={() => {
+                    isSearchFocusedRef.current = true;
+                  }}
+                  onBlur={() => {
+                    isSearchFocusedRef.current = false;
+                    if (items.length > 0) {
+                      setTimeout(() => {
+                        if (!isSearchFocusedRef.current) {
+                          barcodeInputRef.current?.focus();
+                        }
+                      }, 500);
+                    }
+                  }}
                 />
                 {searchQuery.length > 0 && (
                   <Badge variant="mahogany">{filteredProducts.length}</Badge>
@@ -441,6 +460,11 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.instrumentSansSemiBold,
     fontSize: moderateScale(15),
     height: '100%',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      } as any,
+    }),
   },
   searchCountBadge: {
     backgroundColor: tokens.colors.mahoganyDim,

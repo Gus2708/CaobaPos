@@ -1039,7 +1039,7 @@ export const InventoryPanel = memo(function InventoryPanel({
           <View style={styles.formActions}>
             <TouchableOpacity
               style={[styles.saveBtn, (!newProduct.name || !newProduct.price || newProduct.categories.length === 0) && styles.saveBtnDisabled]}
-              onPress={() => createMutation.mutate(newProduct)}
+              onPress={() => createMutation.mutate()}
               activeOpacity={0.85}
               disabled={!newProduct.name || !newProduct.price || newProduct.categories.length === 0}
             >

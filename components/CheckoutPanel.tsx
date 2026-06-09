@@ -348,7 +348,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           (!selectedPayment || items.length === 0 || createSale.isPending) && styles.checkoutButtonDisabled,
         ]}
         onPress={handleCheckout}
-        disabled={!selectedPayment || items.length === 0 || createSale.isPending}
+        disabled={createSale.isPending}
         scaleTo={0.97}
       >
         <View style={[
