@@ -19,6 +19,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
+import { useAuth } from '../hooks/useAuth';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -44,14 +45,16 @@ interface Sale {
   sale_items?: SaleItem[];
 }
 
-const SaleCard = React.memo(function SaleCard({ 
-  item, 
-  onView, 
-  onDelete 
-}: { 
-  item: Sale; 
-  onView: () => void; 
+const SaleCard = React.memo(function SaleCard({
+  item,
+  onView,
+  onDelete,
+  hideAmounts,
+}: {
+  item: Sale;
+  onView: () => void;
   onDelete: () => void;
+  hideAmounts: boolean;
 }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -81,7 +84,7 @@ const SaleCard = React.memo(function SaleCard({
       activeOpacity={0.7}
       onLongPress={onDelete}
       accessibilityRole="button"
-      accessibilityLabel={`Venta de ${Number(item.total_amount).toFixed(2)} pesos, realizada el ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
+      accessibilityLabel={`Venta del ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
@@ -89,7 +92,9 @@ const SaleCard = React.memo(function SaleCard({
         </View>
 
         <View style={styles.saleInfo}>
-          <Text style={styles.saleTotal} numberOfLines={1}>${Number(item.total_amount).toFixed(2)}</Text>
+          <Text style={styles.saleTotal} numberOfLines={1}>
+            {hideAmounts ? '$ ———' : `$${Number(item.total_amount).toFixed(2)}`}
+          </Text>
           <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
         </View>
 
@@ -102,6 +107,9 @@ const SaleCard = React.memo(function SaleCard({
 });
 
 export const HistoryPanel = React.memo(function HistoryPanel() {
+  const { role } = useAuth();
+  const hideAmounts = role === 'empleado';
+
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -547,12 +555,13 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   }, [queryClient, showToast]);
 
   const renderItem = useCallback(({ item }: { item: Sale }) => (
-    <SaleCard 
-      item={item} 
-      onView={() => handleView(item)} 
-      onDelete={() => handleDelete(item)} 
+    <SaleCard
+      item={item}
+      onView={() => handleView(item)}
+      onDelete={() => handleDelete(item)}
+      hideAmounts={hideAmounts}
     />
-  ), [handleView, handleDelete]);
+  ), [handleView, handleDelete, hideAmounts]);
 
   // useMemo so we pass a React element (stable identity for the TextInput inside)
   // instead of a component reference that FlashList would remount on each keystroke.
@@ -573,18 +582,20 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             </View>
           </View>
 
-          <View style={styles.headerRight}>
-            <View style={styles.headerStats}>
-              <Text style={styles.statsLabel}>Total ventas</Text>
-              {loadingTotal ? (
-                <ActivityIndicator size="small" color={tokens.colors.mahogany} />
-              ) : (
-                <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit>
-                  $ {totalSum?.toLocaleString()}
-                </Text>
-              )}
+          {!hideAmounts && (
+            <View style={styles.headerRight}>
+              <View style={styles.headerStats}>
+                <Text style={styles.statsLabel}>Total ventas</Text>
+                {loadingTotal ? (
+                  <ActivityIndicator size="small" color={tokens.colors.mahogany} />
+                ) : (
+                  <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit>
+                    $ {totalSum?.toLocaleString()}
+                  </Text>
+                )}
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </View>
 
@@ -632,7 +643,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         </View>
       </View>
     </View>
-  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search, periodOptions, paymentMethods, periodLabels]);
+  ), [filteredSales.length, loadingTotal, totalSum, period, selectedMethod, search, periodOptions, paymentMethods, periodLabels, hideAmounts]);
 
   return (
     <View style={styles.container}>

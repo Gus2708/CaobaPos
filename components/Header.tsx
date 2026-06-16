@@ -9,6 +9,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
 import { usePressAnimation } from '../hooks/usePressAnimation';
+import { useAuth } from '../hooks/useAuth';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -84,6 +85,7 @@ interface HeaderProps {
 }
 
 export function Header({ currentScreen, onNavigate }: HeaderProps) {
+  const { role, signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuAnim = useRef(new RNAnimated.Value(0)).current;
@@ -134,9 +136,16 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
     outputRange: [scale(16) / scale(22), 1],
   });
 
+  const visibleTabs = TABS.filter(tab => role === 'admin' || tab.key !== 'dashboard');
+
   const handleNavigate = (screen: Screen) => {
     onNavigate(screen);
     toggleMenu();
+  };
+
+  const handleSignOut = () => {
+    toggleMenu();
+    signOut();
   };
 
   const activeTab = TABS.find(t => t.key === currentScreen);
@@ -218,7 +227,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
           </View>
 
           <View style={styles.menuContent}>
-            {TABS.map((tab, index) => (
+            {visibleTabs.map((tab, index) => (
               <MenuItemRow
                 key={tab.key}
                 tab={tab}
@@ -231,6 +240,10 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
           </View>
 
           <View style={styles.menuFooter}>
+            <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
+              <Icon name="sign-out-alt" size={18} color={tokens.colors.textMuted} />
+              <Text style={styles.signOutText}>Cerrar sesión</Text>
+            </TouchableOpacity>
             <Text style={styles.footerText}>CaobaPOS v2026</Text>
           </View>
         </RNAnimated.View>
@@ -370,6 +383,24 @@ const styles = StyleSheet.create({
     bottom: verticalScale(40),
     width: '100%',
     alignItems: 'center',
+    gap: verticalScale(16),
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(10),
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(10),
+    borderRadius: tokens.radius.btn,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderMedium,
+    backgroundColor: tokens.colors.surface,
+  },
+  signOutText: {
+    fontFamily: FontNames.instrumentSans,
+    fontSize: tokens.typography.base,
+    color: tokens.colors.textMuted,
+    fontWeight: '600',
   },
   footerText: {
     fontFamily: FontNames.instrumentSans,
