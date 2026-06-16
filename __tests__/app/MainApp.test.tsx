@@ -203,6 +203,13 @@ jest.mock('../../hooks/useRealtimeSync', () => ({
   useRealtimeSync: jest.fn(),
 }));
 
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    role: 'admin',
+    signOut: jest.fn(),
+  }),
+}));
+
 jest.mock('../../components/Toast', () => {
   const React = require('react');
   return { ToastProvider: ({ children }: any) => React.createElement(React.Fragment, null, children) };
