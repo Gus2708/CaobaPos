@@ -4,8 +4,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MainApp from './app/MainApp';
+import { LoginScreen } from './app/LoginScreen';
 import { FontLoader } from './hooks/useFonts';
 import { isSupabaseConfigured } from './lib/supabase';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import { scale, verticalScale, moderateScale } from './lib/responsive';
 
 const queryClient = new QueryClient({
@@ -43,11 +45,27 @@ export default function App() {
       <SafeAreaProvider>
         <FontLoader>
           <StatusBar style="light" />
-          <MainApp />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
         </FontLoader>
       </SafeAreaProvider>
     </QueryClientProvider>
   );
+}
+
+function AppContent() {
+  const { session, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <View style={{ flex: 1, backgroundColor: '#0A0A0C' }} />;
+  }
+
+  if (!session) {
+    return <LoginScreen />;
+  }
+
+  return <MainApp />;
 }
 
 const styles = StyleSheet.create({

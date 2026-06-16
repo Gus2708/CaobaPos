@@ -13,12 +13,13 @@ import ClientsPanel from './ClientsPanel';
 import { ToastProvider } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
+import { useAuth } from '../hooks/useAuth';
 
 type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
 export default function MainApp() {
-  // Subscribe to Supabase Realtime — keeps all devices in sync
   useRealtimeSync();
+  const { role } = useAuth();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
   const [displayScreen, setDisplayScreen] = useState<Screen>('pos');
@@ -27,6 +28,7 @@ export default function MainApp() {
   const isAnimating = useRef(false);
 
   const handleNavigate = useCallback((screen: Screen) => {
+    if (screen === 'dashboard' && role !== 'admin') return;
     if (screen === currentScreen || isAnimating.current) return;
     isAnimating.current = true;
     setCurrentScreen(screen);

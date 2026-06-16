@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Retrieve environment variables
 let rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -28,6 +29,14 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 // Usamos valores falsos si las variables no existen para evitar que el motor de JS haga un "crash" inmediato
 export const supabase = createClient(
   supabaseUrl || 'https://missing.supabase.co',
-  supabaseAnonKey || 'missing-key'
+  supabaseAnonKey || 'missing-key',
+  {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  }
 );
 
