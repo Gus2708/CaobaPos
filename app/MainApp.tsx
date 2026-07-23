@@ -14,6 +14,7 @@ import { ToastProvider } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { useAuth } from '../hooks/useAuth';
+import { OfflineBanner } from '../components/OfflineBanner';
 
 type Screen = 'pos' | 'dashboard' | 'inventory' | 'history' | 'clients';
 
@@ -127,6 +128,7 @@ export default function MainApp() {
               currentScreen={currentScreen}
               onNavigate={handleNavigate}
             />
+            <OfflineBanner />
           </Animated.View>
 
           <Animated.View style={[styles.screenWrapper, { opacity: screenOpacity, transform: [{ translateY: screenTranslateY }] }]}>

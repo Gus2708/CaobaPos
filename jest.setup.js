@@ -79,5 +79,24 @@ jest.mock('react-native-safe-area-context', () => {
   };
 });
 
+// Mock NetInfo
+jest.mock(
+  '@react-native-community/netinfo',
+  () => ({
+    addEventListener: jest.fn(() => jest.fn()),
+    fetch: jest.fn().mockResolvedValue({
+      isConnected: true,
+      isInternetReachable: true,
+      type: 'wifi',
+    }),
+    useNetInfo: jest.fn(() => ({
+      isConnected: true,
+      isInternetReachable: true,
+      type: 'wifi',
+    })),
+  }),
+  { virtual: true }
+);
+
 // Global mocks
 jest.mock('react-native/Libraries/Animated/animations/TimingAnimation');
