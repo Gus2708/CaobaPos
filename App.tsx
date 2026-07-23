@@ -10,6 +10,10 @@ import { isSupabaseConfigured } from './lib/supabase';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { scale, verticalScale, moderateScale } from './lib/responsive';
 
+import { registerQueryClientForSync } from './lib/syncEngine';
+import { initNetworkStatus, onReconnect } from './lib/networkStatus';
+import { processSyncQueue } from './lib/syncEngine';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -23,6 +27,15 @@ const queryClient = new QueryClient({
       networkMode: 'offlineFirst',
     },
   },
+});
+
+registerQueryClientForSync(queryClient);
+
+// Initialize network listener and auto-sync on reconnect
+initNetworkStatus();
+onReconnect(() => {
+  console.log('[App] Reconnected to internet, starting auto-sync...');
+  processSyncQueue();
 });
 
 export default function App() {
