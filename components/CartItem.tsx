@@ -1,6 +1,6 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from './Text';
-import { memo } from 'react';
+import { memo, useRef, useEffect } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
 import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
@@ -25,7 +25,22 @@ export const CartItemRow = memo(function CartItemRow({
   onRemove 
 }: CartItemProps) {
   const totalPrice = (item.price * item.quantity).toFixed(2);
+  const qtyScale = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(qtyScale, {
+        toValue: 1.25,
+        useNativeDriver: true,
+        ...tokens.animation.bump,
+      }),
+      Animated.spring(qtyScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        ...tokens.animation.pressOut,
+      }),
+    ]).start();
+  }, [item.quantity]);
 
   return (
     <View style={styles.container}>
@@ -52,7 +67,9 @@ export const CartItemRow = memo(function CartItemRow({
           </PressableScale>
 
           <View style={styles.quantityContainer}>
-            <Text style={styles.quantity}>{item.quantity}</Text>
+            <Animated.View style={{ transform: [{ scale: qtyScale }] }}>
+              <Text style={styles.quantity}>{item.quantity}</Text>
+            </Animated.View>
           </View>
 
           <PressableScale

@@ -87,16 +87,15 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
   delete scaledStyle.fontFamily;
   delete scaledStyle.fontWeight;
 
-  // Apply responsive font scaling
-  if (scaledStyle.fontSize) {
-    scaledStyle.fontSize = moderateScale(scaledStyle.fontSize);
-  } else {
-    // Default size is 14 scaled
+  // Ensure font size is defined, avoiding double-scaling if already calculated in stylesheets
+  if (!scaledStyle.fontSize) {
     scaledStyle.fontSize = moderateScale(14);
   }
 
   return (
     <RNText
+      allowFontScaling={true}
+      maxFontSizeMultiplier={1.35}
       {...props}
       style={[
         { 

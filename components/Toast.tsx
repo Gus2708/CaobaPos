@@ -52,43 +52,44 @@ const ToastItem = memo(function ToastItem({
   onRemove: () => void;
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(20)).current;
-  const scaleX = useRef(new Animated.Value(1)).current;
+  const translateY = useRef(new Animated.Value(24)).current;
+  const progressAnim = useRef(new Animated.Value(1)).current;
 
   const accentColor = ACCENT_COLORS[toast.type];
 
   useEffect(() => {
-    // Enter animation
+    // Enter animation with fluid spring curve
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: tokens.animation.normal,
+        duration: tokens.animation.fast,
         useNativeDriver: true,
       }),
       Animated.spring(translateY, {
         toValue: 0,
         useNativeDriver: true,
-        ...tokens.animation.spring,
+        tension: 180,
+        friction: 14,
       }),
     ]).start();
 
-    // Progress bar shrink
-    Animated.timing(scaleX, {
+    // Progress bar shrink (0-1)
+    Animated.timing(progressAnim, {
       toValue: 0,
       duration: 3200,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
 
     const timeout = setTimeout(() => {
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: tokens.animation.normal,
+          duration: tokens.animation.fast,
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: 20,
-          duration: tokens.animation.normal,
+          toValue: 16,
+          duration: tokens.animation.fast,
           useNativeDriver: true,
         }),
       ]).start(onRemove);
@@ -96,6 +97,11 @@ const ToastItem = memo(function ToastItem({
 
     return () => clearTimeout(timeout);
   }, []);
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <Animated.View
@@ -124,11 +130,11 @@ const ToastItem = memo(function ToastItem({
         </Text>
       </View>
 
-      {/* Progress bar */}
+      {/* Progress bar anchored left */}
       <Animated.View
         style={[
           styles.progressBar,
-          { backgroundColor: accentColor, transform: [{ scaleX }] },
+          { backgroundColor: accentColor, width: progressWidth },
         ]}
       />
     </Animated.View>
@@ -228,11 +234,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    right: 0,
     height: verticalScale(2),
-    // transformOrigin is web-only, but keeping for compatibility if using react-native-web
-    // @ts-ignore
-    transformOrigin: 'left',
   },
 });
 

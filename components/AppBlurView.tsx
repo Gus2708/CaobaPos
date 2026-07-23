@@ -14,6 +14,7 @@ interface AppBlurViewProps {
   intensity?: number;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
+  pointerEvents?: 'box-none' | 'none' | 'box-only' | 'auto';
 }
 
 /**
@@ -29,6 +30,7 @@ export function AppBlurView({
   intensity = 50,
   style,
   children,
+  pointerEvents,
 }: AppBlurViewProps) {
   if (isAndroidExpoGo) {
     const opacity = Math.min(0.92, 0.45 + intensity / 200);
@@ -36,7 +38,11 @@ export function AppBlurView({
       tint === 'light' || tint === 'extraLight'
         ? `rgba(245, 245, 248, ${opacity})`
         : `rgba(10, 10, 12, ${opacity})`;
-    return <View style={[style, { backgroundColor: fallbackColor }]}>{children}</View>;
+    return (
+      <View style={[style, { backgroundColor: fallbackColor }]} pointerEvents={pointerEvents}>
+        {children}
+      </View>
+    );
   }
 
   return (
@@ -47,6 +53,7 @@ export function AppBlurView({
         Platform.OS === 'android' ? 'dimezisBlurView' : undefined
       }
       style={style}
+      pointerEvents={pointerEvents}
     >
       {children}
     </BlurView>
