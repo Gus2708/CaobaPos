@@ -24,6 +24,7 @@ export function GlassCard({
   style, 
   ...props 
 }: GlassCardProps) {
+  const isElevated = variant === 'elevated';
   return (
     <View
       style={[
@@ -37,8 +38,15 @@ export function GlassCard({
       <View 
         style={[
           StyleSheet.absoluteFill, 
-          { backgroundColor: tokens.colors.surface }
+          { backgroundColor: isElevated ? tokens.colors.surfaceElevated : tokens.colors.surface }
         ]} 
+      />
+      <LinearGradient
+        colors={[tokens.colors.glass.liquidHighlight, 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 0.3 }}
+        style={styles.topHighlight}
+        pointerEvents="none"
       />
       {children}
     </View>
@@ -50,6 +58,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
+  },
+  topHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: scale(28),
   },
 });
 

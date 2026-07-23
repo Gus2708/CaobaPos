@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useRef, useEffect } from 'react';
 import { CachedImage } from './CachedImage';
 import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +25,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const isLowStock = product.stock_quantity < 5;
   const isOutOfStock = product.stock_quantity <= 0;
   const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
+  const badgeScale = useRef(new Animated.Value(1)).current;
 
   // Zustand Store integrations for active selection and inline quantity management
   const cartItem = useCartStore((state) => state.items.find((item) => item.id === product.id));
@@ -32,6 +33,23 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const updateQuantity = useCartStore((state) => state.updateQuantity);
 
   const hasQuantity = quantityInCart > 0;
+
+  useEffect(() => {
+    if (quantityInCart > 0) {
+      Animated.sequence([
+        Animated.spring(badgeScale, {
+          toValue: 1.3,
+          useNativeDriver: true,
+          ...tokens.animation.bump,
+        }),
+        Animated.spring(badgeScale, {
+          toValue: 1,
+          useNativeDriver: true,
+          ...tokens.animation.pressOut,
+        }),
+      ]).start();
+    }
+  }, [quantityInCart]);
 
   const handlePress = () => {
     if (isOutOfStock) return;
@@ -97,9 +115,9 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
 
               {/* Floating premium quantity badge on top right */}
               {hasQuantity && (
-                <View style={styles.cardQuantityBadge}>
+                <Animated.View style={[styles.cardQuantityBadge, { transform: [{ scale: badgeScale }] }]}>
                   <Text style={styles.cardQuantityBadgeText}>{quantityInCart}</Text>
-                </View>
+                </Animated.View>
               )}
             </View>
             

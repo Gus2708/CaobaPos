@@ -51,6 +51,7 @@ export function POSScreen() {
   );
   const { showToast } = useToast();
   const barcodeInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<TextInput>(null);
   const bufferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSearchFocusedRef = useRef(false);
 
@@ -269,6 +270,7 @@ export function POSScreen() {
             tint="dark"
             intensity={80}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
           <View style={styles.islandContent}>
             <CategoryTabs 
@@ -276,9 +278,17 @@ export function POSScreen() {
               onSelect={setSelectedCategory} 
             />
             <View style={styles.islandSearchContainer}>
-               <View style={styles.searchInputContainer}>
+              <TouchableOpacity 
+                style={styles.searchInputContainer}
+                activeOpacity={1}
+                onPress={() => {
+                  isSearchFocusedRef.current = true;
+                  searchInputRef.current?.focus();
+                }}
+              >
                 <Icon name="search" size={20} color={tokens.colors.textMuted} />
                 <TextInput
+                  ref={searchInputRef}
                   style={styles.searchInput}
                   placeholder="Buscar producto..."
                   placeholderTextColor={tokens.colors.textDim}
@@ -301,7 +311,7 @@ export function POSScreen() {
                 {searchQuery.length > 0 && (
                   <Badge variant="mahogany">{filteredProducts.length}</Badge>
                 )}
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
         </Animated.View>
@@ -321,6 +331,7 @@ export function POSScreen() {
           ) : isLoading ? (
             <ScrollView
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={[
                 styles.productGrid,
                 { 
@@ -339,6 +350,7 @@ export function POSScreen() {
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               estimatedItemSize={ITEM_HEIGHT}
+              keyboardShouldPersistTaps="handled"
               onScroll={Animated.event(
                 [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
                 { useNativeDriver: true }

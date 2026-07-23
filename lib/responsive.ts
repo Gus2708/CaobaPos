@@ -1,22 +1,34 @@
 import { Dimensions, Platform, PixelRatio } from 'react-native';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 // Guideline sizes are based on standard ~5" screen mobile device
 // iPhone X / Standard Android resolution
 const guidelineBaseWidth = 375;
 const guidelineBaseHeight = 812;
 
-// Cap the scale factor on web and larger screens (like tablets and desktops)
-// to prevent massive, distorted text and elements on desktop and tablets.
-const maxScaleFactor = Platform.OS === 'web' || SCREEN_WIDTH > 480 ? 1.12 : 1.35;
+/**
+ * Safely fetches current window dimensions dynamically.
+ * On Android, during app startup, splash screen, or layout transitions,
+ * initial dimensions may report 0 or uninitialized values. We fallback to
+ * baseline 375x812 if dimensions are invalid to prevent microscopic text scaling.
+ */
+const getWindowDimensions = () => {
+  const window = Dimensions.get('window');
+  const width = window && window.width > 0 ? window.width : guidelineBaseWidth;
+  const height = window && window.height > 0 ? window.height : guidelineBaseHeight;
+  return { width, height };
+};
+
+const getScreenWidth = () => getWindowDimensions().width;
+const getScreenHeight = () => getWindowDimensions().height;
 
 /**
  * Scales size based on screen width.
  * Best for margins, paddings, widths.
  */
 const scale = (size: number) => {
-  const factor = Math.min(SCREEN_WIDTH / guidelineBaseWidth, maxScaleFactor);
+  const width = getScreenWidth();
+  const maxScaleFactor = Platform.OS === 'web' || width > 480 ? 1.12 : 1.35;
+  const factor = Math.min(width / guidelineBaseWidth, maxScaleFactor);
   return factor * size;
 };
 
@@ -25,7 +37,10 @@ const scale = (size: number) => {
  * Best for heights.
  */
 const verticalScale = (size: number) => {
-  const factor = Math.min(SCREEN_HEIGHT / guidelineBaseHeight, maxScaleFactor);
+  const height = getScreenHeight();
+  const width = getScreenWidth();
+  const maxScaleFactor = Platform.OS === 'web' || width > 480 ? 1.12 : 1.35;
+  const factor = Math.min(height / guidelineBaseHeight, maxScaleFactor);
   return factor * size;
 };
 
@@ -38,8 +53,11 @@ const moderateScale = (size: number, factor = 0.5) => size + (scale(size) - size
 /**
  * Device helpers
  */
-const isTablet = SCREEN_WIDTH >= 768;
+const isTablet = getScreenWidth() >= 768;
 const isWeb = Platform.OS === 'web';
+
+const SCREEN_WIDTH = getScreenWidth();
+const SCREEN_HEIGHT = getScreenHeight();
 
 export {
   scale,
@@ -47,6 +65,8 @@ export {
   moderateScale,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
+  getScreenWidth,
+  getScreenHeight,
   isTablet,
   isWeb
 };

@@ -4,7 +4,8 @@ import { tokens } from '../lib/designTokens';
 
 interface PressAnimationOptions {
   scaleTo?: number;
-  spring?: { tension: number; friction: number };
+  springIn?: { tension: number; friction: number };
+  springOut?: { tension: number; friction: number };
 }
 
 /**
@@ -17,24 +18,28 @@ interface PressAnimationOptions {
  *   </Animated.View>
  */
 export function usePressAnimation(options: PressAnimationOptions = {}) {
-  const { scaleTo = 0.96, spring = tokens.animation.springBounce } = options;
+  const { 
+    scaleTo = 0.96, 
+    springIn = tokens.animation.pressIn,
+    springOut = tokens.animation.pressOut 
+  } = options;
   const scale = useRef(new Animated.Value(1)).current;
 
   const onPressIn = useCallback(() => {
     Animated.spring(scale, {
       toValue: scaleTo,
       useNativeDriver: true,
-      ...spring,
+      ...springIn,
     }).start();
-  }, [scale, scaleTo, spring]);
+  }, [scale, scaleTo, springIn]);
 
   const onPressOut = useCallback(() => {
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      ...spring,
+      ...springOut,
     }).start();
-  }, [scale, spring]);
+  }, [scale, springOut]);
 
   return { scale, onPressIn, onPressOut };
 }

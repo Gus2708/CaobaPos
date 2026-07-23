@@ -127,5 +127,9 @@ export const tokens = {
     slow: 400,
     spring: { tension: 120, friction: 10 },
     springBounce: { tension: 180, friction: 12 },
+    pressIn: { tension: 300, friction: 20 },
+    pressOut: { tension: 240, friction: 14 },
+    modalSpring: { tension: 140, friction: 12 },
+    bump: { tension: 320, friction: 10 },
   },
 } as const;
