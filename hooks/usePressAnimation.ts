@@ -19,7 +19,7 @@ interface PressAnimationOptions {
  */
 export function usePressAnimation(options: PressAnimationOptions = {}) {
   const { 
-    scaleTo = 0.96, 
+    scaleTo = 0.97, 
     springIn = tokens.animation.pressIn,
     springOut = tokens.animation.pressOut 
   } = options;

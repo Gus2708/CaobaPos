@@ -1,6 +1,24 @@
 import { Platform } from 'react-native';
 
 export const FontNames = {
+  // Parkinsans variants (Official Brand Font)
+  parkinsans: Platform.select({
+    web: 'Parkinsans_400Regular, Parkinsans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    default: 'Parkinsans_400Regular',
+  }),
+  parkinsansSemiBold: Platform.select({
+    web: 'Parkinsans_600SemiBold, Parkinsans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    default: 'Parkinsans_600SemiBold',
+  }),
+  parkinsansBold: Platform.select({
+    web: 'Parkinsans_700Bold, Parkinsans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    default: 'Parkinsans_700Bold',
+  }),
+  parkinsansExtraBold: Platform.select({
+    web: 'Parkinsans_800ExtraBold, Parkinsans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    default: 'Parkinsans_800ExtraBold',
+  }),
+
   // Instrument Sans variants
   instrumentSans: Platform.select({
     web: 'InstrumentSans_400Regular, "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',

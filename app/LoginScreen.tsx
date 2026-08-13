@@ -18,6 +18,7 @@ import { useAuth } from '../hooks/useAuth';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { FontNames } from '../lib/fontNames';
+import { LOGO_BASE64 } from '../lib/brandAssets';
 
 export function LoginScreen() {
   const { signIn } = useAuth();
@@ -76,7 +77,7 @@ export function LoginScreen() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../assets/caoba-logo.png')}
+              source={{ uri: LOGO_BASE64 }}
               style={styles.logo}
               resizeMode="contain"
             />

@@ -1,6 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { LOGO_BASE64, BRAND_COLORS } from './brandAssets';
+import { LOGO_BASE64, ISOTIPO_BASE64, BRAND_COLORS } from './brandAssets';
 
 export interface ReceiptItem {
   name: string;
@@ -56,9 +56,10 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
+          @import url('https://fonts.googleapis.com/css2?family=Parkinsans:wght@400;600;700;800&display=swap');
           * { box-sizing: border-box; }
           body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Parkinsans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: ${TEXT_COLOR}; 
             padding: 40px 20px; 
             max-width: 400px; 
