@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text } from './Text';
 import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
@@ -8,6 +8,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
+import { FLOR1_BASE64 } from '../lib/brandAssets';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -45,11 +46,15 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
         accessibilityRole="button"
         accessibilityState={{ selected: isActive }}
       >
-        <Icon
-          name={iconName}
-          size={20}
-          color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
-        />
+        {isActive ? (
+          <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(16), height: scale(16) }} resizeMode="contain" />
+        ) : (
+          <Icon
+            name={iconName}
+            size={20}
+            color={tokens.colors.textMuted}
+          />
+        )}
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
           {label}
         </Text>

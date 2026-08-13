@@ -1,6 +1,6 @@
 import React, { memo, useRef, useEffect } from 'react';
 import { CachedImage } from './CachedImage';
-import { TouchableOpacity, StyleSheet, View, Animated } from 'react-native';
+import { TouchableOpacity, StyleSheet, View, Animated, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { Product, useCartStore } from '../store/cartStore';
@@ -9,6 +9,7 @@ import { tokens } from '../lib/designTokens';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { usePressAnimation } from '../hooks/usePressAnimation';
+import { FLOR2_BASE64 } from '../lib/brandAssets';
 
 interface ProductButtonProps {
   product: Product;
@@ -100,6 +101,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 />
               ) : (
                 <View style={styles.cardPlaceholder}>
+                  <Image
+                    source={{ uri: FLOR2_BASE64 }}
+                    style={styles.cardPlaceholderFlorWatermark}
+                    resizeMode="contain"
+                  />
                   <Text style={[styles.placeholderText, isOutOfStock && styles.placeholderTextDisabled]}>
                     {product.name.charAt(0).toUpperCase()}
                   </Text>
@@ -188,6 +194,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 />
               ) : (
                 <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                  <Image
+                    source={{ uri: FLOR2_BASE64 }}
+                    style={styles.placeholderFlorWatermark}
+                    resizeMode="contain"
+                  />
                   <Text
                     style={[
                       styles.placeholderText,
@@ -282,6 +293,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             />
           ) : (
             <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
+              <Image
+                source={{ uri: FLOR2_BASE64 }}
+                style={styles.placeholderFlorWatermark}
+                resizeMode="contain"
+              />
               <Text
                 style={[
                   styles.placeholderText,
@@ -609,5 +625,19 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     textAlign: 'center',
     flex: 1,
+  },
+  placeholderFlorWatermark: {
+    position: 'absolute',
+    width: '80%',
+    height: '80%',
+    opacity: 0.18,
+    pointerEvents: 'none',
+  },
+  cardPlaceholderFlorWatermark: {
+    position: 'absolute',
+    width: '70%',
+    height: '70%',
+    opacity: 0.15,
+    pointerEvents: 'none',
   },
 });

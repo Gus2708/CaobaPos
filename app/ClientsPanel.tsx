@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions, Image } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,7 @@ import { useClients, ClientBalance } from '../hooks/useClients';
 import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
 import { Text } from '../components/Text';
+import { FLOR1_BASE64 } from '../lib/brandAssets';
 
 const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (client: ClientBalance) => void }) => (
   <TouchableOpacity 
@@ -65,7 +66,10 @@ export default function ClientsPanel() {
     <View style={styles.listHeader}>
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Gestión de cartera</Text>
-        <Text style={styles.title}>Clientes y Créditos</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
+          <Text style={styles.title}>Clientes y Créditos</Text>
+          <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(22), height: scale(22) }} resizeMode="contain" />
+        </View>
         <Text style={styles.subtitle}>Supervisión de saldos y cuentas por cobrar</Text>
       </View>
 

@@ -21,6 +21,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
+import { FLOR2_BASE64 } from '../lib/brandAssets';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -816,6 +817,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.titleMini}>Inventario</Text>
+          <Image source={{ uri: FLOR2_BASE64 }} style={{ width: scale(20), height: scale(20), marginLeft: scale(6) }} resizeMode="contain" />
         </View>
         <View style={styles.headerButtonsMini}>
            <TouchableOpacity style={styles.manageCatBtnMini} onPress={() => setShowCategoryManager(!showCategoryManager)}>

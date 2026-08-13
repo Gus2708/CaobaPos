@@ -1,4 +1,5 @@
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions, Image } from 'react-native';
+import { FLOR1_BASE64 } from '../lib/brandAssets';
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
@@ -576,6 +577,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             <Text style={styles.headerLabel}>Actividad reciente</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8), flexWrap: 'wrap' }}>
               <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>Historial</Text>
+              <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(20), height: scale(20) }} resizeMode="contain" />
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{filteredSales.length}</Text>
               </View>
