@@ -2,7 +2,7 @@
 // All spacing, colors, radii and typography scales derived from here.
 import { scale, moderateScale } from './responsive';
 
-export const GLOBAL_BG = '#0A0A0C';
+export const GLOBAL_BG = '#140906';
 
 export const tokens = {
   radius: {
@@ -27,66 +27,68 @@ export const tokens = {
     xxl: scale(32),
   },
   colors: {
-    // Backgrounds — layered depth system
-    bg: GLOBAL_BG,                    // Deepest layer
-    surface: '#141417',               // Card surface (1st elevation)
-    surfaceElevated: '#1C1C1F',       // Modal / elevated card (2nd elevation)
-    surfaceHover: '#222228',          // Hover / pressed states
-    surfaceWarm: '#1A1814',           // Warm-tinted surface for placeholders
+    // Backgrounds — layered depth system (Brand Manual 2026)
+    bg: GLOBAL_BG,                    // Deep Obsidian Espresso (#140906)
+    surface: '#1C110C',               // Card surface (1st elevation)
+    surfaceElevated: '#261812',       // Modal / elevated card (2nd elevation)
+    surfaceHover: '#332119',          // Hover / pressed states
+    surfaceWarm: '#2B1D16',           // Warm-tinted surface for placeholders
 
     // Borders — minimal, functional
-    border: 'rgba(255, 255, 255, 0.06)',
-    borderLight: 'rgba(255, 255, 255, 0.04)',
-    borderMedium: 'rgba(255, 255, 255, 0.10)',
-    borderAccent: 'rgba(184, 123, 90, 0.18)',
-    borderAccentBright: 'rgba(184, 123, 90, 0.30)',
+    border: 'rgba(205, 155, 70, 0.12)',
+    borderLight: 'rgba(205, 155, 70, 0.08)',
+    borderMedium: 'rgba(205, 155, 70, 0.18)',
+    borderAccent: 'rgba(205, 155, 70, 0.25)',
+    borderAccentBright: 'rgba(205, 155, 70, 0.45)',
 
-    // Brand — Mahogany
-    mahogany: '#B87B5A',
-    mahoganyBright: '#D4956E',
-    mahoganyDark: '#8B5A3C',
-    mahoganyDim: 'rgba(184, 123, 90, 0.12)',
-    mahoganyGlow: 'rgba(184, 123, 90, 0.06)',
+    // Brand — Caoba Gold (#CD9B46)
+    mahogany: '#CD9B46',
+    mahoganyBright: '#E5B865',
+    mahoganyDark: '#9E722C',
+    mahoganyDim: 'rgba(205, 155, 70, 0.15)',
+    mahoganyGlow: 'rgba(205, 155, 70, 0.08)',
+
+    // Brand Neutral Cream (#EEDDC0)
+    cream: '#EEDDC0',
+    sand: '#EEDDC0',
 
     // Status — Sage (success)
     sage: '#6DB88A',
     sageDim: 'rgba(109, 184, 138, 0.12)',
     sageGlow: 'rgba(109, 184, 138, 0.06)',
 
-
-
     // Status — Coral (error/warning/low stock)
     coral: '#C96B6B',
     coralDim: 'rgba(201, 107, 107, 0.12)',
     coralGlow: 'rgba(201, 107, 107, 0.06)',
 
-    // Status — Amber (critical warning)
-    amber: '#E8B560',
-    amberDim: 'rgba(232, 181, 96, 0.12)',
-    amberGold: '#CA8A04', // Premium gold accent for restaurant look
+    // Status — Amber (critical warning / Caoba Gold)
+    amber: '#CD9B46',
+    amberDim: 'rgba(205, 155, 70, 0.15)',
+    amberGold: '#CD9B46', // Premium Caoba Gold
 
-    // Text — cleaner hierarchy
+    // Text — cleaner hierarchy with Cream Secondary
     text: '#F0F0F2',
-    textSecondary: '#B0B0B8',
-    textMuted: '#7A7A86',
-    textDim: '#55555E',
+    textSecondary: '#EEDDC0', // Warm cream contrast from brand manual
+    textMuted: '#9E8D81',
+    textDim: '#695A50',
 
     // Glass/Transparency Effects — simplified
     glass: {
-      bg: 'rgba(5, 5, 6, 0.96)',         // Solid dark base
-      medium: 'rgba(8, 8, 10, 0.92)',
-      heavy: 'rgba(12, 12, 14, 0.95)',
+      bg: 'rgba(20, 9, 6, 0.96)',         // Solid dark base
+      medium: 'rgba(28, 17, 12, 0.92)',
+      heavy: 'rgba(38, 24, 18, 0.95)',
       
       // Liquid Glass specifics — focus on depth
-      liquid: 'rgba(255, 255, 255, 0.03)', 
-      liquidHighlight: 'rgba(255, 255, 255, 0.08)', // For top edges
-      liquidShadow: 'rgba(0, 0, 0, 0.4)',           // For bottom edges
+      liquid: 'rgba(205, 155, 70, 0.04)', 
+      liquidHighlight: 'rgba(205, 155, 70, 0.12)', // For top edges
+      liquidShadow: 'rgba(0, 0, 0, 0.5)',           // For bottom edges
       
-      border: 'rgba(255, 255, 255, 0.05)',
-      borderStrong: 'rgba(255, 255, 255, 0.08)',
-      borderLight: 'rgba(255, 255, 255, 0.02)',
-      accent: 'rgba(184, 123, 90, 0.08)',
-      light: 'rgba(255, 255, 255, 0.02)',
+      border: 'rgba(205, 155, 70, 0.12)',
+      borderStrong: 'rgba(205, 155, 70, 0.25)',
+      borderLight: 'rgba(205, 155, 70, 0.06)',
+      accent: 'rgba(205, 155, 70, 0.15)',
+      light: 'rgba(205, 155, 70, 0.04)',
     }
   },
   typography: {

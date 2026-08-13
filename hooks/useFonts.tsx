@@ -3,6 +3,12 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
 
 export const fonts = {
+  parkinsans: {
+    regular: 'Parkinsans_400Regular',
+    semiBold: 'Parkinsans_600SemiBold',
+    bold: 'Parkinsans_700Bold',
+    extraBold: 'Parkinsans_800ExtraBold',
+  },
   instrumentSans: {
     regular: 'InstrumentSans_400Regular',
     medium: 'InstrumentSans_500Medium',
@@ -19,6 +25,10 @@ export const fonts = {
 
 export function useAppFonts() {
   const [loaded, error] = useFonts({
+    Parkinsans_400Regular: require('../assets/fonts/Parkinsans_400Regular.ttf'),
+    Parkinsans_600SemiBold: require('../assets/fonts/Parkinsans_600SemiBold.ttf'),
+    Parkinsans_700Bold: require('../assets/fonts/Parkinsans_700Bold.ttf'),
+    Parkinsans_800ExtraBold: require('../assets/fonts/Parkinsans_800ExtraBold.ttf'),
     InstrumentSans_400Regular: require('../assets/fonts/InstrumentSans_400Regular.ttf'),
     InstrumentSans_500Medium: require('../assets/fonts/InstrumentSans_500Medium.ttf'),
     InstrumentSans_600SemiBold: require('../assets/fonts/InstrumentSans_600SemiBold.ttf'),
@@ -49,7 +59,7 @@ export function FontLoader({ children }: { children: React.ReactNode }) {
   if (!loaded && !error && !timedOut) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#B87B5A" />
+        <ActivityIndicator size="large" color="#CD9B46" />
       </View>
     );
   }
@@ -62,6 +72,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A0A0C',
+    backgroundColor: '#140906',
   },
 });

@@ -10,6 +10,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
 import { usePressAnimation } from '../hooks/usePressAnimation';
 import { useAuth } from '../hooks/useAuth';
+import { ISOTIPO_BASE64, LOGO_BASE64 } from '../lib/brandAssets';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -160,10 +161,10 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
       }
     ]}>
       <View style={styles.content}>
-        {/* Logo Section */}
+        {/* Logo Section with Official Isotipo */}
         <View style={styles.logoSection}>
           <Image 
-            source={require('../assets/caoba-logo.png')} 
+            source={{ uri: ISOTIPO_BASE64 }} 
             style={styles.brandLogo} 
             resizeMode="contain" 
           />

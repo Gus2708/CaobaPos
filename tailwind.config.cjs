@@ -10,18 +10,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        obsidian: '#0A0A0C',
-        graphite: '#141418',
-        slate: '#1E1E24',
+        obsidian: '#140906',
+        graphite: '#1C110C',
+        slate: '#261812',
         pearl: '#F0F0F2',
-        ash: '#8A8A96',
-        mahogany: '#B87B5A',
+        ash: '#9E8D81',
+        mahogany: '#CD9B46',
+        cream: '#EEDDC0',
         sage: '#6DB88A',
-        amber: '#D4A85A',
+        amber: '#CD9B46',
         rose: '#C96B6B',
       },
       fontFamily: {
-        sans: ['Instrument Sans', 'sans-serif'],
+        sans: ['Parkinsans', 'Instrument Sans', 'sans-serif'],
+        brand: ['Parkinsans', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
     },

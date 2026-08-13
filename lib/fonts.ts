@@ -1,11 +1,20 @@
 import { TextStyle } from 'react-native';
 import { fonts } from '../hooks/useFonts';
 
+export const brandFonts = {
+  regular: fonts.parkinsans.regular,
+  medium: fonts.parkinsans.semiBold,
+  semiBold: fonts.parkinsans.semiBold,
+  bold: fonts.parkinsans.bold,
+  extraBold: fonts.parkinsans.extraBold,
+};
+
 export const appFonts = {
-  regular: fonts.instrumentSans.regular,
-  medium: fonts.instrumentSans.medium,
-  semiBold: fonts.instrumentSans.semiBold,
-  bold: fonts.instrumentSans.bold,
+  regular: fonts.parkinsans.regular,
+  medium: fonts.parkinsans.semiBold,
+  semiBold: fonts.parkinsans.semiBold,
+  bold: fonts.parkinsans.bold,
+  extraBold: fonts.parkinsans.extraBold,
 };
 
 export const monoFonts = {
@@ -15,16 +24,16 @@ export const monoFonts = {
   bold: fonts.jetBrainsMono.bold,
 };
 
-export type FontFamily = 'sans' | 'mono';
+export type FontFamily = 'sans' | 'mono' | 'brand';
 
-export function getFont(family: FontFamily, weight: 'regular' | 'medium' | 'semiBold' | 'bold' = 'regular'): any {
+export function getFont(family: FontFamily, weight: 'regular' | 'medium' | 'semiBold' | 'bold' | 'extraBold' = 'regular'): any {
   if (family === 'mono') {
-    return monoFonts[weight];
+    return monoFonts[weight === 'extraBold' ? 'bold' : weight];
   }
-  return appFonts[weight];
+  return brandFonts[weight] || brandFonts.regular;
 }
 
-export function textStyle(fontFamily: FontFamily, weight: 'regular' | 'medium' | 'semiBold' | 'bold' = 'regular', extra?: TextStyle): TextStyle {
+export function textStyle(fontFamily: FontFamily, weight: 'regular' | 'medium' | 'semiBold' | 'bold' | 'extraBold' = 'regular', extra?: TextStyle): TextStyle {
   return {
     fontFamily: getFont(fontFamily, weight),
     ...extra,

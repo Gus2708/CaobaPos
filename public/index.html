@@ -21,10 +21,39 @@
   <!-- Preconnect to external API/Font endpoints for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Parkinsans:wght@400;500;600;700;800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
   
   <style>
     /* Local Offline Google Fonts */
+    @font-face {
+      font-family: 'Parkinsans';
+      font-weight: 400;
+      font-style: normal;
+      src: local('Parkinsans Regular'), local('Parkinsans-Regular'),
+           url('/fonts/Parkinsans_400Regular.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Parkinsans';
+      font-weight: 600;
+      font-style: normal;
+      src: local('Parkinsans SemiBold'), local('Parkinsans-SemiBold'),
+           url('/fonts/Parkinsans_600SemiBold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Parkinsans';
+      font-weight: 700;
+      font-style: normal;
+      src: local('Parkinsans Bold'), local('Parkinsans-Bold'),
+           url('/fonts/Parkinsans_700Bold.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Parkinsans';
+      font-weight: 800;
+      font-style: normal;
+      src: local('Parkinsans ExtraBold'), local('Parkinsans-ExtraBold'),
+           url('/fonts/Parkinsans_800ExtraBold.ttf') format('truetype');
+    }
+
     @font-face {
       font-family: 'Instrument Sans';
       font-weight: 400;
@@ -83,15 +112,15 @@
            url('/fonts/JetBrainsMono_700Bold.ttf') format('truetype');
     }
 
-    /* Premium Mahogany Reset and Base Layout */
+    /* Premium Caoba Reset and Base Layout */
     html, body {
       margin: 0;
       padding: 0;
       width: 100%;
       height: 100%;
-      background-color: #0A0A0C;
+      background-color: #140906;
       overflow: hidden;
-      font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Parkinsans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: #F4F4F5;
       -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased;
