@@ -1,36 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 
+// Only the fonts the app actually renders are listed here.
+// Parkinsans is NOT sourced from node_modules: it is vendored directly into
+// assets/fonts and public/fonts, because no @expo-google-fonts package for it
+// is installed. Do not expect this script to restore it.
+// JetBrains Mono 500Medium is deliberately absent — no mono style in the app
+// pairs with weight 500, so shipping it was dead weight.
 const fontSources = [
-  {
-    src: 'node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.ttf',
-    destAssets: 'assets/fonts/InstrumentSans_400Regular.ttf',
-    destPublic: 'public/fonts/InstrumentSans_400Regular.ttf'
-  },
-  {
-    src: 'node_modules/@expo-google-fonts/instrument-sans/500Medium/InstrumentSans_500Medium.ttf',
-    destAssets: 'assets/fonts/InstrumentSans_500Medium.ttf',
-    destPublic: 'public/fonts/InstrumentSans_500Medium.ttf'
-  },
-  {
-    src: 'node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.ttf',
-    destAssets: 'assets/fonts/InstrumentSans_600SemiBold.ttf',
-    destPublic: 'public/fonts/InstrumentSans_600SemiBold.ttf'
-  },
-  {
-    src: 'node_modules/@expo-google-fonts/instrument-sans/700Bold/InstrumentSans_700Bold.ttf',
-    destAssets: 'assets/fonts/InstrumentSans_700Bold.ttf',
-    destPublic: 'public/fonts/InstrumentSans_700Bold.ttf'
-  },
   {
     src: 'node_modules/@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf',
     destAssets: 'assets/fonts/JetBrainsMono_400Regular.ttf',
     destPublic: 'public/fonts/JetBrainsMono_400Regular.ttf'
-  },
-  {
-    src: 'node_modules/@expo-google-fonts/jetbrains-mono/500Medium/JetBrainsMono_500Medium.ttf',
-    destAssets: 'assets/fonts/JetBrainsMono_500Medium.ttf',
-    destPublic: 'public/fonts/JetBrainsMono_500Medium.ttf'
   },
   {
     src: 'node_modules/@expo-google-fonts/jetbrains-mono/600SemiBold/JetBrainsMono_600SemiBold.ttf',
@@ -69,7 +50,7 @@ for (const font of fontSources) {
     // Copy to Assets
     fs.copyFileSync(srcPath, destAssetsPath);
     assetsSuccess++;
-    
+
     // Copy to Public
     fs.copyFileSync(srcPath, destPublicPath);
     publicSuccess++;
@@ -78,6 +59,7 @@ for (const font of fontSources) {
   }
 }
 
+const total = fontSources.length;
 console.log(`Fonts transfer completed.`);
-console.log(`- Assets folder (Native): ${assetsSuccess}/8 files copied.`);
-console.log(`- Public folder (Web PWA): ${publicSuccess}/8 files copied.`);
+console.log(`- Assets folder (Native): ${assetsSuccess}/${total} files copied.`);
+console.log(`- Public folder (Web PWA): ${publicSuccess}/${total} files copied.`);
