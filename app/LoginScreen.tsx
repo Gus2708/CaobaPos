@@ -18,7 +18,7 @@ import { useAuth } from '../hooks/useAuth';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { FontNames } from '../lib/fontNames';
-import { LOGO_BASE64 } from '../lib/brandAssets';
+import { LOGO_BASE64, ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
 
 export function LoginScreen() {
   const { signIn } = useAuth();
@@ -55,8 +55,22 @@ export function LoginScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[tokens.colors.bg, tokens.colors.bg]}
+        colors={[tokens.colors.bg, '#1C110C', tokens.colors.bg]}
         style={StyleSheet.absoluteFill}
+      />
+
+      {/* Brand Espiral Background Watermark (Top Right) */}
+      <Image
+        source={{ uri: ESPIRAL_BASE64 }}
+        style={styles.bgEspiralTop}
+        resizeMode="contain"
+      />
+
+      {/* Brand Espiral Background Watermark (Bottom Left) */}
+      <Image
+        source={{ uri: ESPIRAL_BASE64 }}
+        style={styles.bgEspiralBottom}
+        resizeMode="contain"
       />
 
       <KeyboardAvoidingView
@@ -81,7 +95,11 @@ export function LoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.tagline}>Sistema Punto de Venta</Text>
+            <View style={styles.taglineRow}>
+              <Image source={{ uri: FLOR1_BASE64 }} style={styles.florAccent} resizeMode="contain" />
+              <Text style={styles.tagline}>Sistema Punto de Venta</Text>
+              <Image source={{ uri: FLOR2_BASE64 }} style={styles.florAccent} resizeMode="contain" />
+            </View>
           </View>
 
           {/* Form card */}
@@ -306,5 +324,35 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 2,
     marginTop: verticalScale(32),
+  },
+  bgEspiralTop: {
+    position: 'absolute',
+    top: -scale(60),
+    right: -scale(60),
+    width: scale(320),
+    height: scale(320),
+    opacity: 0.08,
+    transform: [{ rotate: '15deg' }],
+  },
+  bgEspiralBottom: {
+    position: 'absolute',
+    bottom: -scale(80),
+    left: -scale(80),
+    width: scale(360),
+    height: scale(360),
+    opacity: 0.06,
+    transform: [{ rotate: '-45deg' }],
+  },
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    marginTop: verticalScale(6),
+  },
+  florAccent: {
+    width: scale(18),
+    height: scale(18),
+    opacity: 0.7,
   },
 });
