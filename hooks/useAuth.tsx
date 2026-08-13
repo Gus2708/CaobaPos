@@ -27,17 +27,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsLoading(false);
-    });
+    let mounted = true;
+
+    // Safety timeout: If auth check hangs or fails, unblock loading after 2.5s
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        setIsLoading(false);
+      }
+    }, 2500);
+
+    supabase.auth
+      .getSession()
+      .then((response) => {
+        if (mounted) {
+          setSession(response?.data?.session ?? null);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[Auth] Error getting session on startup:', err);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setIsLoading(false);
+      if (mounted) {
+        setSession(session);
+        setIsLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // El rol de autoridad vive en app_metadata (no manipulable por el usuario; lo usa el RLS).
