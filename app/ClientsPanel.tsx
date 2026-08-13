@@ -66,7 +66,10 @@ export default function ClientsPanel() {
     <View style={styles.listHeader}>
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Gestión de cartera</Text>
-        <Text style={styles.title}>Clientes y Créditos</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
+          <Text style={styles.title}>Clientes y Créditos</Text>
+          <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(22), height: scale(22) }} resizeMode="contain" />
+        </View>
         <Text style={styles.subtitle}>Supervisión de saldos y cuentas por cobrar</Text>
       </View>
 

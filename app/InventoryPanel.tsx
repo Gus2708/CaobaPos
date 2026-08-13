@@ -822,6 +822,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.titleMini}>Inventario</Text>
+          <Image source={{ uri: FLOR2_BASE64 }} style={{ width: scale(20), height: scale(20) }} resizeMode="contain" />
         </View>
         <View style={styles.headerButtonsMini}>
            <TouchableOpacity style={styles.manageCatBtnMini} onPress={() => setShowCategoryManager(!showCategoryManager)}>
@@ -1219,8 +1220,8 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: scale(12),
+    alignItems: 'center',
+    gap: scale(6),
   },
   titleMini: {
     fontFamily: FontNames.instrumentSans,
