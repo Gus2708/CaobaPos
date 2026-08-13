@@ -302,6 +302,11 @@ const ProductItem = memo(({
               />
             ) : (
               <View style={[styles.thumbPlaceholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                <Image
+                  source={{ uri: FLOR2_BASE64 }}
+                  style={styles.thumbPlaceholderFlorWatermark}
+                  resizeMode="contain"
+                />
                 <Text style={[styles.thumbPlaceholderText, { color: tokens.colors.mahogany }]}>
                   {item.name.charAt(0).toUpperCase()}
                 </Text>
@@ -1570,6 +1575,12 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.instrumentSans, 
     fontSize: moderateScale(20), 
     fontWeight: '800',
+  },
+  thumbPlaceholderFlorWatermark: {
+    position: 'absolute',
+    width: '80%',
+    height: '80%',
+    opacity: 0.18,
   },
   itemInfo: { flex: 1 },
   itemName: { 
