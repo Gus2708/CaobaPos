@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { GlassCard } from '../components/GlassCard';
 import { globalScrollY } from '../store/uiStore';
+import { ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
 
 interface Sale {
   id: string;
@@ -480,6 +481,11 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
+          <Image
+            source={{ uri: ESPIRAL_BASE64 }}
+            style={styles.cardWatermarkEspiral}
+            resizeMode="contain"
+          />
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
             <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
@@ -1055,5 +1061,14 @@ const styles = StyleSheet.create({
     textAlign: 'center', 
     marginVertical: verticalScale(24),
     fontWeight: '600',
+  },
+  cardWatermarkEspiral: {
+    position: 'absolute',
+    right: -scale(40),
+    top: -scale(40),
+    width: scale(220),
+    height: scale(220),
+    opacity: 0.07,
+    pointerEvents: 'none',
   },
 });

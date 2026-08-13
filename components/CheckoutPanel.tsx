@@ -1,4 +1,4 @@
-import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator, Image } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { useCartStore, CartItem, useSettingsStore, useCartTotal } from '../store
 import { useCreateSale } from '../hooks/useProducts';
 import { CartItemRow } from './CartItem';
 import { PriceDisplay } from './PriceDisplay';
- import { SaleSummaryModal } from './SaleSummaryModal';
+import { SaleSummaryModal } from './SaleSummaryModal';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { useToast } from './Toast';
@@ -18,6 +18,7 @@ import { ChangeCalculatorModal } from './ChangeCalculatorModal';
 import { ClientSelectorModal } from './ClientSelectorModal';
 import { ClientBalance } from '../hooks/useClients';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
 
 const TAX_RATE = 0.16;
 const PAYMENT_METHODS = [
@@ -235,8 +236,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         scrollEventThrottle={16}
         ListEmptyComponent={
           <View style={styles.emptyState}>
+            <Image
+              source={{ uri: ESPIRAL_BASE64 }}
+              style={styles.emptyEspiralWatermark}
+              resizeMode="contain"
+            />
             <View style={styles.emptyIconCircle}>
-              <Icon name="cart" size={48} color="rgba(184, 123, 90, 0.6)" />
+              <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(36), height: scale(36), opacity: 0.85 }} resizeMode="contain" />
             </View>
             <Text style={styles.emptyText}>Carrito vacío</Text>
             <Text style={styles.emptySubtext}>Toca un producto para agregarlo</Text>
@@ -481,6 +487,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: verticalScale(60),
+  },
+  emptyEspiralWatermark: {
+    position: 'absolute',
+    width: scale(180),
+    height: scale(180),
+    opacity: 0.08,
+    pointerEvents: 'none',
   },
   emptyIconCircle: {
     width: scale(64),
