@@ -11,7 +11,6 @@ export const fonts = {
   },
   jetBrainsMono: {
     regular: 'JetBrainsMono_400Regular',
-    medium: 'JetBrainsMono_500Medium',
     semiBold: 'JetBrainsMono_600SemiBold',
     bold: 'JetBrainsMono_700Bold',
   },
@@ -24,7 +23,6 @@ export function useAppFonts() {
     Parkinsans_700Bold: require('../assets/fonts/Parkinsans_700Bold.ttf'),
     Parkinsans_800ExtraBold: require('../assets/fonts/Parkinsans_800ExtraBold.ttf'),
     JetBrainsMono_400Regular: require('../assets/fonts/JetBrainsMono_400Regular.ttf'),
-    JetBrainsMono_500Medium: require('../assets/fonts/JetBrainsMono_500Medium.ttf'),
     JetBrainsMono_600SemiBold: require('../assets/fonts/JetBrainsMono_600SemiBold.ttf'),
     JetBrainsMono_700Bold: require('../assets/fonts/JetBrainsMono_700Bold.ttf'),
   });

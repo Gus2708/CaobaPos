@@ -66,7 +66,7 @@ App.tsx
 - Botón "Iniciar sesión" con `ActivityIndicator` mientras carga
 - Error inline debajo del botón si las credenciales fallan
 - Sin opción de registro
-- Usa `tokens.colors.*`, `InstrumentSans`, `scale()`/`verticalScale()`
+- Usa `tokens.colors.*`, `Parkinsans`, `scale()`/`verticalScale()`
 
 ### `lib/supabase.ts`
 ```ts

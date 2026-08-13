@@ -30,7 +30,8 @@ const fontMap: Record<FontFamily, Record<FontWeight, string>> = {
   },
   mono: {
     regular: fonts.jetBrainsMono.regular,
-    medium: fonts.jetBrainsMono.medium,
+    // No mono style in the app pairs with weight 500, so that file is not shipped.
+    medium: fonts.jetBrainsMono.regular,
     semiBold: fonts.jetBrainsMono.semiBold,
     bold: fonts.jetBrainsMono.bold,
     // JetBrains Mono ships no 800; fall back to its heaviest weight.

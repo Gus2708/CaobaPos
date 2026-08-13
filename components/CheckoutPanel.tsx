@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   },
   paymentChipText: {
     fontSize: moderateScale(13),
-    color: '#FFFFFF',
+    color: tokens.colors.text,
     fontWeight: '600',
   },
   paymentChipTextActive: {
