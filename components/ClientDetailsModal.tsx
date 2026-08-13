@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar } from 'react-native';
+import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar, Image } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +13,7 @@ import { useClientPayments, useClientCreditSales, useAddPayment, useDeletePaymen
 import { useToast } from './Toast';
 import { SaleDetailModal } from './SaleDetailModal';
 import { supabase } from '../lib/supabase';
+import { FLOR2_BASE64 } from '../lib/brandAssets';
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -539,7 +540,12 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerContent}>
-              <View style={styles.avatarCircle}>
+              <View style={[styles.avatarCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
+                <Image
+                  source={{ uri: FLOR2_BASE64 }}
+                  style={styles.avatarFlorWatermark}
+                  resizeMode="contain"
+                />
                 <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
               </View>
               <View>
@@ -774,6 +780,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: tokens.colors.mahogany,
+    overflow: 'hidden',
+  },
+  avatarFlorWatermark: {
+    position: 'absolute',
+    width: '80%',
+    height: '80%',
+    opacity: 0.18,
   },
   avatarText: {
     fontFamily: FontNames.instrumentSans,
