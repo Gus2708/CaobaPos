@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from './components/Text';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -72,7 +72,11 @@ function AppContent() {
   const { session, isLoading } = useAuth();
 
   if (isLoading) {
-    return <View style={{ flex: 1, backgroundColor: tokens.colors.bg }} />;
+    return (
+      <View style={styles.authLoadingContainer}>
+        <ActivityIndicator size="large" color={tokens.colors.gold} />
+      </View>
+    );
   }
 
   if (!session) {
@@ -101,5 +105,11 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     textAlign: 'center',
     lineHeight: verticalScale(24),
+  },
+  authLoadingContainer: {
+    flex: 1,
+    backgroundColor: tokens.colors.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

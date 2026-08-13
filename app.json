@@ -6,12 +6,12 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#CD9B46",
-      "imageWidth": 578
+      "imageWidth": 200
     },
     "ios": {
       "supportsTablet": true,
