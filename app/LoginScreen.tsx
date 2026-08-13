@@ -77,7 +77,7 @@ export function LoginScreen() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image
-              source={{ uri: LOGO_BASE64 }}
+              source={require('../assets/caoba-logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />

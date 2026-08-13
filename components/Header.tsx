@@ -161,10 +161,10 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
       }
     ]}>
       <View style={styles.content}>
-        {/* Logo Section with Official Isotipo */}
+        {/* Logo Section */}
         <View style={styles.logoSection}>
           <Image 
-            source={{ uri: ISOTIPO_BASE64 }} 
+            source={require('../assets/caoba-logo.png')} 
             style={styles.brandLogo} 
             resizeMode="contain" 
           />
