@@ -9,7 +9,7 @@
   
   <!-- Manifest Configuration (crossorigin use-credentials allows loading on protected Vercel previews) -->
   <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
-  <meta name="theme-color" content="#cb9b46" />
+  <meta name="theme-color" content="#CD9B46" />
   
   <!-- iOS / Apple Web App Settings (iOS Chin Bug fix: status-bar-style must be 'black', never 'black-translucent') -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -18,13 +18,13 @@
   <meta name="apple-mobile-web-app-title" content="CaobaPOS" />
   <link rel="apple-touch-icon" href="/icon-512.png" />
   
-  <!-- Preconnect to external API/Font endpoints for performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Parkinsans:wght@400;500;600;700;800&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />
-  
+  <!--
+    Fonts are self-hosted from /fonts below. The previous render-blocking Google Fonts
+    request duplicated every one of those files and also pulled weights and italics the
+    app never renders, so it was removed rather than trimmed.
+  -->
   <style>
-    /* Local Offline Google Fonts */
+    /* Self-hosted brand fonts */
     @font-face {
       font-family: 'Parkinsans';
       font-weight: 400;
@@ -52,35 +52,6 @@
       font-style: normal;
       src: local('Parkinsans ExtraBold'), local('Parkinsans-ExtraBold'),
            url('/fonts/Parkinsans_800ExtraBold.ttf') format('truetype');
-    }
-
-    @font-face {
-      font-family: 'Instrument Sans';
-      font-weight: 400;
-      font-style: normal;
-      src: local('Instrument Sans Regular'), local('InstrumentSans-Regular'),
-           url('/fonts/InstrumentSans_400Regular.ttf') format('truetype');
-    }
-    @font-face {
-      font-family: 'Instrument Sans';
-      font-weight: 500;
-      font-style: normal;
-      src: local('Instrument Sans Medium'), local('InstrumentSans-Medium'),
-           url('/fonts/InstrumentSans_500Medium.ttf') format('truetype');
-    }
-    @font-face {
-      font-family: 'Instrument Sans';
-      font-weight: 600;
-      font-style: normal;
-      src: local('Instrument Sans SemiBold'), local('InstrumentSans-SemiBold'),
-           url('/fonts/InstrumentSans_600SemiBold.ttf') format('truetype');
-    }
-    @font-face {
-      font-family: 'Instrument Sans';
-      font-weight: 700;
-      font-style: normal;
-      src: local('Instrument Sans Bold'), local('InstrumentSans-Bold'),
-           url('/fonts/InstrumentSans_700Bold.ttf') format('truetype');
     }
 
     @font-face {
@@ -120,16 +91,16 @@
       height: 100%;
       background-color: #140906;
       overflow: hidden;
-      font-family: 'Parkinsans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: #F4F4F5;
+      font-family: 'Parkinsans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #F5EFE8;
       -webkit-tap-highlight-color: transparent;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Standard Inputs typography fallback */
+    /* Native form controls do not inherit font-family, so restate the brand font here */
     input, select, textarea, button {
-      font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Parkinsans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
     /* Fixed 100dvh root to bypass iOS Chin Gap */
@@ -145,7 +116,7 @@
       flex-direction: column;
     }
 
-    /* Premium Mahogany skeleton loading view */
+    /* Brand loading splash */
     #pwa-loading-splash {
       position: fixed;
       top: 0;
@@ -156,7 +127,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, #1C120C 0%, #0A0A0C 100%);
+      background: radial-gradient(circle at center, #1C110C 0%, #140906 100%);
       z-index: 9999;
       transition: opacity 0.4s ease-out;
     }
@@ -173,17 +144,18 @@
     .splash-spinner {
       width: 40px;
       height: 40px;
-      border: 3px solid rgba(203, 155, 70, 0.15);
+      border: 3px solid rgba(205, 155, 70, 0.15);
       border-radius: 50%;
-      border-top-color: #cb9b46;
+      border-top-color: #CD9B46;
       animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite;
     }
 
     .splash-text {
       margin-top: 16px;
       font-size: 14px;
-      font-weight: 500;
-      color: #A1A1AA;
+      /* Parkinsans ships no 500 — asking for it makes the browser synthesise a weight */
+      font-weight: 600;
+      color: #B3A294;
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }

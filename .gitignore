@@ -52,3 +52,7 @@ yarn-error.*
 .idea/
 .vscode/
 .atl/
+
+# Local brand/icon source drops (kept out of the repo; the shipped assets live in assets/)
+expo-icons.zip
+/header logo.png

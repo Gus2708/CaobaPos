@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions, Image } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
@@ -17,7 +17,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { GlassCard } from '../components/GlassCard';
 import { globalScrollY } from '../store/uiStore';
-import { ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from '../components/BrandMark';
 
 interface Sale {
   id: string;
@@ -481,11 +481,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-          <Image
-            source={{ uri: ESPIRAL_BASE64 }}
-            style={styles.cardWatermarkEspiral}
-            resizeMode="contain"
-          />
+          <BrandMark motif="espiral" style={styles.cardWatermarkEspiral} />
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
             <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
@@ -691,7 +687,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(12),
   },
   loadingText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
   },
@@ -704,7 +700,7 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   title: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(28), 
     color: tokens.colors.text, 
     fontWeight: '800',
@@ -728,7 +724,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   downloadBtnText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '700',
     color: tokens.colors.mahogany,
@@ -751,7 +747,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.sage,
   },
   headerBadgeText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     fontWeight: '800',
     color: tokens.colors.sage,
@@ -790,7 +786,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     color: tokens.colors.textMuted, 
     fontSize: moderateScale(11), 
     fontWeight: '800',
@@ -806,7 +802,7 @@ const styles = StyleSheet.create({
     lineHeight: moderateScale(24),
   },
   statSubtitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -842,7 +838,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionTitle: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(16), 
     color: tokens.colors.text, 
     fontWeight: '800',
@@ -887,14 +883,14 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colors.borderLight,
   },
   financialLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.textMuted,
     flexShrink: 1,
   },
   financialLabelHighlight: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.sage,
@@ -945,7 +941,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   receivedBadgeText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(9),
     fontWeight: '800',
     color: tokens.colors.sage,
@@ -984,7 +980,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.mahogany,
   },
   listText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     color: tokens.colors.text, 
     fontSize: moderateScale(14),
     fontWeight: '600',
@@ -1031,7 +1027,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   saleMethod: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     color: tokens.colors.textMuted, 
     fontSize: moderateScale(11),
     fontWeight: '700',
@@ -1043,7 +1039,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(6),
   },
   saleDate: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     color: tokens.colors.text, 
     fontSize: moderateScale(13),
     fontWeight: '600',
@@ -1056,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   empty: { 
     color: tokens.colors.textMuted, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     textAlign: 'center', 
     marginVertical: verticalScale(24),

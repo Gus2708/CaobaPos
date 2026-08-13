@@ -4,6 +4,7 @@ import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
 
 export type DashboardPeriod = 'dia' | 'semana' | 'mes' | 'personalizado';
 
@@ -40,7 +41,7 @@ function PeriodSelectorComponent({ selected, onSelect }: PeriodSelectorProps) {
               <Icon 
                 name={period.icon} 
                 size={14} 
-                color={selected === period.id ? '#F0F0F2' : '#8A8A96'} 
+                color={selected === period.id ? tokens.colors.text : tokens.colors.textMuted}
               />
               <Text style={[styles.tabText, selected === period.id && styles.tabTextActive]}>
                 {period.label}
@@ -91,14 +92,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   tabText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '600',
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
     letterSpacing: scale(0.3),
   },
   tabTextActive: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   activePip: {
     position: 'absolute',

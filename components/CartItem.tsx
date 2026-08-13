@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   itemInitial: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(20),
     fontWeight: '800',
     color: tokens.colors.mahogany,
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
     marginRight: scale(8),
   },
   name: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: tokens.colors.text,
   },
   unitPrice: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(2),

@@ -54,7 +54,7 @@ const ScannedItemRow = memo(function ScannedItemRow({
       </View>
       <View style={localStyles.itemControls}>
         <TouchableOpacity style={localStyles.qtyBtn} onPress={onDecrement}>
-          <Icon name="minus" size={12} color="#F0F0F2" />
+          <Icon name="minus" size={12} color={tokens.colors.text} />
         </TouchableOpacity>
         <TextInput
           style={localStyles.qtyInput}
@@ -67,7 +67,7 @@ const ScannedItemRow = memo(function ScannedItemRow({
           selectTextOnFocus
         />
         <TouchableOpacity style={localStyles.qtyBtn} onPress={onIncrement}>
-          <Icon name="plus" size={12} color="#F0F0F2" />
+          <Icon name="plus" size={12} color={tokens.colors.text} />
         </TouchableOpacity>
       </View>
       <View style={localStyles.itemRight}>
@@ -219,7 +219,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
       <View style={[localStyles.container, { paddingTop: insets.top }]}>
         <View style={localStyles.header}>
           <TouchableOpacity style={localStyles.closeBtn} onPress={handleClose}>
-            <Icon name="close" size={24} color="#F0F0F2" />
+            <Icon name="close" size={24} color={tokens.colors.text} />
           </TouchableOpacity>
           <Text style={localStyles.headerTitle}>Agregar Productos</Text>
           <View style={localStyles.placeholder} />
@@ -245,7 +245,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
               onPress={handleBarcodeSubmit}
               disabled={!barcodeInput.trim()}
             >
-              <Icon name="plus" size={20} color="#F0F0F2" />
+              <Icon name="plus" size={20} color={tokens.colors.text} />
             </TouchableOpacity>
           </View>
           <Text style={localStyles.inputHint}>
@@ -305,7 +305,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
               style={localStyles.confirmBtnGradient}
             />
             <View style={localStyles.confirmBtnContent}>
-              <Icon name="check" size={20} color="#F0F0F2" />
+              <Icon name="check" size={20} color={tokens.colors.text} />
               <Text style={localStyles.confirmBtnText}>Confirmar ({totalItems})</Text>
             </View>
           </TouchableOpacity>
@@ -340,7 +340,7 @@ const localStyles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   headerTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.text,
     fontSize: moderateScale(18),
     fontWeight: '700',
@@ -352,7 +352,7 @@ const localStyles = StyleSheet.create({
     padding: scale(20),
   },
   inputLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textSecondary,
     fontSize: moderateScale(15),
     fontWeight: '600',
@@ -387,7 +387,7 @@ const localStyles = StyleSheet.create({
     opacity: 0.5,
   },
   inputHint: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textMuted,
     fontSize: moderateScale(12),
     marginTop: verticalScale(8),
@@ -401,7 +401,7 @@ const localStyles = StyleSheet.create({
     paddingVertical: verticalScale(12),
   },
   itemsTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textMuted,
     fontSize: moderateScale(14),
     fontWeight: '700',
@@ -426,7 +426,7 @@ const localStyles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.text,
     fontSize: moderateScale(14),
     fontWeight: '600',
@@ -480,13 +480,13 @@ const localStyles = StyleSheet.create({
     gap: verticalScale(12),
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textSecondary,
     fontSize: moderateScale(16),
     fontWeight: '600',
   },
   emptyHint: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textMuted,
     fontSize: moderateScale(13),
   },
@@ -506,7 +506,7 @@ const localStyles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   summaryLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     color: tokens.colors.textMuted,
     fontSize: moderateScale(14),
   },
@@ -542,8 +542,8 @@ const localStyles = StyleSheet.create({
     paddingVertical: verticalScale(16),
   },
   confirmBtnText: {
-    fontFamily: FontNames.instrumentSans,
-    color: '#F0F0F2',
+    fontFamily: FontNames.parkinsans,
+    color: tokens.colors.text,
     fontSize: moderateScale(16),
     fontWeight: '700',
   },

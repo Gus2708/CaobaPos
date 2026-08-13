@@ -8,6 +8,7 @@ export type OfflineActionType =
   | 'CREATE_PRODUCT'
   | 'UPDATE_PRODUCT'
   | 'DELETE_PRODUCT'
+  | 'DELETE_CLIENT'
   | 'EDIT_SALE'
   | 'DELETE_SALE';
 

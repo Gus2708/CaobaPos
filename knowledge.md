@@ -14,7 +14,7 @@ CaobaPOS is a **point-of-sale (POS) application** for a small business. Built wi
 | State | `store/cartStore.ts` (Zustand) | `useCartStore` (cart items, barcode) + `useSettingsStore` (IVA toggle, categories, persisted to AsyncStorage) |
 | Animations | `store/uiStore.ts` | Shared `globalScrollY`, `headerTranslateY` for scroll-to-hide header |
 | Data Fetching | `hooks/` (TanStack Query) | Key query keys: `products`, `categories`, `sales-history`, `clients_balances`, `client_payments`, `client_credit_sales` |
-| Theme | `lib/designTokens.ts` | Dark glassmorphism — Mahogany (#B87B5A) & Sage (#6DB88A) palette. NEVER hardcode colors. |
+| Theme | `lib/designTokens.ts` | Caoba brand palette — #140906 espresso, #CD9B46 gold, #EEDDC0 cream, #6DB88A sage. NEVER hardcode colors. |
 | Responsive | `lib/responsive.ts` | `scale()`, `verticalScale()`, `moderateScale()` based on **375×812 guideline**. Never use raw px. Breakpoint: `width < 768` = mobile. |
 | Supabase | `lib/supabase.ts` | Has self-healing URL/key parser for Vercel copy-paste typos |
 | PDF/Receipts | `lib/pdfReportGenerator.ts`, `lib/receiptGenerator.ts` | Uses `expo-print` + `expo-sharing` |
@@ -44,8 +44,9 @@ App shows error screen if missing. For EAS builds, env vars are in `eas.json` pe
 
 ## Design Guidelines (from `docs/DESIGN_GUIDE.md`)
 
-- **Dark glassmorphism** — use `tokens.colors.*` always, never hardcode colors
-- **Typography**: Instrument Sans (body), JetBrains Mono (numbers/code). Use `components/Text.tsx` (`AppText`) instead of RN `Text`
+- **Caoba brand palette** — use `tokens.colors.*` always, never hardcode colors
+- **Typography**: Parkinsans (brand font, all UI text), JetBrains Mono (numbers/code). Use `components/Text.tsx` (`AppText`) instead of RN `Text`
+- **Brand marks**: render espiral/flor/logo through `components/BrandMark.tsx` — they are SVGs, and RN's `Image` cannot decode SVG on native
 - **Lists**: Always use `@shopify/flash-list` with `estimatedItemSize`, never `FlatList`
 - **Loading states**: Use `SkeletonItem` component, never spinners/spinners
 - **Borders over shadows**: Prefer subtle borders (`rgba(255,255,255,0.06)`) and linear gradients
