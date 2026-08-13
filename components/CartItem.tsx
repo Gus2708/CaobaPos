@@ -1,4 +1,4 @@
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Image } from 'react-native';
 import { Text } from './Text';
 import { memo, useRef, useEffect } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
@@ -7,6 +7,7 @@ import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
+import { FLOR2_BASE64 } from '../lib/brandAssets';
 
 interface CartItemProps {
   item: CartItemType;
@@ -46,6 +47,11 @@ export const CartItemRow = memo(function CartItemRow({
     <View style={styles.container}>
       
       <View style={styles.itemIconCircle}>
+        <Image
+          source={{ uri: FLOR2_BASE64 }}
+          style={styles.itemIconFlorWatermark}
+          resizeMode="contain"
+        />
         <Text style={styles.itemInitial}>
           {item.name.charAt(0).toUpperCase()}
         </Text>
@@ -118,6 +124,13 @@ const styles = StyleSheet.create({
     marginRight: scale(12),
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
+    overflow: 'hidden',
+  },
+  itemIconFlorWatermark: {
+    position: 'absolute',
+    width: '80%',
+    height: '80%',
+    opacity: 0.18,
   },
   itemInitial: {
     fontFamily: FontNames.parkinsans,
