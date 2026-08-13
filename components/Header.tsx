@@ -269,9 +269,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   brandLogo: {
-    width: scale(140), // Adjusted size for compact header
+    width: scale(130),
     height: verticalScale(48),
-    marginLeft: -scale(12),
+    marginLeft: 0,
   },
   actionSection: {
     flexDirection: 'row',
