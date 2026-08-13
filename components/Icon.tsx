@@ -60,6 +60,11 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'info-circle': { lib: 'fontawesome', iconName: 'info-circle' },
   'loader': { lib: 'fontawesome', iconName: 'spinner' },
   'cog': { lib: 'fontawesome', iconName: 'cog' },
+  'lock': { lib: 'fontawesome', iconName: 'lock' },
+  'eye': { lib: 'fontawesome', iconName: 'eye' },
+  'eye-slash': { lib: 'fontawesome', iconName: 'eye-slash' },
+  'key': { lib: 'fontawesome', iconName: 'key' },
+  'shield': { lib: 'fontawesome', iconName: 'shield-alt' },
   // EvilIcons
   'search': { lib: 'evil', iconName: 'search' },
   'search-plus': { lib: 'evil', iconName: 'search' },
