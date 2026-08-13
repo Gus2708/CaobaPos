@@ -41,7 +41,7 @@ export function OfflineBanner() {
             color={!isOnline ? tokens.colors.amber : tokens.colors.mahoganyBright}
             style={styles.icon}
           />
-          <AppText variant="caption" style={styles.text} numberOfLines={1}>
+          <AppText style={styles.text} numberOfLines={1}>
             {!isOnline
               ? pendingCount > 0
                 ? `Sin conexión — ${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
@@ -61,7 +61,7 @@ export function OfflineBanner() {
                 triggerSync();
               }}
             >
-              <AppText variant="caption" style={styles.syncBtnText}>
+              <AppText style={styles.syncBtnText}>
                 Sincronizar
               </AppText>
             </TouchableOpacity>
