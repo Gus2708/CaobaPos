@@ -254,6 +254,23 @@ async function processSingleItem(item: OfflineQueueItem): Promise<void> {
       break;
     }
 
+    case 'DELETE_CLIENT': {
+      let { id } = item.payload;
+      // The client may have been created offline too, in which case the queued
+      // payload carries its temp id rather than the one the server assigned.
+      if (id && tempIdMap.has(id)) {
+        id = tempIdMap.get(id);
+      }
+      // Mirrors the online path in useDeleteClient: a soft delete, not a row removal.
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (error) throw error;
+      break;
+    }
+
     case 'DELETE_SALE': {
       const { saleId } = item.payload;
       // Delete payments
@@ -267,6 +284,9 @@ async function processSingleItem(item: OfflineQueueItem): Promise<void> {
     }
 
     default:
-      console.warn(`[SyncEngine] Unknown action type: ${(item as any).type}`);
+      // Throwing marks the item failed and surfaces it in SyncStatusModal. Returning
+      // normally would count it as synced and drop it, silently losing the user's work —
+      // which is exactly how the missing DELETE_CLIENT handler stayed hidden.
+      throw new Error(`Acción sin sincronizador: ${(item as any).type}`);
   }
 }
