@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
 import { AppBlurView as BlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
@@ -9,6 +9,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
+import { FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -33,26 +34,15 @@ export function SaleSummaryModal({
 }: SaleSummaryModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const formatDate = () => {
-    const now = new Date();
-    return now.toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const getPaymentLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: 'Efectivo',
-      card: 'Tarjeta',
-      transfer: 'Transferencia',
-    };
-    return labels[method] || method;
+    switch (method) {
+      case 'cash': return 'Efectivo';
+      case 'card': return 'Tarjeta';
+      case 'transfer': return 'Transferencia';
+      case 'credito': return 'Crédito';
+      default: return method;
+    }
   };
-
 
   const sharePDF = async () => {
     try {
@@ -60,7 +50,7 @@ export function SaleSummaryModal({
 
       const receiptData: ReceiptData = {
         saleId,
-        date: formatDate(),
+        date: `${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`,
         items: items.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -70,24 +60,35 @@ export function SaleSummaryModal({
         subtotal,
         tax,
         total,
-        paymentMethod,
+        paymentMethod: getPaymentLabel(paymentMethod),
       };
 
       await shareReceiptPDF(receiptData);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo compartir el recibo');
+      Alert.alert('Error', 'No se pudo generar el recibo PDF');
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  if (!visible) return null;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
           <View style={styles.header}>
+            <Image
+              source={{ uri: FLOR1_BASE64 }}
+              style={{ position: 'absolute', left: scale(20), top: verticalScale(20), width: scale(28), height: scale(28), opacity: 0.5 }}
+              resizeMode="contain"
+            />
+            <Image
+              source={{ uri: FLOR2_BASE64 }}
+              style={{ position: 'absolute', right: scale(20), top: verticalScale(20), width: scale(28), height: scale(28), opacity: 0.5 }}
+              resizeMode="contain"
+            />
             <View style={styles.iconCircle}>
                <Icon name="check-circle" size={32} color="#FFFFFF" />
             </View>
