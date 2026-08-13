@@ -9,6 +9,7 @@ import { FontLoader } from './hooks/useFonts';
 import { isSupabaseConfigured } from './lib/supabase';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { scale, verticalScale, moderateScale } from './lib/responsive';
+import { tokens } from './lib/designTokens';
 
 import { registerQueryClientForSync } from './lib/syncEngine';
 import { initNetworkStatus, onReconnect } from './lib/networkStatus';
@@ -71,7 +72,7 @@ function AppContent() {
   const { session, isLoading } = useAuth();
 
   if (isLoading) {
-    return <View style={{ flex: 1, backgroundColor: '#0A0A0C' }} />;
+    return <View style={{ flex: 1, backgroundColor: tokens.colors.bg }} />;
   }
 
   if (!session) {
@@ -84,7 +85,7 @@ function AppContent() {
 const styles = StyleSheet.create({
   errorContainer: {
     flex: 1,
-    backgroundColor: '#0A0A0C',
+    backgroundColor: tokens.colors.bg,
     justifyContent: 'center',
     alignItems: 'center',
     padding: scale(24),
@@ -92,12 +93,12 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: moderateScale(22),
     fontWeight: 'bold',
-    color: '#C96B6B',
+    color: tokens.colors.coral,
     marginBottom: verticalScale(16),
   },
   errorMessage: {
     fontSize: moderateScale(16),
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     textAlign: 'center',
     lineHeight: verticalScale(24),
   },

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,7 +11,7 @@ import { useClients, ClientBalance } from '../hooks/useClients';
 import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
 import { Text } from '../components/Text';
-import { FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from '../components/BrandMark';
 
 const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (client: ClientBalance) => void }) => (
   <TouchableOpacity 
@@ -20,11 +20,7 @@ const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (c
     activeOpacity={0.7}
   >
     <View style={[styles.clientAvatar, { backgroundColor: tokens.colors.mahoganyDim }]}>
-      <Image
-        source={{ uri: FLOR2_BASE64 }}
-        style={styles.clientAvatarFlorWatermark}
-        resizeMode="contain"
-      />
+      <BrandMark motif="flor2" style={styles.clientAvatarFlorWatermark} />
       <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
     </View>
     <View style={styles.clientInfo}>
@@ -73,7 +69,7 @@ export default function ClientsPanel() {
         <Text style={styles.headerLabel}>Gestión de cartera</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
           <Text style={styles.title}>Clientes y Créditos</Text>
-          <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(22), height: scale(22) }} resizeMode="contain" />
+          <BrandMark motif="flor1" style={{ width: scale(22), height: scale(22) }} />
         </View>
         <Text style={styles.subtitle}>Supervisión de saldos y cuentas por cobrar</Text>
       </View>
@@ -188,7 +184,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(32),
   },
   headerLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -197,14 +193,14 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(32),
     fontWeight: '800',
     color: tokens.colors.text,
     letterSpacing: scale(-0.8),
   },
   subtitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
@@ -214,7 +210,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(32),
   },
   sectionLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -248,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   summaryLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.xs,
     color: tokens.colors.textMuted,
     fontWeight: '700',
@@ -279,7 +275,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   debtorsLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.xs,
     color: tokens.colors.textMuted,
     fontWeight: '700',
@@ -302,7 +298,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.md,
     color: tokens.colors.text,
     fontWeight: '600',
@@ -341,7 +337,7 @@ const styles = StyleSheet.create({
     opacity: 0.18,
   },
   clientAvatarText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.mahogany,
@@ -351,13 +347,13 @@ const styles = StyleSheet.create({
     gap: verticalScale(2),
   },
   clientName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '700',
     color: tokens.colors.text,
   },
   clientPhone: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
   },
@@ -366,7 +362,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(2),
   },
   debtLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '600',
     color: tokens.colors.textDim,
@@ -386,12 +382,12 @@ const styles = StyleSheet.create({
     gap: verticalScale(16),
   },
   loadingText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
   },
   errorText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.coral,
   },
@@ -409,7 +405,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(20),
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     color: tokens.colors.textMuted,
     textAlign: 'center',

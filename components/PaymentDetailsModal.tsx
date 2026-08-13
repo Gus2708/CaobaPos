@@ -186,13 +186,13 @@ const styles = StyleSheet.create({
     borderColor: `${tokens.colors.mahogany}25`,
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '700',
     color: tokens.colors.text,
   },
   subtitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textSecondary,
     marginTop: verticalScale(2),
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   downloadBtnText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     fontWeight: '700',
     color: tokens.colors.mahogany,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.border,
   },
   totalLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textSecondary,
     textTransform: 'uppercase',
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(4),
   },
   saleDate: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textSecondary,
   },
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.textMuted,
   },
   movementBadge: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(9),
     fontWeight: '800',
     color: tokens.colors.sage,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   empty: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
     textAlign: 'center',

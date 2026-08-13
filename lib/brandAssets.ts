@@ -6,9 +6,9 @@ export const FLOR2_BASE64 = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wI
 
 export const BRAND_COLORS = {
   primary: "#CD9B46",
-  text: "#F0F0F2",
+  text: "#F5EFE8",
   textSecondary: "#EEDDC0",
-  muted: "#9E8D81",
+  muted: "#B3A294",
   border: "rgba(205, 155, 70, 0.18)",
   background: "#140906",
   surface: "#1C110C",

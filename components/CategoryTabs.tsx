@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text } from './Text';
 import { Category } from '../hooks/useProducts';
 import { FontNames } from '../lib/fontNames';
@@ -8,7 +8,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
-import { FLOR1_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -47,7 +47,7 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
         accessibilityState={{ selected: isActive }}
       >
         {isActive ? (
-          <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(16), height: scale(16) }} resizeMode="contain" />
+          <BrandMark motif="flor1" style={{ width: scale(16), height: scale(16) }} />
         ) : (
           <Icon
             name={iconName}
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany, 
   },
   tabText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.textMuted,

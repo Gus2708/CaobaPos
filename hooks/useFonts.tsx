@@ -9,12 +9,6 @@ export const fonts = {
     bold: 'Parkinsans_700Bold',
     extraBold: 'Parkinsans_800ExtraBold',
   },
-  instrumentSans: {
-    regular: 'InstrumentSans_400Regular',
-    medium: 'InstrumentSans_500Medium',
-    semiBold: 'InstrumentSans_600SemiBold',
-    bold: 'InstrumentSans_700Bold',
-  },
   jetBrainsMono: {
     regular: 'JetBrainsMono_400Regular',
     medium: 'JetBrainsMono_500Medium',
@@ -29,10 +23,6 @@ export function useAppFonts() {
     Parkinsans_600SemiBold: require('../assets/fonts/Parkinsans_600SemiBold.ttf'),
     Parkinsans_700Bold: require('../assets/fonts/Parkinsans_700Bold.ttf'),
     Parkinsans_800ExtraBold: require('../assets/fonts/Parkinsans_800ExtraBold.ttf'),
-    InstrumentSans_400Regular: require('../assets/fonts/InstrumentSans_400Regular.ttf'),
-    InstrumentSans_500Medium: require('../assets/fonts/InstrumentSans_500Medium.ttf'),
-    InstrumentSans_600SemiBold: require('../assets/fonts/InstrumentSans_600SemiBold.ttf'),
-    InstrumentSans_700Bold: require('../assets/fonts/InstrumentSans_700Bold.ttf'),
     JetBrainsMono_400Regular: require('../assets/fonts/JetBrainsMono_400Regular.ttf'),
     JetBrainsMono_500Medium: require('../assets/fonts/JetBrainsMono_500Medium.ttf'),
     JetBrainsMono_600SemiBold: require('../assets/fonts/JetBrainsMono_600SemiBold.ttf'),
