@@ -390,7 +390,7 @@ export function POSScreen() {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
+                colors={['#CD9B46', '#9E722C']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />

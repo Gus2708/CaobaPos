@@ -197,7 +197,7 @@ const ProductItem = memo(({
             >
               {editState.categories.includes(cat) && (
                 <LinearGradient
-                  colors={['rgba(184, 123, 90, 0.3)', 'rgba(184, 123, 90, 0.15)']}
+                  colors={['rgba(205, 155, 70, 0.3)', 'rgba(205, 155, 70, 0.15)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}

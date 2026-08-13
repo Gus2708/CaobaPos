@@ -481,11 +481,6 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         </View>
         <View style={styles.financialGrid}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-          <Image
-            source={{ uri: ESPIRAL_BASE64 }}
-            style={styles.cardWatermarkEspiral}
-            resizeMode="contain"
-          />
           <View style={styles.financialItem}>
             <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
             <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>

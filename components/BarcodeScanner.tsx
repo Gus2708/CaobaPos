@@ -274,7 +274,7 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
           contentContainerStyle={localStyles.list}
           ListEmptyComponent={
             <View style={localStyles.emptyList}>
-              <Icon name="barcode" size={48} color="rgba(184, 123, 90, 0.3)" />
+              <Icon name="barcode" size={48} color="rgba(205, 155, 70, 0.3)" />
               <Text style={localStyles.emptyText}>Sin productos agregados</Text>
               <Text style={localStyles.emptyHint}>Escanea codigos con el lector Bluetooth</Text>
             </View>
@@ -300,8 +300,8 @@ export function BarcodeScanner({ visible, onClose, onConfirm }: BarcodeScannerPr
           >
             <LinearGradient
               colors={scannedItems.length === 0 
-                ? ['rgba(184, 123, 90, 0.5)', 'rgba(184, 123, 90, 0.4)']
-                : ['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.9)']}
+                ? ['rgba(205, 155, 70, 0.5)', 'rgba(205, 155, 70, 0.4)']
+                : ['rgba(205, 155, 70, 0.95)', 'rgba(158, 114, 44, 0.9)']}
               style={localStyles.confirmBtnGradient}
             />
             <View style={localStyles.confirmBtnContent}>
