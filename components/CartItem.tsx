@@ -1,4 +1,4 @@
-import { View, StyleSheet, Animated, Image } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { Text } from './Text';
 import { memo, useRef, useEffect } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
@@ -7,7 +7,7 @@ import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
-import { FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 interface CartItemProps {
   item: CartItemType;
@@ -47,11 +47,7 @@ export const CartItemRow = memo(function CartItemRow({
     <View style={styles.container}>
       
       <View style={styles.itemIconCircle}>
-        <Image
-          source={{ uri: FLOR2_BASE64 }}
-          style={styles.itemIconFlorWatermark}
-          resizeMode="contain"
-        />
+        <BrandMark motif="flor2" style={styles.itemIconFlorWatermark} />
         <Text style={styles.itemInitial}>
           {item.name.charAt(0).toUpperCase()}
         </Text>
