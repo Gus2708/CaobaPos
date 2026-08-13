@@ -75,7 +75,7 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
                 color={isOnline ? tokens.colors.sage : tokens.colors.amber}
                 style={styles.headerIcon}
               />
-              <AppText variant="subtitle" style={styles.title}>
+              <AppText style={styles.title}>
                 Estado de Sincronización
               </AppText>
             </View>
@@ -98,7 +98,7 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
                 { backgroundColor: isOnline ? tokens.colors.sage : tokens.colors.amber },
               ]}
             />
-            <AppText variant="caption" style={styles.networkText}>
+            <AppText style={styles.networkText}>
               {isOnline
                 ? 'Conexión a Internet activa'
                 : 'Sin Conexión — Guardando cambios localmente'}
@@ -109,7 +109,7 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
           {isSyncing && syncProgress && (
             <View style={styles.progressContainer}>
               <View style={styles.progressHeader}>
-                <AppText variant="caption" style={styles.progressText}>
+                <AppText style={styles.progressText}>
                   Sincronizando {syncProgress.current} de {syncProgress.total}...
                 </AppText>
                 <ActivityIndicator size="small" color={tokens.colors.mahoganyBright} />
@@ -126,7 +126,7 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
           )}
 
           {/* List of Queue Items */}
-          <AppText variant="caption" style={styles.sectionTitle}>
+          <AppText style={styles.sectionTitle}>
             Operaciones en Cola ({pendingCount})
           </AppText>
 
@@ -143,21 +143,21 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
                 <View key={item.id} style={styles.itemRow}>
                   <View style={styles.itemInfo}>
                     <View style={styles.itemTitleRow}>
-                      <AppText variant="body" style={styles.itemName}>
+                      <AppText style={styles.itemName}>
                         {formatActionName(item.type)}
                       </AppText>
-                      <AppText variant="caption" style={styles.itemDetails}>
+                      <AppText style={styles.itemDetails}>
                         {getActionDetails(item)}
                       </AppText>
                     </View>
-                    <AppText variant="caption" style={styles.itemTime}>
+                    <AppText style={styles.itemTime}>
                       {new Date(item.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
                     </AppText>
                     {item.errorMessage && (
-                      <AppText variant="caption" style={styles.itemError}>
+                      <AppText style={styles.itemError}>
                         Error: {item.errorMessage}
                       </AppText>
                     )}
