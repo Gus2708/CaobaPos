@@ -59,6 +59,20 @@ export function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
+      {/* Brand Espiral Background Watermark (Top Right) */}
+      <Image
+        source={{ uri: ESPIRAL_BASE64 }}
+        style={styles.bgEspiralTop}
+        resizeMode="contain"
+      />
+
+      {/* Brand Espiral Background Watermark (Bottom Left) */}
+      <Image
+        source={{ uri: ESPIRAL_BASE64 }}
+        style={styles.bgEspiralBottom}
+        resizeMode="contain"
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
