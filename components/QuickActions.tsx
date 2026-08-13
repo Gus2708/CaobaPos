@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   buttonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.textMuted,

@@ -453,13 +453,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.text,
   },
   headerDate: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(1),
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     maxHeight: verticalScale(380),
   },
   sectionTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -497,13 +497,13 @@ const styles = StyleSheet.create({
   },
   itemMain: { flex: 1 },
   itemName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.text,
   },
   itemMeta: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   addProductText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.mahogany,
     fontWeight: '700',
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(10) 
   },
   totalLabel: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     color: tokens.colors.textSecondary 
   },
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colors.borderLight,
   },
   grandTotalLabel: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(17), 
     fontWeight: '700', 
     color: tokens.colors.text 
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   btnText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     fontWeight: '700', 
     color: '#FFFFFF' 
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     fontWeight: '700', 
     color: tokens.colors.textDim 

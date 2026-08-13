@@ -2,8 +2,9 @@ import React from 'react';
 import { Text as RNText, TextProps as RNTextProps, StyleSheet, Platform } from 'react-native';
 import { moderateScale } from '../lib/responsive';
 import * as Font from 'expo-font';
+import { fonts } from '../hooks/useFonts';
 
-type FontWeight = 'regular' | 'medium' | 'semiBold' | 'bold';
+type FontWeight = 'regular' | 'medium' | 'semiBold' | 'bold' | 'extraBold';
 type FontFamily = 'sans' | 'mono';
 
 interface AppTextProps extends RNTextProps {
@@ -11,18 +12,29 @@ interface AppTextProps extends RNTextProps {
   family?: FontFamily;
 }
 
+// Parkinsans is the official brand typeface (see the Caoba brand manual).
+// Every AppText render resolves through this map, so it is the single source of truth
+// for what the app actually renders — changing font tokens elsewhere has no effect
+// unless this map changes too.
+// Keys come straight from the loader in hooks/useFonts so a family can never be
+// rendered without being registered — the two drifting apart is what left the app
+// rendering Instrument Sans after the Parkinsans rebrand.
 const fontMap: Record<FontFamily, Record<FontWeight, string>> = {
   sans: {
-    regular: 'InstrumentSans_400Regular',
-    medium: 'InstrumentSans_500Medium',
-    semiBold: 'InstrumentSans_600SemiBold',
-    bold: 'InstrumentSans_700Bold',
+    regular: fonts.parkinsans.regular,
+    // Parkinsans ships no 500; 600 is the nearest step up from regular.
+    medium: fonts.parkinsans.semiBold,
+    semiBold: fonts.parkinsans.semiBold,
+    bold: fonts.parkinsans.bold,
+    extraBold: fonts.parkinsans.extraBold,
   },
   mono: {
-    regular: 'JetBrainsMono_400Regular',
-    medium: 'JetBrainsMono_500Medium',
-    semiBold: 'JetBrainsMono_600SemiBold',
-    bold: 'JetBrainsMono_700Bold',
+    regular: fonts.jetBrainsMono.regular,
+    medium: fonts.jetBrainsMono.medium,
+    semiBold: fonts.jetBrainsMono.semiBold,
+    bold: fonts.jetBrainsMono.bold,
+    // JetBrains Mono ships no 800; fall back to its heaviest weight.
+    extraBold: fonts.jetBrainsMono.bold,
   },
 };
 
@@ -31,7 +43,8 @@ function mapWeight(weight?: string | number): FontWeight {
   const w = weight.toString().toLowerCase();
   if (w === '500' || w === 'medium') return 'medium';
   if (w === '600' || w === 'semibold' || w === '600semibold' || w === 'semi-bold') return 'semiBold';
-  if (w === '700' || w === '800' || w === '900' || w === 'bold' || w === 'extrabold' || w === '800extrabold') return 'bold';
+  if (w === '800' || w === '900' || w === 'extrabold' || w === '800extrabold') return 'extraBold';
+  if (w === '700' || w === 'bold') return 'bold';
   return 'regular';
 }
 
@@ -63,19 +76,20 @@ export function AppText({ weight = 'regular', family = 'sans', style, ...props }
 
   // Determine font family and weight dynamically by platform
   let resolvedFontFamily: string | undefined = undefined;
-  let resolvedFontWeight: '400' | '500' | '600' | '700' | undefined = undefined;
+  let resolvedFontWeight: '400' | '500' | '600' | '700' | '800' | undefined = undefined;
 
   if (Platform.OS === 'web') {
     // Web: Use the exact loaded local font name as primary, with fallback to standard system/CDN fonts
     const targetFont = fontMap[resolvedFamily][resolvedWeight];
-    resolvedFontFamily = resolvedFamily === 'mono' 
-      ? `${targetFont}, "JetBrains Mono", monospace` 
-      : `${targetFont}, "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+    resolvedFontFamily = resolvedFamily === 'mono'
+      ? `${targetFont}, "JetBrains Mono", monospace`
+      : `${targetFont}, Parkinsans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
     
     if (resolvedWeight === 'regular') resolvedFontWeight = '400';
     else if (resolvedWeight === 'medium') resolvedFontWeight = '500';
     else if (resolvedWeight === 'semiBold') resolvedFontWeight = '600';
     else if (resolvedWeight === 'bold') resolvedFontWeight = '700';
+    else if (resolvedWeight === 'extraBold') resolvedFontWeight = '800';
   } else {
     // Native (iOS/Android): Use bundled Expo Font keys
     const targetFont = fontMap[resolvedFamily][resolvedWeight];

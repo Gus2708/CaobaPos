@@ -21,7 +21,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
-import { FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from '../components/BrandMark';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -302,11 +302,7 @@ const ProductItem = memo(({
               />
             ) : (
               <View style={[styles.thumbPlaceholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
-                <Image
-                  source={{ uri: FLOR2_BASE64 }}
-                  style={styles.thumbPlaceholderFlorWatermark}
-                  resizeMode="contain"
-                />
+                <BrandMark motif="flor2" style={styles.thumbPlaceholderFlorWatermark} />
                 <Text style={[styles.thumbPlaceholderText, { color: tokens.colors.mahogany }]}>
                   {item.name.charAt(0).toUpperCase()}
                 </Text>
@@ -822,7 +818,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
           <Text style={styles.titleMini}>Inventario</Text>
-          <Image source={{ uri: FLOR2_BASE64 }} style={{ width: scale(20), height: scale(20) }} resizeMode="contain" />
+          <BrandMark motif="flor2" style={{ width: scale(20), height: scale(20) }} />
         </View>
         <View style={styles.headerButtonsMini}>
            <TouchableOpacity style={styles.manageCatBtnMini} onPress={() => setShowCategoryManager(!showCategoryManager)}>
@@ -1224,7 +1220,7 @@ const styles = StyleSheet.create({
     gap: scale(6),
   },
   titleMini: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(22),
     color: tokens.colors.text,
     fontWeight: '800',
@@ -1245,7 +1241,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   manageCatBtnTextMini: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '700',
     color: tokens.colors.text,
@@ -1259,7 +1255,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   addBtnTextMini: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '800',
     fontSize: moderateScale(12),
     color: '#FFFFFF',
@@ -1306,7 +1302,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryManagerTitle: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(16), 
     fontWeight: '800', 
     color: tokens.colors.text, 
@@ -1322,7 +1318,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.text, 
     padding: scale(14), 
     borderRadius: tokens.radius.lg, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     borderWidth: 1, 
     borderColor: tokens.colors.borderLight,
@@ -1352,7 +1348,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(6),
   },
   catManageText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(13), 
     fontWeight: '700',
     color: tokens.colors.text,
@@ -1378,7 +1374,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: tokens.colors.text, 
     paddingVertical: verticalScale(14), 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14),
     fontWeight: '600',
   },
@@ -1416,13 +1412,13 @@ const styles = StyleSheet.create({
   },
   formTitle: { 
     color: tokens.colors.text, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontWeight: '800', 
     fontSize: moderateScale(18), 
   },
   inputLabel: { 
     color: tokens.colors.textMuted, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(11), 
     marginBottom: verticalScale(4), 
     fontWeight: '800', 
@@ -1437,7 +1433,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(16),
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '600',
   },
   row: { 
@@ -1502,7 +1498,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: scale(14),
     color: tokens.colors.text,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     height: '100%',
@@ -1512,7 +1508,7 @@ const styles = StyleSheet.create({
     marginLeft: scale(4),
   },
   catText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(13), 
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -1533,7 +1529,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   saveBtnText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontWeight: '800', 
     fontSize: moderateScale(16), 
     color: '#FFFFFF',
@@ -1572,7 +1568,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   thumbPlaceholderText: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(20), 
     fontWeight: '800',
   },
@@ -1584,7 +1580,7 @@ const styles = StyleSheet.create({
   },
   itemInfo: { flex: 1 },
   itemName: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     color: tokens.colors.text, 
     fontSize: moderateScale(16), 
     fontWeight: '700', 
@@ -1618,7 +1614,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(3),
   },
   itemStockText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '800',
     color: tokens.colors.textSecondary,
@@ -1689,13 +1685,13 @@ const styles = StyleSheet.create({
   },
   imagePickerLabel: {
     color: tokens.colors.text,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
   },
   imagePickerSub: {
     color: tokens.colors.textMuted,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '500',
   },
@@ -1722,7 +1718,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   cancelBtnOutlineText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '700',
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
@@ -1739,7 +1735,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(201, 107, 107, 0.35)',
   },
   deleteBtnOutlineText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '700',
     fontSize: moderateScale(13),
     color: tokens.colors.coral,
@@ -1753,14 +1749,14 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: { 
     color: tokens.colors.textMuted, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontWeight: '700', 
     fontSize: moderateScale(15) 
   },
   // (addImageSection styles merged into imagePickerCard above)
   empty: { 
     color: tokens.colors.textMuted, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     textAlign: 'center', 
     marginTop: verticalScale(60),
     fontWeight: '700',
@@ -1776,7 +1772,7 @@ const styles = StyleSheet.create({
   },
   retryBtnText: {
     color: tokens.colors.coral,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '800',
     fontSize: moderateScale(14),
   },
@@ -1802,7 +1798,7 @@ const styles = StyleSheet.create({
   },
   formLabel: {
     color: tokens.colors.textMuted,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '800',
     textTransform: 'uppercase',
@@ -1817,7 +1813,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontWeight: '600',
     fontSize: moderateScale(14),
   },
@@ -1846,7 +1842,7 @@ const styles = StyleSheet.create({
     gap: scale(6),
   },
   catChipText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -1871,7 +1867,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: scale(12),
     color: tokens.colors.text,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '700',
     height: '100%',
@@ -1893,7 +1889,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(4),
   },
   imagePickerPlaceholderText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -1922,13 +1918,13 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(4),
   },
   photoPickerLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,
   },
   photoPickerSub: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '500',
     color: tokens.colors.textMuted,

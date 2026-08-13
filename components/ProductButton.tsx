@@ -9,7 +9,7 @@ import { tokens } from '../lib/designTokens';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { usePressAnimation } from '../hooks/usePressAnimation';
-import { FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 interface ProductButtonProps {
   product: Product;
@@ -101,11 +101,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 />
               ) : (
                 <View style={styles.cardPlaceholder}>
-                  <Image
-                    source={{ uri: FLOR2_BASE64 }}
-                    style={styles.cardPlaceholderFlorWatermark}
-                    resizeMode="contain"
-                  />
+                  <BrandMark motif="flor2" style={styles.cardPlaceholderFlorWatermark} />
                   <Text style={[styles.placeholderText, isOutOfStock && styles.placeholderTextDisabled]}>
                     {product.name.charAt(0).toUpperCase()}
                   </Text>
@@ -194,11 +190,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 />
               ) : (
                 <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
-                  <Image
-                    source={{ uri: FLOR2_BASE64 }}
-                    style={styles.placeholderFlorWatermark}
-                    resizeMode="contain"
-                  />
+                  <BrandMark motif="flor2" style={styles.placeholderFlorWatermark} />
                   <Text
                     style={[
                       styles.placeholderText,
@@ -293,11 +285,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             />
           ) : (
             <View style={[styles.placeholder, { backgroundColor: tokens.colors.mahoganyDim }]}>
-              <Image
-                source={{ uri: FLOR2_BASE64 }}
-                style={styles.placeholderFlorWatermark}
-                resizeMode="contain"
-              />
+              <BrandMark motif="flor2" style={styles.placeholderFlorWatermark} />
               <Text
                 style={[
                   styles.placeholderText,
@@ -408,7 +396,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(20),
     fontWeight: '800',
   },
@@ -442,12 +430,12 @@ const styles = StyleSheet.create({
     borderRadius: scale(3),
   },
   itemStockText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '800',
   },
   name: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '700',
     color: tokens.colors.text,
@@ -547,7 +535,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(6),
   },
   cardName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,

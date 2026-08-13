@@ -395,7 +395,7 @@ export function POSScreen() {
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.checkoutBtnContent}>
-                <Icon name="shopping-cart" size={24} color="#F0F0F2" />
+                <Icon name="shopping-cart" size={24} color={tokens.colors.text} />
                 <Text style={styles.mobileFabText}>Carrito ({items.length})</Text>
                 <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
               </View>
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: tokens.colors.text,
-    fontFamily: FontNames.instrumentSansSemiBold,
+    fontFamily: FontNames.parkinsansSemiBold,
     fontSize: moderateScale(15),
     height: '100%',
     ...Platform.select({
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   loadingText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
   },
@@ -549,13 +549,13 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(16),
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.text,
   },
   emptySubtext: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(20),
   },
   mobileFabText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
     color: '#FFFFFF',
@@ -608,14 +608,14 @@ const styles = StyleSheet.create({
     gap: scale(16),
   },
   queryErrorTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.text,
     textAlign: 'center',
   },
   queryErrorMessage: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
     textAlign: 'center',
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(8),
   },
   queryRetryButtonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: '#FFFFFF',

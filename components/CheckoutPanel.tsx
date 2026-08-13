@@ -1,4 +1,4 @@
-import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator, Image } from 'react-native';
+import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ import { ChangeCalculatorModal } from './ChangeCalculatorModal';
 import { ClientSelectorModal } from './ClientSelectorModal';
 import { ClientBalance } from '../hooks/useClients';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
-import { ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 const TAX_RATE = 0.16;
 const PAYMENT_METHODS = [
@@ -237,7 +237,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
-              <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(36), height: scale(36), opacity: 0.85 }} resizeMode="contain" />
+              <BrandMark motif="flor1" style={{ width: scale(36), height: scale(36), opacity: 0.85 }} />
             </View>
             <Text style={styles.emptyText}>Carrito vacío</Text>
             <Text style={styles.emptySubtext}>Toca un producto para agregarlo</Text>
@@ -367,9 +367,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
         ]}>
           {createSale.isPending ? (
-            <ActivityIndicator size="small" color="#F0F0F2" />
+            <ActivityIndicator size="small" color={tokens.colors.text} />
           ) : (
-            <Icon name="check" size={22} color="#F0F0F2" />
+            <Icon name="check" size={22} color={tokens.colors.text} />
           )}
           <Text style={styles.checkoutText}>
             {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.text,
@@ -483,13 +483,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: verticalScale(60),
   },
-  emptyEspiralWatermark: {
-    position: 'absolute',
-    width: scale(180),
-    height: scale(180),
-    opacity: 0.08,
-    pointerEvents: 'none',
-  },
   emptyIconCircle: {
     width: scale(64),
     height: scale(64),
@@ -502,13 +495,13 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '700',
     color: tokens.colors.textDim,
   },
   emptySubtext: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(4),
@@ -533,7 +526,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(6),
   },
   summaryLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '600',
     color: tokens.colors.textDim,
@@ -571,7 +564,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   ivaLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '600',
     color: tokens.colors.textDim,
@@ -594,7 +587,7 @@ const styles = StyleSheet.create({
     gap: scale(8),
   },
   totalLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.text,
@@ -608,7 +601,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(109, 184, 138, 0.2)',
   },
   totalBadgeText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     fontWeight: '800',
     color: tokens.colors.sage,
@@ -618,7 +611,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(12),
   },
   sectionTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '800',
     color: tokens.colors.textDim,
@@ -681,7 +674,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   checkoutText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#FFFFFF',
@@ -702,7 +695,7 @@ const styles = StyleSheet.create({
     height: verticalScale(40),
   },
   selectClientText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.mahogany,
@@ -718,7 +711,7 @@ const styles = StyleSheet.create({
     gap: scale(10),
   },
   selectedClientName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,
@@ -732,7 +725,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   changeClientText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '700',
     color: tokens.colors.text,

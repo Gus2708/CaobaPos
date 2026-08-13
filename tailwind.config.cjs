@@ -13,7 +13,7 @@ export default {
         obsidian: '#140906',
         graphite: '#1C110C',
         slate: '#261812',
-        pearl: '#F0F0F2',
+        pearl: '#F5EFE8',
         ash: '#9E8D81',
         mahogany: '#CD9B46',
         cream: '#EEDDC0',
@@ -22,7 +22,7 @@ export default {
         rose: '#C96B6B',
       },
       fontFamily: {
-        sans: ['Parkinsans', 'Instrument Sans', 'sans-serif'],
+        sans: ['Parkinsans', 'sans-serif'],
         brand: ['Parkinsans', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },

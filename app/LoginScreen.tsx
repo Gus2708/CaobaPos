@@ -18,7 +18,7 @@ import { useAuth } from '../hooks/useAuth';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { FontNames } from '../lib/fontNames';
-import { LOGO_BASE64, ESPIRAL_BASE64, FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from '../components/BrandMark';
 
 export function LoginScreen() {
   const { signIn } = useAuth();
@@ -60,18 +60,10 @@ export function LoginScreen() {
       />
 
       {/* Brand Espiral Background Watermark (Top Right) */}
-      <Image
-        source={{ uri: ESPIRAL_BASE64 }}
-        style={styles.bgEspiralTop}
-        resizeMode="contain"
-      />
+      <BrandMark motif="espiral" style={styles.bgEspiralTop} />
 
       {/* Brand Espiral Background Watermark (Bottom Left) */}
-      <Image
-        source={{ uri: ESPIRAL_BASE64 }}
-        style={styles.bgEspiralBottom}
-        resizeMode="contain"
-      />
+      <BrandMark motif="espiral" style={styles.bgEspiralBottom} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -94,11 +86,14 @@ export function LoginScreen() {
               source={require('../assets/caoba-logo.png')}
               style={styles.logo}
               resizeMode="contain"
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel="Caoba"
             />
             <View style={styles.taglineRow}>
-              <Image source={{ uri: FLOR1_BASE64 }} style={styles.florAccent} resizeMode="contain" />
+              <BrandMark motif="flor1" style={styles.florAccent} />
               <Text style={styles.tagline}>Sistema Punto de Venta</Text>
-              <Image source={{ uri: FLOR2_BASE64 }} style={styles.florAccent} resizeMode="contain" />
+              <BrandMark motif="flor2" style={styles.florAccent} />
             </View>
           </View>
 
@@ -222,7 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(8),
   },
   tagline: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -243,7 +238,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(20),
   },
   cardTitle: {
-    fontFamily: FontNames.instrumentSansBold,
+    fontFamily: FontNames.parkinsansBold,
     fontSize: moderateScale(22),
     color: tokens.colors.text,
     fontWeight: '800',
@@ -253,7 +248,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(8),
   },
   inputLabel: {
-    fontFamily: FontNames.instrumentSansSemiBold,
+    fontFamily: FontNames.parkinsansSemiBold,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -273,7 +268,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     color: tokens.colors.text,
     height: '100%',
@@ -291,7 +286,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(10),
   },
   errorText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.coral,
     fontWeight: '600',
@@ -311,14 +306,14 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    fontFamily: FontNames.instrumentSansBold,
+    fontFamily: FontNames.parkinsansBold,
     fontSize: moderateScale(16),
     color: '#FFFFFF',
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   version: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     color: tokens.colors.textDim,
     textTransform: 'uppercase',

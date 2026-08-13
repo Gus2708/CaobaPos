@@ -217,14 +217,14 @@ const styles = StyleSheet.create({
     gap: verticalScale(2),
   },
   label: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(tokens.typography.xs),
     fontWeight: tokens.typography.bold,
     textTransform: 'uppercase',
     letterSpacing: scale(0.8),
   },
   message: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(tokens.typography.base),
     fontWeight: tokens.typography.medium,
     color: tokens.colors.text,
