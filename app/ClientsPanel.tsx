@@ -11,7 +11,7 @@ import { useClients, ClientBalance } from '../hooks/useClients';
 import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
 import { Text } from '../components/Text';
-import { FLOR1_BASE64 } from '../lib/brandAssets';
+import { FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
 
 const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (client: ClientBalance) => void }) => (
   <TouchableOpacity 
@@ -19,7 +19,12 @@ const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (c
     onPress={() => onSelect(item)}
     activeOpacity={0.7}
   >
-    <View style={styles.clientAvatar}>
+    <View style={[styles.clientAvatar, { backgroundColor: tokens.colors.mahoganyDim }]}>
+      <Image
+        source={{ uri: FLOR2_BASE64 }}
+        style={styles.clientAvatarFlorWatermark}
+        resizeMode="contain"
+      />
       <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
     </View>
     <View style={styles.clientInfo}>
@@ -327,6 +332,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: tokens.colors.glass.border,
+    overflow: 'hidden',
+  },
+  clientAvatarFlorWatermark: {
+    position: 'absolute',
+    width: '80%',
+    height: '80%',
+    opacity: 0.18,
   },
   clientAvatarText: {
     fontFamily: FontNames.instrumentSans,
