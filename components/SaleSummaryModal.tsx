@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { AppBlurView as BlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
@@ -9,7 +9,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
-import { FLOR1_BASE64, FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -79,15 +79,13 @@ export function SaleSummaryModal({
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.header}>
-            <Image
-              source={{ uri: FLOR1_BASE64 }}
+            <BrandMark
+              motif="flor1"
               style={{ position: 'absolute', left: scale(20), top: verticalScale(20), width: scale(28), height: scale(28), opacity: 0.5 }}
-              resizeMode="contain"
             />
-            <Image
-              source={{ uri: FLOR2_BASE64 }}
+            <BrandMark
+              motif="flor2"
               style={{ position: 'absolute', right: scale(20), top: verticalScale(20), width: scale(28), height: scale(28), opacity: 0.5 }}
-              resizeMode="contain"
             />
             <View style={styles.iconCircle}>
                <Icon name="check-circle" size={32} color="#FFFFFF" />
@@ -197,7 +195,7 @@ const styles = StyleSheet.create({
      borderColor: '#FFFFFF',
   },
   headerTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(22),
     fontWeight: '800',
     color: '#FFFFFF',
@@ -216,7 +214,7 @@ const styles = StyleSheet.create({
     padding: scale(24),
   },
   sectionTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.textMuted,
@@ -240,13 +238,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.text,
   },
   itemMeta: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
@@ -271,7 +269,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(10) 
   },
   totalLabel: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(14), 
     color: tokens.colors.textMuted 
   },
@@ -290,7 +288,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colors.borderLight,
   },
   grandTotalLabel: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(16), 
     fontWeight: '800', 
     color: tokens.colors.text 
@@ -316,7 +314,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   paymentValue: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     fontWeight: '700',
     color: tokens.colors.mahogany,
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(12),
   },
   shareButtonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#FFFFFF',
@@ -347,7 +345,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: tokens.colors.textDim,

@@ -1,4 +1,7 @@
-const CACHE_NAME = 'caobapos-pwa-v2';
+// Bump on every change to index.html, the manifest or the fonts it references —
+// the activate handler drops caches whose name no longer matches, so installed
+// PWAs keep serving the old shell until this version changes.
+const CACHE_NAME = 'caobapos-pwa-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

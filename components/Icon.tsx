@@ -2,6 +2,7 @@ import React from 'react';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { EvilIcons } from '@expo/vector-icons';
 import { moderateScale } from '../lib/responsive';
+import { tokens } from '../lib/designTokens';
 
 interface IconProps {
   name: string;
@@ -76,7 +77,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'times': { lib: 'evil', iconName: 'close' },
 };
 
-export function Icon({ name, size = 20, color = '#F0F0F2' }: IconProps) {
+export function Icon({ name, size = 20, color = tokens.colors.text }: IconProps) {
   const normalizedName = name?.trim()?.toLowerCase() || '';
   const icon = iconMap[normalizedName];
 

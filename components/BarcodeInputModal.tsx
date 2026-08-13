@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(20),
   },
   title: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontSize: moderateScale(18),
     fontWeight: '700',
   },
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontSize: moderateScale(14),
     fontWeight: '600',
     marginBottom: verticalScale(10),
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(10),
   },
   input: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontSize: moderateScale(16),
     fontFamily: FontNames.jetBrainsMono,
     paddingHorizontal: scale(14),
@@ -173,10 +173,10 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   submitBtnText: {
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
   },
 });
 

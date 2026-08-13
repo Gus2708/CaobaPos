@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(17),
     fontWeight: '700',
     color: tokens.colors.text,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   infoLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '600',
     color: tokens.colors.textMuted,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(10),
   },
   inputLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '600',
     color: tokens.colors.textSecondary,
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     height: verticalScale(16),
   },
   errorText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.coral,
     marginLeft: scale(4),
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     gap: verticalScale(12),
   },
   changeLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textMuted,
   },
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   confirmText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#FFFFFF',

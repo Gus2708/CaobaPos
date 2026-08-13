@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar, Image } from 'react-native';
+import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,7 +13,7 @@ import { useClientPayments, useClientCreditSales, useAddPayment, useDeletePaymen
 import { useToast } from './Toast';
 import { SaleDetailModal } from './SaleDetailModal';
 import { supabase } from '../lib/supabase';
-import { FLOR2_BASE64 } from '../lib/brandAssets';
+import { BrandMark } from './BrandMark';
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -541,11 +541,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
           <View style={styles.header}>
             <View style={styles.headerContent}>
               <View style={[styles.avatarCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
-                <Image
-                  source={{ uri: FLOR2_BASE64 }}
-                  style={styles.avatarFlorWatermark}
-                  resizeMode="contain"
-                />
+                <BrandMark motif="flor2" style={styles.avatarFlorWatermark} />
                 <Text style={styles.avatarText}>{client.name.charAt(0).toUpperCase()}</Text>
               </View>
               <View>
@@ -789,19 +785,19 @@ const styles = StyleSheet.create({
     opacity: 0.18,
   },
   avatarText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.mahogany,
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(18),
     fontWeight: '800',
     color: tokens.colors.text,
   },
   subtitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textDim,
     marginTop: verticalScale(2),
@@ -852,7 +848,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.borderLight,
   },
   balanceLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.textDim,
@@ -898,7 +894,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   tabText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.textDim,
@@ -945,14 +941,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   historyTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
     color: tokens.colors.text,
     letterSpacing: -0.3,
   },
   historyDate: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     color: tokens.colors.textMuted,
     marginTop: verticalScale(1),
@@ -970,7 +966,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   balanceTagLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     color: tokens.colors.textDim,
     fontWeight: '600',
@@ -1013,7 +1009,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(3),
   },
   statusLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -1030,7 +1026,7 @@ const styles = StyleSheet.create({
     marginRight: scale(4),
   },
   methodText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(9),
     fontWeight: '600',
     color: tokens.colors.textMuted,
@@ -1047,7 +1043,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.pill,
   },
   settleBtnText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(10),
     fontWeight: '800',
     color: '#FFF',
@@ -1066,7 +1062,7 @@ const styles = StyleSheet.create({
     padding: scale(24),
   },
   paymentInstruction: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textDim,
     textAlign: 'center',
@@ -1089,7 +1085,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   paymentCurrency: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(24),
     fontWeight: '800',
     color: tokens.colors.mahogany,
@@ -1126,7 +1122,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickAmountText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '800',
     color: tokens.colors.mahogany,
@@ -1141,7 +1137,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: '#FFF',
@@ -1151,7 +1147,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(40),
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textDim,
   },
@@ -1190,7 +1186,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   methodLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     fontWeight: '700',
     color: tokens.colors.textDim,

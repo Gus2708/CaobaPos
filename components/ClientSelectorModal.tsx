@@ -382,13 +382,13 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(16),
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(20),
     fontWeight: '800',
     color: tokens.colors.text,
   },
   subtitleCount: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textDim,
     marginTop: verticalScale(2),
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginLeft: scale(12),
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     color: tokens.colors.text,
   },
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     gap: scale(10),
   },
   createButtonText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.mahogany,
@@ -466,20 +466,20 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   clientAvatarText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.mahogany,
   },
   clientInfo: { flex: 1 },
   clientName: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: tokens.colors.text,
   },
   clientPhone: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textDim,
     marginTop: verticalScale(2),
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(32),
   },
   sectionTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.text,
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     marginLeft: scale(12),
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     color: tokens.colors.text,
   },
@@ -546,13 +546,13 @@ const styles = StyleSheet.create({
   },
   saveButton: { backgroundColor: tokens.colors.mahogany },
   cancelText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '700',
     color: tokens.colors.textDim,
   },
   saveText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
     color: '#FFF',
@@ -571,7 +571,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.mahogany,
   },
   emptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: tokens.colors.textDim,
   },
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.pill,
   },
   createFromEmptyText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     color: '#FFF',
     fontWeight: '800',

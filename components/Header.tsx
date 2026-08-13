@@ -10,7 +10,6 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
 import { usePressAnimation } from '../hooks/usePressAnimation';
 import { useAuth } from '../hooks/useAuth';
-import { ISOTIPO_BASE64, LOGO_BASE64 } from '../lib/brandAssets';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -163,10 +162,13 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
       <View style={styles.content}>
         {/* Logo Section */}
         <View style={styles.logoSection}>
-          <Image 
-            source={require('../assets/caoba-logo.png')} 
-            style={styles.brandLogo} 
-            resizeMode="contain" 
+          <Image
+            source={require('../assets/caoba-logo.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="Caoba"
           />
         </View>
 
@@ -308,7 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   menuTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography['3xl'],
     fontWeight: tokens.typography.extrabold,
     color: tokens.colors.text,
@@ -359,7 +361,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.xl,
     fontWeight: tokens.typography.bold,
     color: tokens.colors.textSecondary,
@@ -369,7 +371,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   itemDescription: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.sm,
     color: tokens.colors.textMuted,
   },
@@ -398,13 +400,13 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.surface,
   },
   signOutText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.base,
     color: tokens.colors.textMuted,
     fontWeight: '600',
   },
   footerText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.xs,
     color: tokens.colors.textDim,
     letterSpacing: 2,

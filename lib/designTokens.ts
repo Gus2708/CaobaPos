@@ -42,11 +42,22 @@ export const tokens = {
     borderAccentBright: 'rgba(205, 155, 70, 0.45)',
 
     // Brand — Caoba Gold (#CD9B46)
+    // Note: `mahogany*` are legacy names kept for compatibility; prefer the `gold*` aliases below.
     mahogany: '#CD9B46',
     mahoganyBright: '#E5B865',
     mahoganyDark: '#9E722C',
     mahoganyDim: 'rgba(205, 155, 70, 0.15)',
     mahoganyGlow: 'rgba(205, 155, 70, 0.08)',
+
+    // Brand — preferred semantic names
+    gold: '#CD9B46',
+    goldBright: '#E5B865',
+    goldDark: '#9E722C',
+    goldDim: 'rgba(205, 155, 70, 0.15)',
+    goldGlow: 'rgba(205, 155, 70, 0.08)',
+
+    // Text on top of a solid gold surface. Cream on gold is only 1.88:1 — never use it for text.
+    onGold: '#140906',
 
     // Brand Neutral Cream (#EEDDC0)
     cream: '#EEDDC0',
@@ -67,11 +78,13 @@ export const tokens = {
     amberDim: 'rgba(205, 155, 70, 0.15)',
     amberGold: '#CD9B46', // Premium Caoba Gold
 
-    // Text — cleaner hierarchy with Cream Secondary
-    text: '#F0F0F2',
+    // Text — warm ramp tinted toward the brand hue.
+    // Contrast against bg (#140906): 17.2 / 14.7 / 7.9 / 5.6 — every step clears WCAG AA (4.5:1),
+    // including on surfaceElevated. Steps are ~1.4x apart so the hierarchy stays readable.
+    text: '#F5EFE8',
     textSecondary: '#EEDDC0', // Warm cream contrast from brand manual
-    textMuted: '#9E8D81',
-    textDim: '#695A50',
+    textMuted: '#B3A294',
+    textDim: '#98866F',
 
     // Glass/Transparency Effects — simplified
     glass: {
@@ -115,12 +128,13 @@ export const tokens = {
   },
   styles: {
     liquidCard: {
-      backgroundColor: 'rgba(255, 255, 255, 0.02)',
-      borderColor: 'rgba(255, 255, 255, 0.08)',
+      // Tinted toward Caoba Gold so surfaces stay in the same warm family as the rest of the palette.
+      backgroundColor: 'rgba(205, 155, 70, 0.03)',
+      borderColor: 'rgba(205, 155, 70, 0.10)',
       borderWidth: 1,
       borderRadius: scale(24), // Premium XL radius
       // Reflections
-      reflectionColors: ['rgba(255, 255, 255, 0.05)', 'transparent'] as const,
+      reflectionColors: ['rgba(238, 221, 192, 0.06)', 'transparent'] as const,
     }
   },
   animation: {

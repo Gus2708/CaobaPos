@@ -74,10 +74,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   title: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(20),
     fontWeight: '700',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
     textAlign: 'center',
     marginBottom: verticalScale(24),
   },
@@ -105,15 +105,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionTitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '600',
-    color: '#F0F0F2',
+    color: tokens.colors.text,
   },
   optionSubtitle: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
-    color: '#8A8A96',
+    color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
   },
   cancelButton: {
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(8),
   },
   cancelText: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '600',
     color: tokens.colors.textMuted,

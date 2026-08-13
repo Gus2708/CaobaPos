@@ -1,5 +1,5 @@
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions, Image } from 'react-native';
-import { FLOR1_BASE64 } from '../lib/brandAssets';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import { BrandMark } from '../components/BrandMark';
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
@@ -577,7 +577,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
             <Text style={styles.headerLabel}>Actividad reciente</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8), flexWrap: 'wrap' }}>
               <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>Historial</Text>
-              <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(20), height: scale(20) }} resizeMode="contain" />
+              <BrandMark motif="flor1" style={{ width: scale(20), height: scale(20) }} />
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{filteredSales.length}</Text>
               </View>
@@ -632,7 +632,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
       <View style={styles.searchRow}>
         <View style={styles.searchInputContainer}>
-          <Icon name="search" size={22} color="#8A8A96" />
+          <Icon name="search" size={22} color={tokens.colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por folio o método..."
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(4),
   },
   headerLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(28),
   },
   sectionLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(13),
     color: tokens.colors.textMuted,
     fontWeight: '600',
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
     minWidth: scale(90),
   },
   statsLabel: {
-    fontFamily: FontNames.instrumentSans,
+    fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(9),
     color: tokens.colors.textMuted,
     fontWeight: '700',
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   title: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(32), 
     color: tokens.colors.text, 
     fontWeight: '800',
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
   searchInput: { 
     flex: 1,
     color: tokens.colors.text, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(15),
     fontWeight: '600',
   },
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   },
   empty: { 
     color: tokens.colors.textMuted, 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(16),
     fontWeight: '700',
     textAlign: 'center', 
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
     lineHeight: moderateScale(22),
   },
   saleDate: { 
-    fontFamily: FontNames.instrumentSans, 
+    fontFamily: FontNames.parkinsans, 
     fontSize: moderateScale(12), 
     color: tokens.colors.textMuted,
     fontWeight: '600',
