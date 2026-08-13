@@ -119,7 +119,7 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
           </div>
           ${metrics.pendingCredit ? `
           <div class="summary-card" style="grid-column: span 3; background-color: #FFF9F2; border-color: #FFEBD6;">
-            <div class="summary-label" style="color: #B87B5A;">Crédito Pendiente por Cobrar</div>
+            <div class="summary-label" style="color: #CD9B46;">Crédito Pendiente por Cobrar</div>
             <div class="summary-value credit-value">$${metrics.pendingCredit.toFixed(2)}</div>
           </div>
           ` : ''}

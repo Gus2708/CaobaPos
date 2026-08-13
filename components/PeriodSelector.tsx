@@ -78,8 +78,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: 'rgba(184, 123, 90, 0.15)',
-    borderColor: 'rgba(184, 123, 90, 0.3)',
+    backgroundColor: 'rgba(205, 155, 70, 0.15)',
+    borderColor: 'rgba(205, 155, 70, 0.3)',
   },
   tabContent: {
     flexDirection: 'row',
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     width: scale(16),
     height: verticalScale(3),
     borderRadius: scale(1.5),
-    backgroundColor: '#B87B5A',
+    backgroundColor: '#CD9B46',
   },
 });
 

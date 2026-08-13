@@ -236,11 +236,6 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         scrollEventThrottle={16}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Image
-              source={{ uri: ESPIRAL_BASE64 }}
-              style={styles.emptyEspiralWatermark}
-              resizeMode="contain"
-            />
             <View style={styles.emptyIconCircle}>
               <Image source={{ uri: FLOR1_BASE64 }} style={{ width: scale(36), height: scale(36), opacity: 0.85 }} resizeMode="contain" />
             </View>
@@ -350,7 +345,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               </View>
             ) : (
               <PressableScale style={styles.selectClientBtn} onPress={() => setIsClientModalVisible(true)} scaleTo={0.97}>
-                <Icon name="user-plus" size={22} color="#B87B5A" />
+                <Icon name="user-plus" size={22} color={tokens.colors.mahogany} />
                 <Text style={styles.selectClientText}>Seleccionar Cliente</Text>
               </PressableScale>
             )}

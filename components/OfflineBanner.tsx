@@ -102,8 +102,8 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(232, 181, 96, 0.25)',
   },
   bannerPending: {
-    backgroundColor: 'rgba(184, 123, 90, 0.12)',
-    borderBottomColor: 'rgba(184, 123, 90, 0.25)',
+    backgroundColor: 'rgba(205, 155, 70, 0.12)',
+    borderBottomColor: 'rgba(205, 155, 70, 0.25)',
   },
   content: {
     flexDirection: 'row',

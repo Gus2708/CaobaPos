@@ -57,7 +57,7 @@ export const CachedImage = ({ remoteUri, style, ...props }: CachedImageProps) =>
     <Image
       {...props}
       source={{ uri: sourceUri }}
-      style={[style, { backgroundColor: 'rgba(184,123,90,0.05)' }]}
+      style={[style, { backgroundColor: 'rgba(205, 155, 70, 0.05)' }]}
       transition={sourceUri.startsWith('file') ? 0 : 150}
       cachePolicy="disk"
       onError={() => setHasError(true)}

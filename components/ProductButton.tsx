@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   },
   containerActive: {
     borderColor: tokens.colors.mahogany,
-    backgroundColor: 'rgba(184, 123, 90, 0.08)',
+    backgroundColor: 'rgba(205, 155, 70, 0.08)',
   },
   containerDisabled: {
     opacity: 0.4,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   },
   cardContainerActive: {
     borderColor: tokens.colors.mahogany,
-    backgroundColor: 'rgba(184, 123, 90, 0.08)',
+    backgroundColor: 'rgba(205, 155, 70, 0.08)',
   },
   cardDetailsPressable: {
     width: '100%',

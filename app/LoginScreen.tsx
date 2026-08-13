@@ -59,20 +59,6 @@ export function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Brand Espiral Background Watermark (Top Right) */}
-      <Image
-        source={{ uri: ESPIRAL_BASE64 }}
-        style={styles.bgEspiralTop}
-        resizeMode="contain"
-      />
-
-      {/* Brand Espiral Background Watermark (Bottom Left) */}
-      <Image
-        source={{ uri: ESPIRAL_BASE64 }}
-        style={styles.bgEspiralBottom}
-        resizeMode="contain"
-      />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -178,7 +164,7 @@ export function LoginScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={['rgba(184, 123, 90, 0.95)', 'rgba(139, 90, 60, 0.95)']}
+                  colors={['#CD9B46', '#9E722C']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
