@@ -48,8 +48,9 @@ The app uses a **manual navigation pattern** (not Expo Router for screens). `ind
 
 Defined in `lib/designTokens.ts` and documented in `docs/DESIGN_GUIDE.md`. Key rules:
 
-- **Dark glassmorphism** aesthetic — use `tokens.colors.*` for all colors, never hardcode
-- **Typography**: Instrument Sans (body) and JetBrains Mono (numbers/code). Use `components/Text.tsx` (`AppText`) instead of RN's `Text`
+- **Brand palette** (Caoba brand manual): `#140906` deep espresso, `#CD9B46` Caoba Gold, `#EEDDC0` cream. Use `tokens.colors.*` for all colors, never hardcode. Text on a solid gold surface must be `tokens.colors.onGold` — cream on gold is only 1.88:1
+- **Typography**: Parkinsans (brand font, all UI text) and JetBrains Mono (numbers/code). Use `components/Text.tsx` (`AppText`) instead of RN's `Text` — its `fontMap` is the single source of truth for what actually renders, and it overrides any `fontFamily` passed via style
+- **Brand marks**: render espiral/flor/logo motifs through `components/BrandMark.tsx`. They are SVG data URIs, and RN's `Image` cannot decode SVG on iOS/Android — `BrandMark` routes them through `expo-image`, which can
 - **Lists**: Always use `@shopify/flash-list` with `estimatedItemSize`, never `FlatList`
 - **Loading states**: Use `SkeletonItem` component, never spinners or empty screens
 - **Borders over shadows**: Prefer subtle borders (`rgba(255,255,255,0.06)`) and linear gradients over shadows

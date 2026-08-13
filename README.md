@@ -43,14 +43,15 @@ Designed with a tablet-first mindset, all layout margins, paddings, and font siz
 Caoba POS is built around the **Glassmorphism Dark UI** guidelines located in [docs/DESIGN_GUIDE.md](file:///g:/Projects/CaobaPOS/CaobaPOS/docs/DESIGN_GUIDE.md).
 
 ### Colors
-* **Obsidian (`#0A0A0C`):** Base background.
-* **Graphite (`#141416`):** Secondary cards and sheets.
-* **Mahogany (`#B87B5A`):** Call-to-action primary brand color.
+* **Deep Espresso (`#140906`):** Base background.
+* **Graphite (`#1C110C`):** Secondary cards and sheets.
+* **Caoba Gold (`#CD9B46`):** Call-to-action primary brand color.
+* **Cream (`#EEDDC0`):** Warm secondary text.
 * **Sage (`#6DB88A`):** Success, active inventory, and gains.
 * **Coral (`#C96B6B`):** Danger, deletions, and empty inventory.
 
 ### Typography
-* UI Copy: **Instrument Sans** (via `components/Text.tsx` `AppText` component).
+* UI Copy: **Parkinsans** — the official brand typeface (via `components/Text.tsx` `AppText` component).
 * Numbers & Prices: **JetBrains Mono** (via `components/PriceDisplay.tsx`).
 
 ---
