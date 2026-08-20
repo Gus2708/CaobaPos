@@ -571,13 +571,13 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
           <View style={styles.headerIconCircle}>
-            <Icon name="history" size={24} color={tokens.colors.mahogany} />
+            <Icon name="history" size={20} color={tokens.colors.mahogany} />
           </View>
-          <View style={{ flex: 1, gap: scale(4), marginRight: scale(12) }}>
-            <Text style={styles.headerLabel}>Actividad reciente</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8), flexWrap: 'wrap' }}>
-              <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>Historial</Text>
-              <BrandMark motif="flor1" style={{ width: scale(20), height: scale(20) }} />
+          <View style={{ flex: 1, minWidth: 0, gap: verticalScale(2) }}>
+            <Text style={styles.headerLabel} numberOfLines={1}>Actividad reciente</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6), flexShrink: 1 }}>
+              <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Historial</Text>
+              <BrandMark motif="flor1" style={{ width: scale(16), height: scale(16) }} />
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{filteredSales.length}</Text>
               </View>
@@ -591,7 +591,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                 {loadingTotal ? (
                   <ActivityIndicator size="small" color={tokens.colors.mahogany} />
                 ) : (
-                  <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit>
+                  <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                     $ {totalSum?.toLocaleString()}
                   </Text>
                 )}
@@ -924,12 +924,12 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(16),
+    gap: scale(10),
   },
   headerIconCircle: {
-    width: scale(52),
-    height: scale(52),
-    borderRadius: scale(16),
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(12),
     backgroundColor: tokens.colors.mahoganyDim,
     justifyContent: 'center',
     alignItems: 'center',
@@ -939,17 +939,17 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexShrink: 1,
+    flexShrink: 0,
   },
   headerStats: {
     alignItems: 'flex-end',
     backgroundColor: tokens.colors.surface,
-    paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(8),
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
     borderRadius: tokens.radius.md,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
-    minWidth: scale(90),
+    minWidth: scale(80),
   },
   statsLabel: {
     fontFamily: FontNames.parkinsans,
@@ -957,18 +957,18 @@ const styles = StyleSheet.create({
     color: tokens.colors.textMuted,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: verticalScale(2),
+    letterSpacing: 0.5,
+    marginBottom: verticalScale(1),
   },
   statsValue: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(14),
     color: tokens.colors.sage,
     fontWeight: '800',
   },
   title: { 
     fontFamily: FontNames.parkinsans, 
-    fontSize: moderateScale(32), 
+    fontSize: moderateScale(22), 
     color: tokens.colors.text, 
     fontWeight: '800',
     letterSpacing: scale(-0.5),

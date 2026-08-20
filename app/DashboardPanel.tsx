@@ -410,7 +410,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       
       <View style={styles.header}>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.title}>Dashboard</Text>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Dashboard</Text>
           <View style={styles.headerBadge}>
             <View style={styles.statusDot} />
             <Text style={styles.headerBadgeText}>Live</Text>
@@ -423,8 +423,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           accessibilityRole="button"
           accessibilityLabel="Descargar reporte PDF del periodo actual"
         >
-          <Icon name="file-pdf" size={20} color={tokens.colors.mahogany} />
-          <Text style={styles.downloadBtnText}>Reporte PDF</Text>
+          <Icon name="file-pdf" size={16} color={tokens.colors.mahogany} />
+          <Text style={styles.downloadBtnText} numberOfLines={1}>Reporte PDF</Text>
         </TouchableOpacity>
       </View>
 
@@ -695,13 +695,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(24),
-    flexWrap: 'wrap',
-    gap: scale(12),
+    marginBottom: verticalScale(20),
+    gap: scale(8),
   },
   title: { 
     fontFamily: FontNames.parkinsans, 
-    fontSize: moderateScale(28), 
+    fontSize: moderateScale(22), 
     color: tokens.colors.text, 
     fontWeight: '800',
     flexShrink: 1,
@@ -710,22 +709,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(8),
-    flexWrap: 'wrap',
+    flex: 1,
+    minWidth: 0,
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(8),
-    paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(8),
+    gap: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
     borderRadius: tokens.radius.pill,
     backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
+    flexShrink: 0,
   },
   downloadBtnText: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(12),
+    fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.mahogany,
   },
