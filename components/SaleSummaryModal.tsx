@@ -22,6 +22,7 @@ interface SaleSummaryModalProps {
   paymentMethod: string;
   exchangeRate?: number;
   totalAmountBs?: number;
+  employeeName?: string;
   onClose: () => void;
 }
 
@@ -35,6 +36,7 @@ export function SaleSummaryModal({
   paymentMethod,
   exchangeRate: propExchangeRate,
   totalAmountBs: propTotalAmountBs,
+  employeeName,
   onClose,
 }: SaleSummaryModalProps) {
   const [loading, setLoading] = useState(false);
@@ -71,6 +73,7 @@ export function SaleSummaryModal({
         paymentMethod: getPaymentLabel(paymentMethod),
         exchangeRate,
         totalAmountBs,
+        employeeName,
       };
 
       await shareReceiptPDF(receiptData);
@@ -102,6 +105,11 @@ export function SaleSummaryModal({
             </View>
             <Text style={styles.headerTitle}>¡Venta Realizada!</Text>
             <Text style={styles.receiptId}>Folio: {saleId.slice(0, 8).toUpperCase()}</Text>
+            {employeeName && (
+              <Text style={[styles.receiptId, { color: tokens.colors.mahogany, marginTop: verticalScale(4), fontWeight: '700' }]}>
+                Atendido por: {employeeName}
+              </Text>
+            )}
           </View>
 
           <View style={styles.content}>

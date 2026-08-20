@@ -150,6 +150,9 @@ async function processSingleItem(item: OfflineQueueItem): Promise<void> {
           status,
           iva_enabled: ivaEnabled || false,
           tax_amount: taxAmount || 0,
+          created_by: item.payload.createdBy || null,
+          employee_name: item.payload.employeeName || null,
+          created_by_email: item.payload.createdByEmail || null,
         })
         .select()
         .single();

@@ -19,6 +19,7 @@ export interface ReceiptData {
   paymentMethod: string;
   exchangeRate?: number;
   totalAmountBs?: number;
+  employeeName?: string;
 }
 
 const getPaymentLabel = (method: string) => {
@@ -76,11 +77,17 @@ export const generateReceiptHTML = (data: ReceiptData) => {
           .receipt-info { 
             display: flex; 
             justify-content: space-between; 
-            margin-bottom: 25px; 
+            margin-bottom: ${data.employeeName ? '10px' : '25px'}; 
             padding-bottom: 15px;
             border-bottom: 1px solid ${BORDER_COLOR};
             font-size: 11px;
             color: ${MUTED_COLOR};
+          }
+          .employee-info {
+            margin-bottom: 20px;
+            font-size: 11px;
+            color: ${MUTED_COLOR};
+            font-weight: 600;
           }
           .folio { font-family: "Courier New", Courier, monospace; font-weight: 700; color: ${TEXT_COLOR}; }
 
@@ -136,6 +143,7 @@ export const generateReceiptHTML = (data: ReceiptData) => {
           <div>FECHA: ${data.date}</div>
           <div>FOLIO: <span class="folio">${data.saleId.slice(0, 8).toUpperCase()}</span></div>
         </div>
+        ${data.employeeName ? `<div class="employee-info">ATENDIDO POR: <strong style="color: ${TEXT_COLOR};">${data.employeeName.toUpperCase()}</strong></div>` : ''}
         
         <table>
           ${itemsHTML}
