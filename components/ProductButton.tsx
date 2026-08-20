@@ -230,13 +230,12 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             <View style={styles.info}>
               <Text
                 style={[styles.name, isOutOfStock && styles.nameDisabled]}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {product.name}
               </Text>
-              <View style={styles.itemMeta}>
+              <View style={styles.priceAndStockRow}>
                 <View style={styles.priceContainer}>
                   <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
                     ${product.price.toFixed(2)}
@@ -331,13 +330,12 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         <View style={styles.info}>
           <Text
             style={[styles.name, isOutOfStock && styles.nameDisabled]}
-            numberOfLines={2}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {product.name}
           </Text>
-          <View style={styles.itemMeta}>
+          <View style={styles.priceAndStockRow}>
             <View style={styles.priceContainer}>
               <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
                 ${product.price.toFixed(2)}
@@ -451,21 +449,21 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
-    gap: verticalScale(4),
+    justifyContent: 'center',
+    gap: verticalScale(2),
   },
-  itemMeta: {
+  priceAndStockRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: scale(10),
-    rowGap: verticalScale(4),
+    marginTop: verticalScale(2),
   },
   stockDotRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
+    gap: scale(5),
     paddingHorizontal: scale(8),
-    paddingVertical: verticalScale(2),
+    paddingVertical: verticalScale(2.5),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
@@ -482,7 +480,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(15),
     fontWeight: '700',
     color: tokens.colors.text,
   },
@@ -497,17 +495,18 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(15),
     fontWeight: '800',
     color: tokens.colors.amberGold, // Gold/Amber for premium feel
+    lineHeight: moderateScale(18),
   },
   priceBs: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(11),
     fontWeight: '600',
     color: tokens.colors.textMuted,
+    lineHeight: moderateScale(14),
   },
   priceContainer: {
     flexDirection: 'column',
     justifyContent: 'center',
-    gap: verticalScale(1),
   },
   priceDisabled: {
     color: tokens.colors.textDim,
