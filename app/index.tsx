@@ -349,7 +349,7 @@ export function POSScreen() {
               numColumns={numColumns}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
-              estimatedItemSize={ITEM_HEIGHT}
+              estimatedItemSize={isMobile ? verticalScale(100) : verticalScale(260)}
               keyboardShouldPersistTaps="handled"
               onScroll={Animated.event(
                 [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
@@ -527,6 +527,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(16),
   },
   productItem: {
+    flex: 1,
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(8),
   },

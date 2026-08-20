@@ -110,12 +110,21 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 </View>
               )}
               
-              {/* Original stock badge */}
-              <View style={[styles.stockBadge, { backgroundColor: `${stockColor}18` }]}>
-                <Text style={[styles.stockText, { color: stockColor }]}>
-                  {isOutOfStock ? '×' : product.stock_quantity}
-                </Text>
-              </View>
+              {/* Out of stock dark overlay */}
+              {isOutOfStock ? (
+                <View style={styles.cardOutOfStockOverlay}>
+                  <View style={styles.outOfStockPill}>
+                    <Text style={styles.outOfStockPillText}>AGOTADO</Text>
+                  </View>
+                </View>
+              ) : (
+                /* Original stock badge */
+                <View style={[styles.stockBadge, { backgroundColor: `${stockColor}18` }]}>
+                  <Text style={[styles.stockText, { color: stockColor }]}>
+                    {product.stock_quantity}
+                  </Text>
+                </View>
+              )}
 
               {/* Floating premium quantity badge on top right */}
               {hasQuantity && (
@@ -133,7 +142,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
                   ${product.price.toFixed(2)}
                 </Text>
-                <Text style={[styles.cardPriceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+                <Text style={[styles.cardPriceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                   {formatBs(product.price)}
                 </Text>
               </View>
@@ -226,7 +235,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                   <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
                     ${product.price.toFixed(2)}
                   </Text>
-                  <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+                  <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                     {formatBs(product.price)}
                   </Text>
                 </View>
@@ -309,6 +318,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               </Text>
             </View>
           )}
+          {isOutOfStock && <View style={styles.imageOutOfStockDim} />}
         </View>
 
         {/* Right — info */}
@@ -326,27 +336,40 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
                 ${product.price.toFixed(2)}
               </Text>
-              <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+              <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {formatBs(product.price)}
               </Text>
             </View>
             <View style={[
               styles.stockDotRow, 
-              { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
+              { 
+                backgroundColor: isOutOfStock 
+                  ? 'rgba(201, 107, 107, 0.15)' 
+                  : product.stock_quantity < 10 
+                  ? tokens.colors.coralDim 
+                  : 'rgba(255,255,255,0.05)' 
+              }
             ]}>
                <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
-               <Text style={[styles.itemStockText, { color: product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>
-                 {product.stock_quantity} uds
+               <Text style={[
+                 styles.itemStockText, 
+                 { color: isOutOfStock ? tokens.colors.coral : product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }
+               ]}>
+                 {isOutOfStock ? 'Sin stock' : `${product.stock_quantity} uds`}
                </Text>
             </View>
           </View>
         </View>
 
-        {/* Action Icon */}
+        {/* Action Icon or Out of Stock indicator */}
         <View style={styles.actionSection}>
-          {!isOutOfStock && (
+          {!isOutOfStock ? (
             <View style={styles.addBtn}>
               <Icon name="plus" size={24} color="rgba(255, 255, 255, 0.7)" />
+            </View>
+          ) : (
+            <View style={styles.mobileOutOfStockPill}>
+              <Text style={styles.mobileOutOfStockPillText}>Agotado</Text>
             </View>
           )}
         </View>
@@ -561,12 +584,15 @@ const styles = StyleSheet.create({
   cardInfo: {
     padding: scale(12),
     gap: verticalScale(6),
+    minHeight: verticalScale(96),
+    justifyContent: 'space-between',
   },
   cardName: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,
+    minHeight: verticalScale(36),
   },
   cardPrice: {
     fontFamily: FontNames.jetBrainsMono,
@@ -583,6 +609,45 @@ const styles = StyleSheet.create({
   cardPriceContainer: {
     flexDirection: 'column',
     gap: verticalScale(2),
+  },
+  cardOutOfStockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 8, 6, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockPill: {
+    backgroundColor: tokens.colors.coral,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  outOfStockPillText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(11),
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  imageOutOfStockDim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 8, 6, 0.55)',
+  },
+  mobileOutOfStockPill: {
+    backgroundColor: 'rgba(201, 107, 107, 0.15)',
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 107, 107, 0.4)',
+  },
+  mobileOutOfStockPillText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(11),
+    fontWeight: '800',
+    color: tokens.colors.coral,
   },
   stockBadge: {
     position: 'absolute',
