@@ -261,7 +261,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <View style={styles.summaryValueContainer}>
               <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
-              <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(toBs(subtotal))}</Text>
+              <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(subtotal)}</Text>
             </View>
           </View>
 
@@ -280,7 +280,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
                 ${tax.toFixed(2)}
               </Text>
-              {ivaEnabled && <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(toBs(tax))}</Text>}
+              {ivaEnabled && <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(tax)}</Text>}
             </View>
           </PressableScale>
         </Animated.View>
