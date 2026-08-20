@@ -43,6 +43,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'coffee': { lib: 'fontawesome', iconName: 'coffee' },
   'ice-cream': { lib: 'fontawesome', iconName: 'ice-cream' },
   'bread-slice': { lib: 'fontawesome', iconName: 'bread-slice' },
+  'birthday-cake': { lib: 'fontawesome', iconName: 'birthday-cake' },
   'glass-martini': { lib: 'fontawesome', iconName: 'glass-martini-alt' },
   'cookie-bite': { lib: 'fontawesome', iconName: 'cookie-bite' },
   'filter': { lib: 'fontawesome', iconName: 'filter' },

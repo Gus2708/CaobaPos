@@ -37,6 +37,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   drinks: 'glass-martini',
   panaderia: 'bread-slice',
   bakery: 'bread-slice',
+  tortas: 'birthday-cake',
+  cakes: 'birthday-cake',
 };
 
 function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
