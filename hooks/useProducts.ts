@@ -108,6 +108,8 @@ export function useCreateSale() {
       clientId,
       ivaEnabled,
       taxAmount,
+      exchangeRate,
+      totalAmountBs,
     }: {
       totalAmount: number;
       paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
@@ -121,6 +123,8 @@ export function useCreateSale() {
       clientId?: string;
       ivaEnabled?: boolean;
       taxAmount?: number;
+      exchangeRate?: number;
+      totalAmountBs?: number;
     }) => {
       const isOnline = getIsOnline();
 
@@ -132,6 +136,8 @@ export function useCreateSale() {
           clientId,
           ivaEnabled,
           taxAmount,
+          exchangeRate,
+          totalAmountBs,
         });
       }
 
@@ -163,6 +169,8 @@ export function useCreateSale() {
           .from('sales')
           .insert({
             total_amount: totalAmount,
+            exchange_rate: exchangeRate || 1.0,
+            total_amount_bs: totalAmountBs || totalAmount,
             payment_method: paymentMethod,
             client_id: clientId || null,
             status,
@@ -250,6 +258,8 @@ async function processOfflineSale(payload: {
   clientId?: string;
   ivaEnabled?: boolean;
   taxAmount?: number;
+  exchangeRate?: number;
+  totalAmountBs?: number;
 }) {
   const offlineSaleId = 'offline-' + Date.now();
   const status = payload.paymentMethod === 'credito' ? 'pending_payment' : 'paid';
@@ -268,6 +278,8 @@ async function processOfflineSale(payload: {
     id: offlineSaleId,
     created_at: new Date().toISOString(),
     total_amount: payload.totalAmount,
+    exchange_rate: payload.exchangeRate || 1.0,
+    total_amount_bs: payload.totalAmountBs || payload.totalAmount,
     payment_method: payload.paymentMethod,
     client_id: payload.clientId || null,
     status,
