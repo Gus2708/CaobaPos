@@ -483,6 +483,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
           <View style={styles.financialGrid}>
             <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
+            <BrandMark motif="espiral" style={styles.cardWatermarkEspiral} />
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel}>Total Facturado (con IVA)</Text>
               <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>

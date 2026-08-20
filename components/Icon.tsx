@@ -28,6 +28,8 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'chart-bar': { lib: 'fontawesome', iconName: 'chart-bar' },
   'chart-line': { lib: 'fontawesome', iconName: 'chart-line' },
   'chart-pie': { lib: 'fontawesome', iconName: 'chart-pie' },
+  'balance-scale': { lib: 'fontawesome', iconName: 'balance-scale' },
+  'scale': { lib: 'fontawesome', iconName: 'balance-scale' },
   'exclamation-triangle': { lib: 'fontawesome', iconName: 'exclamation-triangle' },
   'trending-up': { lib: 'fontawesome', iconName: 'chart-line' },
   'history': { lib: 'fontawesome', iconName: 'history' },
