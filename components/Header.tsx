@@ -1,4 +1,5 @@
 import { View, StyleSheet, Platform, StatusBar, Image, TouchableOpacity, Modal, Animated as RNAnimated, Dimensions } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import { useState, useRef, useEffect } from 'react';
@@ -8,7 +9,7 @@ import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
-import { usePressAnimation } from '../hooks/usePressAnimation';
+import { PressableScale } from './PressableScale';
 import { useAuth } from '../hooks/useAuth';
 import { useExchangeRate } from '../hooks/useExchangeRate';
 import { ExchangeRateModal } from './ExchangeRateModal';
@@ -34,8 +35,6 @@ interface MenuItemRowProps {
 }
 
 function MenuItemRow({ tab, index, isActive, menuAnim, onPress }: MenuItemRowProps) {
-  const { scale: pressScale, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
-
   const itemAnim = menuAnim.interpolate({
     inputRange: [0, Math.min(0.4 + index * 0.12, 0.95), 1],
     outputRange: [0, 0, 1],
@@ -50,15 +49,13 @@ function MenuItemRow({ tab, index, isActive, menuAnim, onPress }: MenuItemRowPro
     <RNAnimated.View
       style={{
         opacity: itemAnim,
-        transform: [{ translateY: itemTranslate }, { scale: pressScale }],
+        transform: [{ translateY: itemTranslate }],
       }}
     >
-      <TouchableOpacity
+      <PressableScale
         style={[styles.menuItem, isActive && styles.menuItemActive]}
         onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        activeOpacity={0.9}
+        scaleTo={0.97}
       >
         <View style={[styles.iconBox, isActive && styles.iconBoxActive]}>
           <Icon
@@ -76,7 +73,7 @@ function MenuItemRow({ tab, index, isActive, menuAnim, onPress }: MenuItemRowPro
           </Text>
         </View>
         {isActive && <View style={styles.activeDot} />}
-      </TouchableOpacity>
+      </PressableScale>
     </RNAnimated.View>
   );
 }
@@ -99,19 +96,20 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const toggleMenu = () => {
     const toValue = isMenuOpen ? 0 : 1;
     if (!isMenuOpen) setIsMenuOpen(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     RNAnimated.parallel([
       RNAnimated.spring(menuAnim, {
         toValue,
         useNativeDriver: true,
-        tension: 60,
-        friction: 10,
+        tension: 240,
+        friction: 18,
       }),
       RNAnimated.spring(toggleAnim, {
         toValue,
         useNativeDriver: true,
-        tension: 120,
-        friction: 11,
+        tension: 260,
+        friction: 18,
       }),
     ]).start(() => {
       if (isMenuOpen) setIsMenuOpen(false);

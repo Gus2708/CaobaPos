@@ -1,4 +1,5 @@
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Text } from './components/Text';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -55,16 +56,18 @@ export default function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <FontLoader>
-          <StatusBar style="light" />
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </FontLoader>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <FontLoader>
+            <StatusBar style="light" />
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </FontLoader>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

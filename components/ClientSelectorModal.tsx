@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import { AppBlurView as BlurView } from './AppBlurView';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   View, 
   Modal, 
@@ -9,13 +8,21 @@ import {
   ActivityIndicator, 
   KeyboardAvoidingView, 
   Platform,
-  Animated,
-  PanResponder,
   Dimensions,
   ScrollView
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  Extrapolation,
+  useReducedMotion,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
+import * as Haptics from 'expo-haptics';
 import { FlashList } from '@shopify/flash-list';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import { Icon } from './Icon';
@@ -23,6 +30,7 @@ import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useClients, useCreateClient, ClientBalance } from '../hooks/useClients';
+import { PressableScale } from './PressableScale';
 
 interface ClientSelectorModalProps {
   visible: boolean;
@@ -30,81 +38,111 @@ interface ClientSelectorModalProps {
   onSelectClient: (client: ClientBalance) => void;
 }
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const MIN_MODAL_HEIGHT = SCREEN_HEIGHT * 0.88;
-const MAX_MODAL_HEIGHT = SCREEN_HEIGHT * 0.88; 
-const MODAL_TOP_RADIUS = tokens.radius.xl;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const SHEET_HEIGHT = SCREEN_HEIGHT * 0.85;
+
+// Momentum projection: where the finger would come to rest
+function project(velocity: number, decelerationRate = 0.998) {
+  'worklet';
+  return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
+}
+
+// Rubber-banding: progressive resistance past the top boundary
+function rubberband(overshoot: number, dimension: number, constant = 0.55) {
+  'worklet';
+  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+}
 
 export function ClientSelectorModal({ visible, onClose, onSelectClient }: ClientSelectorModalProps) {
   const insets = useSafeAreaInsets();
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
+  const reducedMotion = useReducedMotion();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
 
-  // Expandable Logic
-  const currentHeight = React.useRef(MIN_MODAL_HEIGHT);
-  const heightAnim = React.useRef(new Animated.Value(MIN_MODAL_HEIGHT)).current;
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Reanimated UI-thread shared values
+  const translateY = useSharedValue(SHEET_HEIGHT);
+  const context = useSharedValue(0);
 
-  React.useEffect(() => {
-    const listenerId = heightAnim.addListener(({ value }) => {
-      currentHeight.current = value;
-    });
-    return () => heightAnim.removeListener(listenerId);
-  }, []);
-
-  const panResponder = React.useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        const newHeight = currentHeight.current - gestureState.dy;
-        if (newHeight >= MIN_MODAL_HEIGHT && newHeight <= MAX_MODAL_HEIGHT) {
-          heightAnim.setValue(newHeight);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -50 || (currentHeight.current > (MIN_MODAL_HEIGHT + MAX_MODAL_HEIGHT) * 0.6 && gestureState.dy < 0)) {
-          // Expand
-          Animated.spring(heightAnim, {
-            toValue: MAX_MODAL_HEIGHT,
-            useNativeDriver: false,
-            ...tokens.animation.spring,
-          }).start(() => setIsExpanded(true));
-        } else if (gestureState.dy > 50 || currentHeight.current < (MIN_MODAL_HEIGHT + MAX_MODAL_HEIGHT) * 0.4) {
-          // Collapse
-          Animated.spring(heightAnim, {
-            toValue: MIN_MODAL_HEIGHT,
-            useNativeDriver: false,
-            ...tokens.animation.spring,
-          }).start(() => setIsExpanded(false));
-        }
-      },
-    })
-  ).current;
-
-  // Sync visible state
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
-      Animated.spring(heightAnim, {
-        toValue: MIN_MODAL_HEIGHT,
-        useNativeDriver: false,
-        ...tokens.animation.spring,
-      }).start();
-      setIsExpanded(false);
+      if (reducedMotion) {
+        translateY.set(0);
+      } else {
+        translateY.set(
+          withSpring(0, {
+            duration: tokens.animation.springs.sheet.duration,
+            dampingRatio: tokens.animation.springs.sheet.dampingRatio,
+          })
+        );
+      }
+    } else {
+      translateY.set(SHEET_HEIGHT);
     }
-  }, [visible]);
+  }, [visible, reducedMotion]);
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY([-10, 10])
+        .onStart(() => {
+          'worklet';
+          context.set(translateY.get());
+        })
+        .onUpdate((e) => {
+          'worklet';
+          const next = context.get() + e.translationY;
+          translateY.set(next >= 0 ? next : rubberband(next, SHEET_HEIGHT));
+        })
+        .onEnd((e) => {
+          'worklet';
+          const projected = translateY.get() + project(e.velocityY);
+          if (projected > SHEET_HEIGHT * 0.35 || e.velocityY > 500) {
+            translateY.set(
+              withSpring(
+                SHEET_HEIGHT,
+                {
+                  duration: 300,
+                  dampingRatio: 1,
+                  velocity: e.velocityY,
+                  overshootClamping: true,
+                },
+                (finished) => {
+                  if (finished) scheduleOnRN(onClose);
+                }
+              )
+            );
+          } else {
+            translateY.set(
+              withSpring(0, {
+                duration: 300,
+                dampingRatio: 0.8,
+                velocity: e.velocityY,
+              })
+            );
+            scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Light);
+          }
+        }),
+    [onClose]
+  );
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.get() }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(translateY.get(), [0, SHEET_HEIGHT], [1, 0], Extrapolation.CLAMP),
+  }));
 
   const filteredClients = useMemo(() => {
     if (!clients) return [];
     if (!searchQuery.trim()) return clients;
     
     const searchLower = searchQuery.toLowerCase().trim();
-    // Simple normalization for accent-insensitive search if desired
     const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const normalizedSearch = normalize(searchLower);
 
@@ -118,7 +156,6 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
     if (!newName.trim()) return;
     try {
       const newClient = await createClient.mutateAsync({ name: newName.trim(), phone: newPhone.trim() });
-      // Construct a ClientBalance fallback for immediately using the new client
       onSelectClient({
         ...newClient,
         total_credit_sales: 0,
@@ -135,13 +172,14 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
   };
 
   const renderClient = React.useCallback(({ item }: { item: ClientBalance }) => (
-    <TouchableOpacity
+    <PressableScale
       style={styles.clientItem}
       onPress={() => {
         onSelectClient(item);
         onClose();
       }}
-      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Seleccionar cliente ${item.name}`}
     >
       <View style={styles.clientAvatar}>
         <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
@@ -156,29 +194,31 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
         </View>
       )}
       <Icon name="chevron-right" size={16} color={tokens.colors.borderLight} />
-    </TouchableOpacity>
+    </PressableScale>
   ), [onSelectClient, onClose]);
+
+  if (!visible) return null;
 
   return (
     <Modal 
       visible={visible} 
-      animationType="slide" 
+      animationType="none" 
       transparent={true} 
       onRequestClose={onClose}
       statusBarTranslucent={true}
     >
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior="padding"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -50} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.overlay}>
+        <Animated.View style={[styles.overlay, backdropStyle]}>
           <TouchableOpacity style={styles.dismissArea} activeOpacity={1} onPress={onClose} />
           <Animated.View 
             style={[
               styles.modalContainer, 
+              sheetStyle,
               { 
-                height: heightAnim,
+                height: SHEET_HEIGHT,
                 paddingBottom: insets.bottom 
               }
             ]}
@@ -187,18 +227,20 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
             </View>
             
-            <View {...panResponder.panHandlers} style={styles.dragHandleContainer}>
-              <View style={styles.dragHandle} />
-            </View>
+            <GestureDetector gesture={pan}>
+              <View style={styles.dragHandleContainer}>
+                <View style={styles.dragHandle} />
+              </View>
+            </GestureDetector>
             <View style={styles.header}>
               <View style={styles.headerTop}>
                 <View>
                   <Text style={styles.title}>Seleccionar Cliente</Text>
                   <Text style={styles.subtitleCount}>{filteredClients.length} clientes encontrados</Text>
                 </View>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
+                <PressableScale onPress={onClose} style={styles.closeButton}>
                   <Icon name="close" size={24} color={tokens.colors.textDim} />
-                </TouchableOpacity>
+                </PressableScale>
               </View>
               
               {!isCreating && (
@@ -216,6 +258,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                 </View>
               )}
             </View>
+
 
             {isCreating ? (
               <ScrollView 
@@ -326,7 +369,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
               </>
             )}
           </Animated.View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
