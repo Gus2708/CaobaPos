@@ -235,24 +235,13 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               >
                 {product.name}
               </Text>
-              <View style={styles.priceAndStockRow}>
-                <View style={styles.priceContainer}>
-                  <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
-                    ${product.price.toFixed(2)}
-                  </Text>
-                  <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                    {formatBs(product.price)}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.stockDotRow, 
-                  { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
-                ]}>
-                   <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
-                   <Text style={[styles.itemStockText, { color: product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>
-                     {product.stock_quantity} uds
-                   </Text>
-                </View>
+              <View style={styles.priceContainer}>
+                <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                  {formatBs(product.price)}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -418,6 +407,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(14),
+    minWidth: 0,
   },
   imageWrapper: {
     width: scale(56),
@@ -449,6 +439,7 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
     gap: verticalScale(2),
   },
