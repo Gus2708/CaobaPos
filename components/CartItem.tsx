@@ -1,6 +1,14 @@
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+  useReducedMotion,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { Text } from './Text';
-import { memo, useRef, useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { CartItem as CartItemType } from '../store/cartStore';
 import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
@@ -19,6 +27,7 @@ interface CartItemProps {
 
 /**
  * Modern CartItem: glassmorphism surface with subtle gradients and clean typography.
+ * Emil Kowalski standards: Reanimated UI thread badge pop, subtle 0.97 scale feedback.
  */
 export const CartItemRow = memo(function CartItemRow({ 
   item, 
@@ -27,27 +36,42 @@ export const CartItemRow = memo(function CartItemRow({
   onRemove 
 }: CartItemProps) {
   const totalPrice = (item.price * item.quantity).toFixed(2);
-  const qtyScale = useRef(new Animated.Value(1)).current;
+  const qtyScale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   const { formatBs } = useExchangeRate();
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.spring(qtyScale, {
-        toValue: 1.25,
-        useNativeDriver: true,
-        ...tokens.animation.bump,
-      }),
-      Animated.spring(qtyScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        ...tokens.animation.pressOut,
-      }),
-    ]).start();
-  }, [item.quantity]);
+    if (!reducedMotion) {
+      qtyScale.set(
+        withSequence(
+          withSpring(1.2, { duration: 120, dampingRatio: 0.7 }),
+          withSpring(1, { duration: 180, dampingRatio: 0.8 })
+        )
+      );
+    }
+  }, [item.quantity, reducedMotion]);
+
+  const qtyAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: qtyScale.get() }],
+  }));
+
+  const handleIncrement = () => {
+    Haptics.selectionAsync();
+    onIncrement();
+  };
+
+  const handleDecrement = () => {
+    Haptics.selectionAsync();
+    onDecrement();
+  };
+
+  const handleRemove = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onRemove();
+  };
 
   return (
     <View style={styles.container}>
-      
       <View style={styles.itemIconCircle}>
         <BrandMark motif="flor2" style={styles.itemIconFlorWatermark} />
         <Text style={styles.itemInitial}>
@@ -64,22 +88,24 @@ export const CartItemRow = memo(function CartItemRow({
         <View style={styles.controls}>
           <PressableScale
             style={styles.button}
-            onPress={onDecrement}
-            scaleTo={0.85}
+            onPress={handleDecrement}
+            scaleTo={0.97}
+            accessibilityLabel={`Disminuir ${item.name}`}
           >
             <Icon name="minus" size={14} color={tokens.colors.text} />
           </PressableScale>
 
           <View style={styles.quantityContainer}>
-            <Animated.View style={{ transform: [{ scale: qtyScale }] }}>
+            <Animated.View style={qtyAnimatedStyle}>
               <Text style={styles.quantity}>{item.quantity}</Text>
             </Animated.View>
           </View>
 
           <PressableScale
             style={styles.button}
-            onPress={onIncrement}
-            scaleTo={0.85}
+            onPress={handleIncrement}
+            scaleTo={0.97}
+            accessibilityLabel={`Aumentar ${item.name}`}
           >
             <Icon name="plus" size={14} color={tokens.colors.text} />
           </PressableScale>
@@ -92,8 +118,9 @@ export const CartItemRow = memo(function CartItemRow({
           </View>
           <PressableScale
             style={styles.removeButton}
-            onPress={onRemove}
-            scaleTo={0.88}
+            onPress={handleRemove}
+            scaleTo={0.97}
+            accessibilityLabel={`Eliminar ${item.name} del carrito`}
           >
             <Icon name="trash" size={18} color={tokens.colors.coral} />
           </PressableScale>
@@ -102,6 +129,7 @@ export const CartItemRow = memo(function CartItemRow({
     </View>
   );
 });
+
 
 const styles = StyleSheet.create({
   container: {

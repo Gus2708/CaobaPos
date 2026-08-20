@@ -98,5 +98,76 @@ jest.mock(
   { virtual: true }
 );
 
+// Mock Expo Haptics
+jest.mock('expo-haptics', () => ({
+  selectionAsync: jest.fn().mockResolvedValue(undefined),
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
+
+// Mock react-native-gesture-handler
+jest.mock('react-native-gesture-handler', () => {
+  const { View } = require('react-native');
+  return {
+    GestureHandlerRootView: ({ children, ...props }: any) => {
+      const React = require('react');
+      return React.createElement(View, props, children);
+    },
+    GestureDetector: ({ children }: any) => children,
+    Gesture: {
+      Pan: () => {
+        const pan: any = {
+          activeOffsetY: () => pan,
+          activeOffsetX: () => pan,
+          onStart: () => pan,
+          onUpdate: () => pan,
+          onEnd: () => pan,
+        };
+        return pan;
+      },
+    },
+  };
+});
+
+// Mock react-native-worklets
+jest.mock('react-native-worklets', () => ({
+  scheduleOnRN: (fn, ...args) => fn?.(...args),
+  createSerializable: (val) => val,
+  isWorkletFunction: () => false,
+  serializableMappingCache: new Map(),
+  runOnUI: (fn) => fn,
+  RuntimeKind: { JS: 0, UI: 1 },
+}));
+
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  Reanimated.default = Reanimated.default || Reanimated;
+  Reanimated.useReducedMotion = jest.fn(() => false);
+  const mockBuilder = {
+    duration: () => mockBuilder,
+    easing: () => mockBuilder,
+    delay: () => mockBuilder,
+    springify: () => mockBuilder,
+  };
+  Reanimated.FadeIn = mockBuilder;
+  Reanimated.FadeOut = mockBuilder;
+  Reanimated.FadeInDown = mockBuilder;
+  Reanimated.FadeOutDown = mockBuilder;
+  Reanimated.LinearTransition = mockBuilder;
+  return Reanimated;
+});
+
 // Global mocks
 jest.mock('react-native/Libraries/Animated/animations/TimingAnimation');
+

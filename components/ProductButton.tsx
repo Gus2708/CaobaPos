@@ -1,6 +1,13 @@
-import React, { memo, useRef, useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 import { CachedImage } from './CachedImage';
-import { TouchableOpacity, StyleSheet, View, Animated, Image } from 'react-native';
+import { TouchableOpacity, StyleSheet, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withSpring,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { Product, useCartStore } from '../store/cartStore';
@@ -26,8 +33,9 @@ const isValidImageUrl = (url?: string): boolean => {
 function ProductButtonComponent({ product, onPress, compact = false }: ProductButtonProps) {
   const isLowStock = product.stock_quantity < 5;
   const isOutOfStock = product.stock_quantity <= 0;
-  const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
-  const badgeScale = useRef(new Animated.Value(1)).current;
+  const { animatedStyle: pressAnimatedStyle, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
+  const badgeScale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
   const { formatBs } = useExchangeRate();
 
   // Zustand Store integrations for active selection and inline quantity management
@@ -38,21 +46,19 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const hasQuantity = quantityInCart > 0;
 
   useEffect(() => {
-    if (quantityInCart > 0) {
-      Animated.sequence([
-        Animated.spring(badgeScale, {
-          toValue: 1.3,
-          useNativeDriver: true,
-          ...tokens.animation.bump,
-        }),
-        Animated.spring(badgeScale, {
-          toValue: 1,
-          useNativeDriver: true,
-          ...tokens.animation.pressOut,
-        }),
-      ]).start();
+    if (quantityInCart > 0 && !reducedMotion) {
+      badgeScale.set(
+        withSequence(
+          withSpring(1.25, { duration: 120, dampingRatio: 0.7 }),
+          withSpring(1, { duration: 180, dampingRatio: 0.8 })
+        )
+      );
     }
-  }, [quantityInCart]);
+  }, [quantityInCart, reducedMotion]);
+
+  const badgeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: badgeScale.get() }],
+  }));
 
   const handlePress = () => {
     if (isOutOfStock) return;
@@ -70,7 +76,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   if (compact) {
     // Tablet grid mode: vertical card
     return (
-      <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%', flex: 1 }}>
+      <Animated.View style={[pressAnimatedStyle, { width: '100%', flex: 1 }]}>
         <View 
           style={[
             styles.cardContainer, 
@@ -128,7 +134,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
 
               {/* Floating premium quantity badge on top right */}
               {hasQuantity && (
-                <Animated.View style={[styles.cardQuantityBadge, { transform: [{ scale: badgeScale }] }]}>
+                <Animated.View style={[styles.cardQuantityBadge, badgeAnimatedStyle]}>
                   <Text style={styles.cardQuantityBadgeText}>{quantityInCart}</Text>
                 </Animated.View>
               )}
@@ -179,7 +185,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   // Mobile list mode: horizontal row — clean card
   if (hasQuantity) {
     return (
-      <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
+      <Animated.View style={[pressAnimatedStyle, { width: '100%' }]}>
         <View style={[styles.container, styles.containerActive, isOutOfStock && styles.containerDisabled]}>
           <LinearGradient
             colors={gradientColors}
@@ -279,7 +285,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
 
   // Default horizontal row when not in cart
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '100%' }}>
+    <Animated.View style={[pressAnimatedStyle, { width: '100%' }]}>
       <TouchableOpacity
         style={[styles.container, isOutOfStock && styles.containerDisabled]}
         onPress={handlePress}

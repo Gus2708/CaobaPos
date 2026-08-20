@@ -10,7 +10,8 @@ import { Icon } from '../components/Icon';
 import { tokens } from '../lib/designTokens';
 import { generateReport } from '../lib/pdfReportGenerator';
 import { useToast } from '../components/Toast';
-import { SkeletonItem } from '../components/SkeletonItem';
+import { DashboardSkeleton } from '../components/DashboardSkeleton';
+import AnimatedReanimated, { FadeIn, Easing as ReanimatedEasing, useReducedMotion } from 'react-native-reanimated';
 import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
@@ -376,296 +377,297 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       }));
   }, [saleItems, products, filteredSales]);
 
+  const reducedMotion = useReducedMotion();
 
-
-  // Show skeleton while any core query is loading
+  // Show high-fidelity 1-to-1 structural skeleton while any core query is loading
   const isLoading = loadingSales || !saleItems || !products;
   if (isLoading) {
-    return (
-      <View style={[styles.container, { paddingTop: TOTAL_NAV_HEIGHT + verticalScale(16), paddingHorizontal: scale(16) }]}>
-        <SkeletonItem layout="card" count={6} />
-      </View>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
-      
-      <Animated.ScrollView 
-        showsVerticalScrollIndicator={false}
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
-        { useNativeDriver: true }
-      )}
-      scrollEventThrottle={16}
-      contentContainerStyle={[
-        styles.content, 
-        { 
-          paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), 
-          paddingBottom: verticalScale(100) + insets.bottom 
-        }
-      ]}
+    <AnimatedReanimated.View 
+      style={{ flex: 1 }} 
+      entering={reducedMotion ? undefined : FadeIn.duration(350).easing(ReanimatedEasing.bezier(0.23, 1, 0.32, 1))}
     >
-      
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
-          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Dashboard</Text>
-          <View style={styles.headerBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.headerBadgeText}>Live</Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.downloadBtn}
-          onPress={handleDownloadPDF}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Descargar reporte PDF del periodo actual"
-        >
-          <Icon name="file-pdf" size={16} color={tokens.colors.mahogany} />
-          <Text style={styles.downloadBtnText} numberOfLines={1}>Reporte PDF</Text>
-        </TouchableOpacity>
-      </View>
-
-      <PeriodSelector 
-        selected={period} 
-        onSelect={(p) => {
-          if (p === 'personalizado') {
-            setCustomModalVisible(true);
-          } else {
-            setPeriod(p);
-          }
-        }} 
-      />
-
-      <View style={styles.statsGrid}>
-        <StatCard 
-          label={`Ventas (${periodLabel})`} 
-          value={`${filteredSales.length}`} 
-          variant="accent"
-          icon="receipt"
-        />
-        <StatCard 
-          label={`Ganancia (${periodLabel})`} 
-          value={`$${currentMetrics.profit.toFixed(2)}`}
-          variant="profit"
-          icon="trending-up"
-          subtitle={`Margen: ${currentMetrics.margin.toFixed(1)}%`}
-        />
-      </View>
-
-      <View style={styles.statsGrid}>
-        <StatCard 
-          label={`Venta en BS (${periodLabel})`} 
-          value={`$${currentMetrics.bsRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
-          variant="default"
-          icon="mobile-alt"
-          subtitle="Ventas y Abonos (T/T)"
-        />
-        <StatCard 
-          label={`Caja Real (${periodLabel})`} 
-          value={`$${currentMetrics.receivedMoney.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
-          variant="success"
-          icon="money-bill"
-          subtitle="Ventas y Abonos (Efectivo)"
-        />
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.surface, borderColor: tokens.colors.borderLight }]}>
-            <Icon name="chart-pie" size={20} color={tokens.colors.sage} />
-          </View>
-          <Text style={styles.sectionTitle}>Resumen Financiero</Text>
-        </View>
-        <View style={styles.financialGrid}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-          <BrandMark motif="espiral" style={styles.cardWatermarkEspiral} />
-          <View style={styles.financialItem}>
-            <Text style={styles.financialLabel}>Ingreso Bruto (Ventas)</Text>
-            <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <View style={styles.financialItem}>
-            <View style={styles.labelWithBadge}>
-              <Text style={styles.financialLabel}>Efectivo/Caja Real</Text>
-              <View style={styles.receivedBadge}>
-                <Text style={styles.receivedBadgeText}>Recibido</Text>
-              </View>
-            </View>
-            <Text style={styles.financialValueReceived}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <View style={styles.financialItem}>
-            <View style={styles.labelWithBadge}>
-              <Text style={styles.financialLabel}>Tarjeta / Transferencia (BS)</Text>
-              <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.borderLight }]}>
-                <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
-              </View>
-            </View>
-            <Text style={styles.financialValue}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <View style={styles.financialItem}>
-            <Text style={styles.financialLabel}>Crédito Pendiente</Text>
-            <Text style={styles.financialValuePending}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <View style={styles.financialItem}>
-            <Text style={styles.financialLabel}>Costos Totales</Text>
-            <Text style={styles.financialValueCost}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-          <View style={[styles.financialItem, styles.financialItemHighlight]}>
-            <Text style={styles.financialLabelHighlight}>Ganancia Estimada</Text>
-            <Text style={styles.financialValueProfit}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
-            <Icon name="credit-card" size={20} color={tokens.colors.mahogany} />
-          </View>
-          <Text style={styles.sectionTitle}>Métodos de Pago</Text>
-        </View>
-        <View style={styles.statsGrid}>
-          <StatCard 
-            label="Efectivo"
-            value={paymentBreakdown.cash.toString()}
-            icon="money-bill"
-            onPress={() => { setSelectedMethod('cash'); setMethodModalVisible(true); }}
-          />
-          <StatCard 
-            label="Tarjeta"
-            value={paymentBreakdown.card.toString()}
-            icon="credit-card"
-            onPress={() => { setSelectedMethod('card'); setMethodModalVisible(true); }}
-          />
-        </View>
-        <View style={styles.statsGrid}>
-          <StatCard 
-            label="Transf."
-            value={paymentBreakdown.transfer.toString()}
-            icon="mobile-alt"
-            onPress={() => { setSelectedMethod('transfer'); setMethodModalVisible(true); }}
-          />
-          <StatCard 
-            label="Créditos"
-            value={paymentBreakdown.credito.toString()}
-            icon="user"
-            onPress={() => { setSelectedMethod('credito'); setMethodModalVisible(true); }}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
-            <Icon name="shopping-bag" size={20} color={tokens.colors.mahogany} />
-          </View>
-          <Text style={styles.sectionTitle}>Top Productos</Text>
-        </View>
-        <View style={styles.sectionCard}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-          {topProducts.length === 0 ? (
-            <Text style={styles.empty}>Sin datos</Text>
-          ) : (
-            topProducts.map((p, i) => (
-              <View key={i} style={styles.listItem}>
-                <View style={styles.listItemLeft}>
-                  <View style={styles.rankBadge}>
-                    <Text style={styles.rankText}>{i + 1}</Text>
-                  </View>
-                  <Text style={styles.listText}>{p.name}</Text>
-                </View>
-                <View style={styles.listValueContainer}>
-                  <Text style={styles.listValue}>{p.qty} uds</Text>
-                </View>
-              </View>
-            ))
+      <View style={styles.container}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.bg }]} />
+        
+        <Animated.ScrollView 
+          showsVerticalScrollIndicator={false}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: globalScrollY } } }],
+            { useNativeDriver: true }
           )}
+          scrollEventThrottle={16}
+          contentContainerStyle={[
+            styles.content, 
+            { 
+              paddingTop: TOTAL_NAV_HEIGHT + verticalScale(12), 
+              paddingBottom: verticalScale(100) + insets.bottom 
+            }
+          ]}
+        >
+        
+        <View style={styles.header}>
+          <View style={styles.headerTitleRow}>
+            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Dashboard</Text>
+            <View style={styles.headerBadge}>
+              <View style={styles.statusDot} />
+              <Text style={styles.headerBadgeText}>Live</Text>
+            </View>
+          </View>
+          <TouchableOpacity 
+            style={styles.downloadBtn}
+            onPress={handleDownloadPDF}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Descargar reporte PDF del periodo actual"
+          >
+            <Icon name="file-pdf" size={16} color={tokens.colors.mahogany} />
+            <Text style={styles.downloadBtnText} numberOfLines={1}>Reporte PDF</Text>
+          </TouchableOpacity>
         </View>
-      </View>
 
-      {lowStock.length > 0 && (
+        <PeriodSelector 
+          selected={period} 
+          onSelect={(p) => {
+            if (p === 'personalizado') {
+              setCustomModalVisible(true);
+            } else {
+              setPeriod(p);
+            }
+          }} 
+        />
+
+        <View style={styles.statsGrid}>
+          <StatCard 
+            label={`Ventas (${periodLabel})`} 
+            value={`${filteredSales.length}`} 
+            variant="accent"
+            icon="receipt"
+          />
+          <StatCard 
+            label={`Ganancia (${periodLabel})`} 
+            value={`$${currentMetrics.profit.toFixed(2)}`}
+            variant="profit"
+            icon="trending-up"
+            subtitle={`Margen: ${currentMetrics.margin.toFixed(1)}%`}
+          />
+        </View>
+
+        <View style={styles.statsGrid}>
+          <StatCard 
+            label={`Venta en BS (${periodLabel})`} 
+            value={`$${currentMetrics.bsRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+            variant="default"
+            icon="mobile-alt"
+            subtitle="Ventas y Abonos (T/T)"
+          />
+          <StatCard 
+            label={`Caja Real (${periodLabel})`} 
+            value={`$${currentMetrics.receivedMoney.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+            variant="success"
+            icon="money-bill"
+            subtitle="Ventas y Abonos (Efectivo)"
+          />
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-             <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.coralDim, borderColor: tokens.colors.coralDim }]}>
-              <Icon name="exclamation-triangle" size={20} color={tokens.colors.coral} />
+            <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+              <Icon name="balance-scale" size={20} color={tokens.colors.mahogany} />
             </View>
-            <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock Bajo</Text>
+            <Text style={styles.sectionTitle}>Balance Financiero</Text>
+          </View>
+
+          <View style={styles.financialGrid}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
+            <View style={styles.financialItem}>
+              <Text style={styles.financialLabel}>Total Facturado (con IVA)</Text>
+              <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={styles.financialItem}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6) }}>
+                <Text style={styles.financialLabel}>Efectivo (USD)</Text>
+                <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.sageDim, borderColor: tokens.colors.borderLight }]}>
+                  <Text style={[styles.receivedBadgeText, { color: tokens.colors.sage }]}>Caja</Text>
+                </View>
+              </View>
+              <Text style={styles.financialValueReceived}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={styles.financialItem}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6) }}>
+                <Text style={styles.financialLabel}>Tarjeta / Transferencia (BS)</Text>
+                <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.borderLight }]}>
+                  <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
+                </View>
+              </View>
+              <Text style={styles.financialValue}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={styles.financialItem}>
+              <Text style={styles.financialLabel}>Crédito Pendiente</Text>
+              <Text style={styles.financialValuePending}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={styles.financialItem}>
+              <Text style={styles.financialLabel}>Costos Totales</Text>
+              <Text style={styles.financialValueCost}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+            <View style={[styles.financialItem, styles.financialItemHighlight]}>
+              <Text style={styles.financialLabelHighlight}>Ganancia Estimada</Text>
+              <Text style={styles.financialValueProfit}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+             <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+              <Icon name="credit-card" size={20} color={tokens.colors.mahogany} />
+            </View>
+            <Text style={styles.sectionTitle}>Métodos de Pago</Text>
+          </View>
+          <View style={styles.statsGrid}>
+            <StatCard 
+              label="Efectivo"
+              value={paymentBreakdown.cash.toString()}
+              icon="money-bill"
+              onPress={() => { setSelectedMethod('cash'); setMethodModalVisible(true); }}
+            />
+            <StatCard 
+              label="Tarjeta"
+              value={paymentBreakdown.card.toString()}
+              icon="credit-card"
+              onPress={() => { setSelectedMethod('card'); setMethodModalVisible(true); }}
+            />
+          </View>
+          <View style={styles.statsGrid}>
+            <StatCard 
+              label="Transf."
+              value={paymentBreakdown.transfer.toString()}
+              icon="mobile-alt"
+              onPress={() => { setSelectedMethod('transfer'); setMethodModalVisible(true); }}
+            />
+            <StatCard 
+              label="Créditos"
+              value={paymentBreakdown.credito.toString()}
+              icon="user"
+              onPress={() => { setSelectedMethod('credito'); setMethodModalVisible(true); }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+             <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+              <Icon name="shopping-bag" size={20} color={tokens.colors.mahogany} />
+            </View>
+            <Text style={styles.sectionTitle}>Top Productos</Text>
           </View>
           <View style={styles.sectionCard}>
             <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-            {lowStock.map((p, i) => (
-              <View key={i} style={styles.listItem}>
-                <View style={styles.listItemLeft}>
-                   <View style={[styles.rankBadge, { backgroundColor: tokens.colors.coralDim }]}>
-                    <Icon name="box" size={16} color="#C96B6B" />
+            {topProducts.length === 0 ? (
+              <Text style={styles.empty}>Sin datos</Text>
+            ) : (
+              topProducts.map((p, i) => (
+                <View key={i} style={styles.listItem}>
+                  <View style={styles.listItemLeft}>
+                    <View style={styles.rankBadge}>
+                      <Text style={styles.rankText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.listText}>{p.name}</Text>
                   </View>
-                  <Text style={styles.listText}>{p.name}</Text>
+                  <View style={styles.listValueContainer}>
+                    <Text style={styles.listValue}>{p.qty} uds</Text>
+                  </View>
                 </View>
-                <View style={[styles.listValueContainer, { backgroundColor: tokens.colors.bg }]}>
-                  <Text style={[styles.listValue, { color: '#C96B6B' }]}>
-                    {p.stock_quantity} uds
-                  </Text>
+              ))
+            )}
+          </View>
+        </View>
+
+        {lowStock.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+               <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.coralDim, borderColor: tokens.colors.coralDim }]}>
+                <Icon name="exclamation-triangle" size={20} color={tokens.colors.coral} />
+              </View>
+              <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock Bajo</Text>
+            </View>
+            <View style={styles.sectionCard}>
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
+              {lowStock.map((p, i) => (
+                <View key={i} style={styles.listItem}>
+                  <View style={styles.listItemLeft}>
+                     <View style={[styles.rankBadge, { backgroundColor: tokens.colors.coralDim }]}>
+                      <Icon name="box" size={16} color="#C96B6B" />
+                    </View>
+                    <Text style={styles.listText}>{p.name}</Text>
+                  </View>
+                  <View style={[styles.listValueContainer, { backgroundColor: tokens.colors.bg }]}>
+                    <Text style={[styles.listValue, { color: '#C96B6B' }]}>
+                      {p.stock_quantity} uds
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+             <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
+              <Icon name="history" size={20} color={tokens.colors.mahogany} />
+            </View>
+            <Text style={styles.sectionTitle}>Ventas Recientes</Text>
+          </View>
+          <View style={styles.sectionCard}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
+            {(sales ?? []).slice(0, 10).map((sale) => (
+              <View key={sale.id} style={styles.saleItem}>
+                <View style={styles.saleLeft}>
+                  <Text style={styles.saleAmount}>${Number(sale.total_amount ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+                  <View style={styles.paymentBadge}>
+                    <Text style={styles.saleMethod}>{sale.payment_method}</Text>
+                  </View>
+                </View>
+                <View style={styles.saleRight}>
+                  <Text style={styles.saleDate}>{formatDate(sale.created_at)}</Text>
+                  <Text style={styles.saleTime}>{formatTime(sale.created_at)}</Text>
                 </View>
               </View>
             ))}
+            {(filteredSales ?? []).length === 0 && (
+              <Text style={styles.empty}>Sin ventas registradas</Text>
+            )}
           </View>
         </View>
-      )}
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-           <View style={[styles.sectionIcon, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.mahoganyDim }]}>
-            <Icon name="history" size={20} color={tokens.colors.mahogany} />
-          </View>
-          <Text style={styles.sectionTitle}>Ventas Recientes</Text>
-        </View>
-        <View style={styles.sectionCard}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-          {(sales ?? []).slice(0, 10).map((sale) => (
-            <View key={sale.id} style={styles.saleItem}>
-              <View style={styles.saleLeft}>
-                <Text style={styles.saleAmount}>${Number(sale.total_amount ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
-                <View style={styles.paymentBadge}>
-                  <Text style={styles.saleMethod}>{sale.payment_method}</Text>
-                </View>
-              </View>
-              <View style={styles.saleRight}>
-                <Text style={styles.saleDate}>{formatDate(sale.created_at)}</Text>
-                <Text style={styles.saleTime}>{formatTime(sale.created_at)}</Text>
-              </View>
-            </View>
-          ))}
-          {(filteredSales ?? []).length === 0 && (
-            <Text style={styles.empty}>Sin ventas registradas</Text>
-          )}
-        </View>
+        <PaymentDetailsModal 
+          visible={methodModalVisible}
+          onClose={() => setMethodModalVisible(false)}
+          method={selectedMethod}
+          periodLabel={periodLabel}
+          sales={filteredSales.filter(s => s.payment_method === selectedMethod)}
+          payments={(allPayments ?? []).filter(p => p.payment_method === selectedMethod)}
+        />
+
+        <CustomDateRangeModal 
+          visible={customModalVisible}
+          onClose={() => setCustomModalVisible(false)}
+          initialStartDate={startDate}
+          initialEndDate={endDate}
+          onConfirm={(s, e) => {
+            setStartDate(s);
+            setEndDate(e);
+            setPeriod('personalizado');
+            setCustomModalVisible(false);
+          }}
+        />
+      </Animated.ScrollView>
       </View>
-
-      <PaymentDetailsModal 
-        visible={methodModalVisible}
-        onClose={() => setMethodModalVisible(false)}
-        method={selectedMethod}
-        periodLabel={periodLabel}
-        sales={filteredSales.filter(s => s.payment_method === selectedMethod)}
-        payments={(allPayments ?? []).filter(p => p.payment_method === selectedMethod)}
-      />
-
-      <CustomDateRangeModal 
-        visible={customModalVisible}
-        onClose={() => setCustomModalVisible(false)}
-        initialStartDate={startDate}
-        initialEndDate={endDate}
-        onConfirm={(s, e) => {
-          setStartDate(s);
-          setEndDate(e);
-          setPeriod('personalizado');
-          setCustomModalVisible(false);
-        }}
-      />
-    </Animated.ScrollView>
-    </View>
+    </AnimatedReanimated.View>
   );
 });
 

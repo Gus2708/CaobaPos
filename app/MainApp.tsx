@@ -1,4 +1,4 @@
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verticalScale } from '../lib/responsive';
@@ -23,57 +23,15 @@ export default function MainApp() {
   const { role } = useAuth();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('pos');
-  const [displayScreen, setDisplayScreen] = useState<Screen>('pos');
-  const screenOpacity = useRef(new Animated.Value(1)).current;
-  const screenTranslateY = useRef(new Animated.Value(0)).current;
-  const isAnimating = useRef(false);
 
   const handleNavigate = useCallback((screen: Screen) => {
     if (screen === 'dashboard' && role !== 'admin') return;
-    if (screen === currentScreen || isAnimating.current) return;
-    isAnimating.current = true;
+    if (screen === currentScreen) return;
     setCurrentScreen(screen);
-
-    // Fade out + slide down 10px in parallel
-    Animated.parallel([
-      Animated.timing(screenOpacity, {
-        toValue: 0,
-        duration: 100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(screenTranslateY, {
-        toValue: 10,
-        duration: 100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setDisplayScreen(screen);
-      screenTranslateY.setValue(10);
-
-      // Fade in + slide up from 10px → 0 in parallel
-      Animated.parallel([
-        Animated.timing(screenOpacity, {
-          toValue: 1,
-          duration: 150,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(screenTranslateY, {
-          toValue: 0,
-          duration: 150,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        isAnimating.current = false;
-      });
-    });
-  }, [currentScreen, screenOpacity, screenTranslateY]);
+  }, [currentScreen, role]);
 
   const renderScreen = () => {
-    switch (displayScreen) {
+    switch (currentScreen) {
       case 'pos':
         return <POSScreen />;
       case 'dashboard':
@@ -131,9 +89,9 @@ export default function MainApp() {
             <OfflineBanner />
           </Animated.View>
 
-          <Animated.View style={[styles.screenWrapper, { opacity: screenOpacity, transform: [{ translateY: screenTranslateY }] }]}>
+          <View style={styles.screenWrapper}>
             {renderScreen()}
-          </Animated.View>
+          </View>
         </View>
       </View>
     </ToastProvider>

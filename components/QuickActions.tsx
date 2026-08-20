@@ -1,11 +1,12 @@
 import React, { memo } from 'react';
-import { TouchableOpacity, StyleSheet, Alert, View, Animated } from 'react-native';
+import { StyleSheet, Alert, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
-import { usePressAnimation } from '../hooks/usePressAnimation';
+import { PressableScale } from './PressableScale';
 
 interface QuickActionsProps {
   onClear: () => void;
@@ -14,64 +15,65 @@ interface QuickActionsProps {
 }
 
 export const QuickActions = memo(function QuickActions({ onClear, hasItems, compact }: QuickActionsProps) {
-  const { scale: pressScale, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.94 });
-
   const handleClear = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Limpiar Carrito',
       '¿Vaciar todos los productos del carrito?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpiar', style: 'destructive', onPress: onClear },
+        { 
+          text: 'Limpiar', 
+          style: 'destructive', 
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onClear();
+          }
+        },
       ]
     );
   };
 
   if (compact) {
     return (
-      <Animated.View style={{ transform: [{ scale: pressScale }] }}>
-        <TouchableOpacity
-          style={[styles.buttonCompact, !hasItems && styles.buttonDisabled]}
-          onPress={handleClear}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          disabled={!hasItems}
-          activeOpacity={0.85}
-        >
-          <Icon
-            name="trash"
-            size={26}
-            color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
-          />
-        </TouchableOpacity>
-      </Animated.View>
+      <PressableScale
+        style={[styles.buttonCompact, !hasItems && styles.buttonDisabled]}
+        onPress={handleClear}
+        disabled={!hasItems}
+        scaleTo={0.97}
+        accessibilityLabel="Limpiar carrito"
+      >
+        <Icon
+          name="trash"
+          size={26}
+          color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
+        />
+      </PressableScale>
     );
   }
 
   return (
-    <Animated.View style={{ transform: [{ scale: pressScale }] }}>
-      <TouchableOpacity
-        style={[styles.button, !hasItems && styles.buttonDisabled]}
-        onPress={handleClear}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        disabled={!hasItems}
-        activeOpacity={0.85}
-      >
-        <View style={styles.content}>
-          <Icon
-            name="trash"
-            size={22}
-            color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
-          />
-          <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
-            Limpiar Carrito
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
+    <PressableScale
+      style={[styles.button, !hasItems && styles.buttonDisabled]}
+      onPress={handleClear}
+      disabled={!hasItems}
+      scaleTo={0.97}
+      accessibilityLabel="Limpiar carrito"
+    >
+      <View style={styles.content}>
+        <Icon
+          name="trash"
+          size={22}
+          color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
+        />
+        <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
+          Limpiar Carrito
+        </Text>
+      </View>
+    </PressableScale>
   );
 });
+
 
 const styles = StyleSheet.create({
   button: {

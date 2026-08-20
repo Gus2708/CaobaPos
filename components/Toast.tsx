@@ -1,5 +1,19 @@
-import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { memo, useState, useCallback, useMemo, useEffect, createContext, useContext } from 'react';
+import { View, StyleSheet, Dimensions } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  Easing,
+  FadeInDown,
+  FadeOutDown,
+  useReducedMotion,
+  LinearTransition,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
@@ -44,6 +58,13 @@ const SYMBOLS = {
   info: 'i',
 };
 
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const TOAST_ENTER = FadeInDown.duration(300).easing(EASE_OUT);
+const TOAST_EXIT = FadeOutDown.duration(220).easing(EASE_OUT);
+const TOAST_LAYOUT = LinearTransition.duration(200).easing(EASE_OUT);
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const ToastItem = memo(function ToastItem({
   toast,
   onRemove,
@@ -51,93 +72,97 @@ const ToastItem = memo(function ToastItem({
   toast: Toast;
   onRemove: () => void;
 }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(24)).current;
-  const progressAnim = useRef(new Animated.Value(1)).current;
-
   const accentColor = ACCENT_COLORS[toast.type];
+  const progress = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    // Enter animation with fluid spring curve
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: tokens.animation.fast,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 180,
-        friction: 14,
-      }),
-    ]).start();
-
-    // Progress bar shrink (0-1)
-    Animated.timing(progressAnim, {
-      toValue: 0,
-      duration: 3200,
-      useNativeDriver: false,
-    }).start();
+    // 3.2s linear progress bar running on UI thread
+    progress.set(withTiming(0, { duration: 3200, easing: Easing.linear }));
 
     const timeout = setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: tokens.animation.fast,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 16,
-          duration: tokens.animation.fast,
-          useNativeDriver: true,
-        }),
-      ]).start(onRemove);
+      onRemove();
     }, 3200);
 
     return () => clearTimeout(timeout);
-  }, []);
+  }, [onRemove]);
 
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-10, 10])
+        .onUpdate((e) => {
+          'worklet';
+          translateX.set(e.translationX);
+        })
+        .onEnd((e) => {
+          'worklet';
+          if (Math.abs(e.translationX) > 80 || Math.abs(e.velocityX) > 400) {
+            translateX.set(
+              withTiming(
+                e.translationX > 0 ? SCREEN_WIDTH : -SCREEN_WIDTH,
+                { duration: 200, easing: EASE_OUT },
+                (finished) => {
+                  if (finished) scheduleOnRN(onRemove);
+                }
+              )
+            );
+          } else {
+            translateX.set(withSpring(0, { duration: 250, dampingRatio: 1 }));
+          }
+        }),
+    [onRemove]
+  );
+
+  const progressStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: progress.get() }],
+  }));
+
+  const dismissStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.get() }],
+  }));
 
   return (
-    <Animated.View
-      style={[
-        styles.toast,
-        { opacity, transform: [{ translateY }] },
-      ]}
-    >
-      {/* Left accent bar */}
-      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
-
-      {/* Icon circle */}
-      <View style={[styles.iconCircle, { backgroundColor: `${accentColor}22` }]}>
-        <Text style={[styles.iconText, { color: accentColor }]}>
-          {SYMBOLS[toast.type]}
-        </Text>
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={[styles.label, { color: accentColor }]}>
-          {LABELS[toast.type]}
-        </Text>
-        <Text style={styles.message} numberOfLines={2}>
-          {toast.message}
-        </Text>
-      </View>
-
-      {/* Progress bar anchored left */}
+    <GestureDetector gesture={pan}>
       <Animated.View
-        style={[
-          styles.progressBar,
-          { backgroundColor: accentColor, width: progressWidth },
-        ]}
-      />
-    </Animated.View>
+        entering={reducedMotion ? undefined : TOAST_ENTER}
+        exiting={reducedMotion ? undefined : TOAST_EXIT}
+        layout={TOAST_LAYOUT}
+        style={[styles.toast, dismissStyle]}
+      >
+        {/* Left accent bar */}
+        <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+        {/* Icon circle */}
+        <View style={[styles.iconCircle, { backgroundColor: `${accentColor}22` }]}>
+          <Text style={[styles.iconText, { color: accentColor }]}>
+            {SYMBOLS[toast.type]}
+          </Text>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={[styles.label, { color: accentColor }]}>
+            {LABELS[toast.type]}
+          </Text>
+          <Text style={styles.message} numberOfLines={2}>
+            {toast.message}
+          </Text>
+        </View>
+
+        {/* Hardware-accelerated progress bar */}
+        <View style={styles.progressBarTrack}>
+          <Animated.View
+            style={[
+              styles.progressBar,
+              { backgroundColor: accentColor },
+              progressStyle,
+            ]}
+          />
+        </View>
+      </Animated.View>
+    </GestureDetector>
   );
 });
 
@@ -147,6 +172,7 @@ export const ToastProvider = memo(function ToastProvider({
   children: React.ReactNode;
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const insets = useSafeAreaInsets();
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Date.now().toString();
@@ -160,7 +186,13 @@ export const ToastProvider = memo(function ToastProvider({
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <View style={styles.container} pointerEvents="none">
+      <View
+        style={[
+          styles.container,
+          { bottom: insets.bottom + verticalScale(80) },
+        ]}
+        pointerEvents="box-none"
+      >
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}
@@ -176,7 +208,6 @@ export const ToastProvider = memo(function ToastProvider({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: verticalScale(100),
     left: scale(16),
     right: scale(16),
     zIndex: 9999,
@@ -230,11 +261,19 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     lineHeight: verticalScale(20),
   },
-  progressBar: {
+  progressBarTrack: {
     position: 'absolute',
     bottom: 0,
     left: 0,
+    right: 0,
     height: verticalScale(2),
+    overflow: 'hidden',
+  },
+  progressBar: {
+    width: '100%',
+    height: '100%',
+    transformOrigin: 'left',
   },
 });
+
 

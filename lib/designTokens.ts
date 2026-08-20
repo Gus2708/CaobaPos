@@ -138,9 +138,34 @@ export const tokens = {
     }
   },
   animation: {
+    // Exact Emil Kowalski durations (all UI animations under 300ms)
+    press: 120,
     fast: 150,
-    normal: 250,
+    normal: 200,
+    sheet: 300,
     slow: 400,
+
+    // Physical scale standards
+    pressScale: 0.97,
+    enterInitialScale: 0.95,
+
+    // Bezier curve definition strings
+    curves: {
+      easeOut: 'cubic-bezier(0.23, 1, 0.32, 1)',      // Strong ease-out for UI interactions
+      easeInOut: 'cubic-bezier(0.77, 0, 0.175, 1)',   // On-screen movement / tabs
+      drawer: 'cubic-bezier(0.32, 0.72, 0, 1)',       // iOS sheet / drawer curve
+    },
+
+    // Apple designer-friendly spring parameters { duration, dampingRatio }
+    springs: {
+      default: { duration: 300, dampingRatio: 1 },        // Critically damped default, no overshoot
+      momentum: { duration: 300, dampingRatio: 0.8 },      // Subtle bounce for momentum flicks
+      sheet: { duration: 300, dampingRatio: 0.8 },         // Bottom sheet settle
+      press: { duration: 120, dampingRatio: 1 },           // Instant press feedback
+      badgePop: { duration: 250, dampingRatio: 0.7 },      // Micro-bounce for badge updates
+    },
+
+    // Legacy compatibility aliases
     spring: { tension: 120, friction: 10 },
     springBounce: { tension: 180, friction: 12 },
     pressIn: { tension: 300, friction: 20 },
@@ -149,3 +174,11 @@ export const tokens = {
     bump: { tension: 320, friction: 10 },
   },
 } as const;
+
+// Standalone worklet/reanimated helper constants
+export const MOTION = {
+  EASE_OUT_BEZIER: [0.23, 1, 0.32, 1] as const,
+  EASE_IN_OUT_BEZIER: [0.77, 0, 0.175, 1] as const,
+  EASE_DRAWER_BEZIER: [0.32, 0.72, 0, 1] as const,
+} as const;
+

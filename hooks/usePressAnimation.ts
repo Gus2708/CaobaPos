@@ -1,45 +1,38 @@
-import { useRef, useCallback } from 'react';
-import { Animated } from 'react-native';
+import { useCallback } from 'react';
+import { useSharedValue, useAnimatedStyle, withTiming, Easing, useReducedMotion } from 'react-native-reanimated';
 import { tokens } from '../lib/designTokens';
+
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 
 interface PressAnimationOptions {
   scaleTo?: number;
-  springIn?: { tension: number; friction: number };
-  springOut?: { tension: number; friction: number };
+  duration?: number;
 }
 
 /**
- * Reusable scale-on-press animation for any touchable.
- *
- * Usage:
- *   const { scale, onPressIn, onPressOut } = usePressAnimation();
- *   <Animated.View style={{ transform: [{ scale }] }}>
- *     <TouchableOpacity onPressIn={onPressIn} onPressOut={onPressOut}>...</TouchableOpacity>
- *   </Animated.View>
+ * Reusable Reanimated scale-on-press hook running strictly on the UI thread.
+ * Default 120ms with cubic-bezier(0.23, 1, 0.32, 1) and scale(0.97).
  */
 export function usePressAnimation(options: PressAnimationOptions = {}) {
-  const { 
-    scaleTo = 0.97, 
-    springIn = tokens.animation.pressIn,
-    springOut = tokens.animation.pressOut 
-  } = options;
-  const scale = useRef(new Animated.Value(1)).current;
+  const { scaleTo = tokens.animation.pressScale, duration = tokens.animation.press } = options;
+  const targetScale = Math.max(0.95, Math.min(0.98, scaleTo));
+  const scale = useSharedValue(1);
+  const reducedMotion = useReducedMotion();
 
   const onPressIn = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: scaleTo,
-      useNativeDriver: true,
-      ...springIn,
-    }).start();
-  }, [scale, scaleTo, springIn]);
+    if (reducedMotion) return;
+    scale.set(withTiming(targetScale, { duration, easing: EASE_OUT }));
+  }, [scale, targetScale, duration, reducedMotion]);
 
   const onPressOut = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 1,
-      useNativeDriver: true,
-      ...springOut,
-    }).start();
-  }, [scale, springOut]);
+    if (reducedMotion) return;
+    scale.set(withTiming(1, { duration, easing: EASE_OUT }));
+  }, [scale, duration, reducedMotion]);
 
-  return { scale, onPressIn, onPressOut };
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }],
+  }));
+
+  return { scale, onPressIn, onPressOut, animatedStyle };
 }
+
