@@ -91,7 +91,7 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
           <Icon name={icon} size={20} color={c.accent} />
         </View>
         <View style={styles.statInfo}>
-          <Text style={styles.statLabel} numberOfLines={2} adjustsFontSizeToFit>{label}</Text>
+          <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{label}</Text>
           <Text 
             style={styles.statValue} 
             numberOfLines={1} 
@@ -101,7 +101,7 @@ const StatCard = React.memo(function StatCard({ label, value, variant = 'default
             {value}
           </Text>
           {subtitle && (
-            <Text style={styles.statSubtitle} numberOfLines={2}>{subtitle}</Text>
+            <Text style={styles.statSubtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{subtitle}</Text>
           )}
         </View>
         {onPress && (
@@ -485,38 +485,38 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
             <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
             <BrandMark motif="espiral" style={styles.cardWatermarkEspiral} />
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Total Facturado (con IVA)</Text>
-              <Text style={styles.financialValue}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Total Facturado (con IVA)</Text>
+              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.financialItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6) }}>
-                <Text style={styles.financialLabel}>Efectivo (USD)</Text>
+              <View style={styles.financialLeft}>
+                <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Efectivo (USD)</Text>
                 <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.sageDim, borderColor: tokens.colors.borderLight }]}>
                   <Text style={[styles.receivedBadgeText, { color: tokens.colors.sage }]}>Caja</Text>
                 </View>
               </View>
-              <Text style={styles.financialValueReceived}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValueReceived} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.financialItem}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6) }}>
-                <Text style={styles.financialLabel}>Tarjeta / Transferencia (BS)</Text>
+              <View style={styles.financialLeft}>
+                <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Tarjeta / Transferencia (BS)</Text>
                 <View style={[styles.receivedBadge, { backgroundColor: tokens.colors.mahoganyDim, borderColor: tokens.colors.borderLight }]}>
                   <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
                 </View>
               </View>
-              <Text style={styles.financialValue}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Crédito Pendiente</Text>
-              <Text style={styles.financialValuePending}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Crédito Pendiente</Text>
+              <Text style={styles.financialValuePending} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={styles.financialItem}>
-              <Text style={styles.financialLabel}>Costos Totales</Text>
-              <Text style={styles.financialValueCost}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Costos Totales</Text>
+              <Text style={styles.financialValueCost} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
             <View style={[styles.financialItem, styles.financialItemHighlight]}>
-              <Text style={styles.financialLabelHighlight}>Ganancia Estimada</Text>
-              <Text style={styles.financialValueProfit}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialLabelHighlight} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Ganancia Estimada</Text>
+              <Text style={styles.financialValueProfit} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
             </View>
           </View>
         </View>
@@ -871,8 +871,16 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.glass.border,
-    flexWrap: 'wrap',
-    gap: scale(4),
+    flexWrap: 'nowrap',
+    gap: scale(8),
+  },
+  financialLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    minWidth: 0,
+    marginRight: scale(6),
   },
   financialItemHighlight: {
     backgroundColor: tokens.colors.surface,
@@ -905,24 +913,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.text,
     lineHeight: moderateScale(20),
+    flexShrink: 0,
+    textAlign: 'right',
   },
   financialValueCost: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.coral,
+    flexShrink: 0,
+    textAlign: 'right',
   },
   financialValueProfit: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(22),
     fontWeight: '800',
     color: tokens.colors.sage,
+    flexShrink: 0,
+    textAlign: 'right',
   },
   financialValueReceived: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.text,
+    flexShrink: 0,
+    textAlign: 'right',
   },
   financialValuePending: {
     fontFamily: FontNames.jetBrainsMono,
@@ -930,6 +946,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.amber,
     lineHeight: moderateScale(20),
+    flexShrink: 0,
+    textAlign: 'right',
   },
   labelWithBadge: {
     flexDirection: 'row',
@@ -943,10 +961,11 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
+    flexShrink: 0,
   },
   receivedBadgeText: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(9),
+    fontSize: moderateScale(10),
     fontWeight: '800',
     color: tokens.colors.sage,
     textTransform: 'uppercase',
@@ -958,7 +977,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(14),
     borderBottomWidth: 1, 
     borderBottomColor: tokens.colors.borderLight,
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: scale(8),
   },
   listItemLeft: {
@@ -1011,6 +1030,8 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(16),
     borderBottomWidth: 1, 
     borderBottomColor: tokens.colors.borderLight,
+    flexWrap: 'nowrap',
+    gap: scale(8),
   },
   saleLeft: {
     gap: verticalScale(8),
