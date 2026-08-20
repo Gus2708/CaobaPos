@@ -87,7 +87,7 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
   const renderTab = (key: string, label: string, iconName: string) => {
     const isActive = selected === key;
     return (
-      <View key={key} onLayout={(e) => handleTabLayout(key, e)}>
+      <View key={key} style={styles.tabWrapper} onLayout={(e) => handleTabLayout(key, e)}>
         <PressableScale
           style={styles.tab}
           onPress={() => handleSelect(key)}
@@ -96,15 +96,17 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
           accessibilityState={{ selected: isActive }}
           accessibilityLabel={`Categoría ${label}`}
         >
-          {isActive ? (
-            <BrandMark motif="flor1" style={{ width: scale(16), height: scale(16) }} />
-          ) : (
-            <Icon
-              name={iconName}
-              size={20}
-              color={tokens.colors.textMuted}
-            />
-          )}
+          <View style={styles.iconWrapper}>
+            {isActive ? (
+              <BrandMark motif="flor1" style={{ width: scale(16), height: scale(16) }} />
+            ) : (
+              <Icon
+                name={iconName}
+                size={16}
+                color={tokens.colors.textMuted}
+              />
+            )}
+          </View>
           <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
             {label}
           </Text>
@@ -142,37 +144,49 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(12),
-    paddingTop: verticalScale(12),
-    paddingBottom: verticalScale(6),
-    gap: scale(10),
+    paddingHorizontal: scale(14),
+    paddingTop: verticalScale(14),
+    paddingBottom: verticalScale(10),
+    gap: scale(8),
     position: 'relative',
   },
   slidingPill: {
     position: 'absolute',
-    top: verticalScale(12),
-    bottom: verticalScale(6),
+    top: verticalScale(14),
+    height: verticalScale(36),
     borderRadius: tokens.radius.pill,
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderWidth: 1,
     borderColor: tokens.colors.mahogany,
+  },
+  tabWrapper: {
     height: verticalScale(36),
+    justifyContent: 'center',
   },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: scale(6),
     paddingHorizontal: scale(14),
-    paddingVertical: verticalScale(8),
+    height: verticalScale(36),
     borderRadius: tokens.radius.pill,
     backgroundColor: 'transparent',
   },
+  iconWrapper: {
+    width: scale(18),
+    height: scale(18),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabText: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(14),
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: tokens.colors.textMuted,
     letterSpacing: 0.2,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   tabTextActive: {
     color: tokens.colors.mahogany,
