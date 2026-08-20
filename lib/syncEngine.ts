@@ -121,7 +121,7 @@ async function processSingleItem(item: OfflineQueueItem): Promise<void> {
     }
 
     case 'CREATE_SALE': {
-      let { totalAmount, paymentMethod, items, clientId, ivaEnabled, taxAmount } = item.payload;
+      let { totalAmount, paymentMethod, items, clientId, ivaEnabled, taxAmount, exchangeRate, totalAmountBs } = item.payload;
 
       // Resolve temp client ID if applicable
       if (clientId && tempIdMap.has(clientId)) {
@@ -143,6 +143,8 @@ async function processSingleItem(item: OfflineQueueItem): Promise<void> {
         .from('sales')
         .insert({
           total_amount: totalAmount,
+          exchange_rate: exchangeRate || 1.0,
+          total_amount_bs: totalAmountBs || totalAmount,
           payment_method: paymentMethod,
           client_id: clientId || null,
           status,

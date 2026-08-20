@@ -10,6 +10,7 @@ import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { usePressAnimation } from '../hooks/usePressAnimation';
 import { BrandMark } from './BrandMark';
+import { useExchangeRate } from '../hooks/useExchangeRate';
 
 interface ProductButtonProps {
   product: Product;
@@ -27,6 +28,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const isOutOfStock = product.stock_quantity <= 0;
   const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
   const badgeScale = useRef(new Animated.Value(1)).current;
+  const { formatBs, toBs } = useExchangeRate();
 
   // Zustand Store integrations for active selection and inline quantity management
   const cartItem = useCartStore((state) => state.items.find((item) => item.id === product.id));
@@ -127,9 +129,14 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} adjustsFontSizeToFit>
                 {product.name}
               </Text>
-              <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
-                ${product.price.toFixed(2)}
-              </Text>
+              <View style={styles.cardPriceContainer}>
+                <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
+                  ${product.price.toFixed(2)}
+                </Text>
+                <Text style={[styles.cardPriceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+                  {formatBs(toBs(product.price))}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -215,9 +222,14 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 {product.name}
               </Text>
               <View style={styles.itemMeta}>
-                <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
-                  ${product.price.toFixed(2)}
-                </Text>
+                <View style={styles.priceContainer}>
+                  <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
+                    ${product.price.toFixed(2)}
+                  </Text>
+                  <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+                    {formatBs(toBs(product.price))}
+                  </Text>
+                </View>
                 <View style={[
                   styles.stockDotRow, 
                   { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
@@ -310,9 +322,14 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             {product.name}
           </Text>
           <View style={styles.itemMeta}>
-            <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
-              ${product.price.toFixed(2)}
-            </Text>
+            <View style={styles.priceContainer}>
+              <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
+                ${product.price.toFixed(2)}
+              </Text>
+              <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
+                {formatBs(toBs(product.price))}
+              </Text>
+            </View>
             <View style={[
               styles.stockDotRow, 
               { backgroundColor: product.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)' }
@@ -452,6 +469,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.amberGold, // Gold/Amber for premium feel
   },
+  priceBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+  },
+  priceContainer: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    gap: verticalScale(1),
+  },
   priceDisabled: {
     color: tokens.colors.textDim,
   },
@@ -545,6 +573,16 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontWeight: '800',
     color: tokens.colors.amberGold,
+  },
+  cardPriceBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+  },
+  cardPriceContainer: {
+    flexDirection: 'column',
+    gap: verticalScale(2),
   },
   stockBadge: {
     position: 'absolute',

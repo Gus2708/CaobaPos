@@ -11,6 +11,7 @@ import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
 import { Badge } from './Badge';
+import { formatBs } from '../hooks/useExchangeRate';
 
 interface SaleItem {
   id: string;
@@ -25,6 +26,8 @@ interface SaleItem {
 interface Sale {
   id: string;
   total_amount: number;
+  exchange_rate?: number;
+  total_amount_bs?: number;
   payment_method: string;
   created_at: string;
   iva_enabled?: boolean;
@@ -161,6 +164,8 @@ export const SaleDetailModal = memo(function SaleDetailModal({
         tax,
         total,
         paymentMethod: sale.payment_method,
+        exchangeRate: sale.exchange_rate,
+        totalAmountBs: sale.total_amount_bs,
       };
 
       await shareReceiptPDF(receiptData);
@@ -327,8 +332,21 @@ export const SaleDetailModal = memo(function SaleDetailModal({
 
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>Total</Text>
-                <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>${total.toFixed(2)}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>${total.toFixed(2)}</Text>
+                  {sale.total_amount_bs ? (
+                    <Text style={styles.grandTotalValueBs} numberOfLines={1}>
+                      {formatBs(sale.total_amount_bs)}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
+              {sale.exchange_rate ? (
+                <View style={styles.exchangeRateRow}>
+                  <Text style={styles.exchangeRateLabel}>Tasa BCV:</Text>
+                  <Text style={styles.exchangeRateValue}>{Number(sale.exchange_rate).toFixed(2)} Bs/$</Text>
+                </View>
+              ) : null}
             </View>
           </ScrollView>
 
@@ -608,6 +626,35 @@ const styles = StyleSheet.create({
     fontWeight: '800', 
     color: tokens.colors.mahogany,
     lineHeight: moderateScale(28),
+    textAlign: 'right',
+  },
+  grandTotalValueBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+    textAlign: 'right',
+    marginTop: verticalScale(2),
+  },
+  exchangeRateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: verticalScale(10),
+    paddingTop: verticalScale(8),
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.borderLight,
+  },
+  exchangeRateLabel: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(12),
+    color: tokens.colors.textDim,
+  },
+  exchangeRateValue: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: tokens.colors.textSecondary,
   },
   actions: { 
     paddingHorizontal: scale(20),

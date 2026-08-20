@@ -19,6 +19,7 @@ import { ClientSelectorModal } from './ClientSelectorModal';
 import { ClientBalance } from '../hooks/useClients';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { BrandMark } from './BrandMark';
+import { useExchangeRate } from '../hooks/useExchangeRate';
 
 const TAX_RATE = 0.16;
 const PAYMENT_METHODS = [
@@ -37,6 +38,8 @@ interface SaleResult {
   tax: number;
   total: number;
   paymentMethod: string;
+  exchangeRate?: number;
+  totalAmountBs?: number;
 }
 
 interface CheckoutPanelProps {
@@ -52,6 +55,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
   const toggleIva = useSettingsStore((state) => state.toggleIva);
   
+  const { rate, formatBs, toBs } = useExchangeRate();
   const [selectedPayment, setSelectedPayment] = useState<typeof PAYMENT_METHODS[number]['key'] | null>(null);
   const [completedSale, setCompletedSale] = useState<SaleResult | null>(null);
   const [isCalculatorVisible, setIsCalculatorVisible] = useState(false);
@@ -124,6 +128,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         subtotal: item.price * item.quantity,
       }));
 
+      const totalBsVal = toBs(total);
+
       await createSale.mutateAsync({
         totalAmount: total,
         paymentMethod: selectedPayment!,
@@ -131,6 +137,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         clientId: selectedClient?.id,
         ivaEnabled,
         taxAmount: tax,
+        exchangeRate: rate,
+        totalAmountBs: totalBsVal,
       });
 
       setCompletedSale({
@@ -140,6 +148,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         tax,
         total,
         paymentMethod: selectedPayment!,
+        exchangeRate: rate,
+        totalAmountBs: totalBsVal,
       });
 
       clearCart();
@@ -155,7 +165,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } finally {
       isSubmittingRef.current = false;
     }
-  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast]);
+  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast, rate, toBs]);
 
   const handleCheckout = useCallback(async () => {
     if (isSubmittingRef.current || createSale.isPending) return;
@@ -249,7 +259,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         <Animated.View style={[styles.summaryTop, { opacity: subtotalOpacity }]}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+            <View style={styles.summaryValueContainer}>
+              <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+              <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(toBs(subtotal))}</Text>
+            </View>
           </View>
 
           <PressableScale
@@ -263,9 +276,12 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               </View>
               <Text style={styles.ivaLabel}>IVA (16%)</Text>
             </View>
-            <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
-              ${tax.toFixed(2)}
-            </Text>
+            <View style={styles.summaryValueContainer}>
+              <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
+                ${tax.toFixed(2)}
+              </Text>
+              {ivaEnabled && <Text style={styles.summaryValueBs} numberOfLines={1}>{formatBs(toBs(tax))}</Text>}
+            </View>
           </PressableScale>
         </Animated.View>
 
@@ -279,7 +295,15 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 </Text>
               </View>
             </View>
-            <PriceDisplay amount={total} size="lg" />
+            <PriceDisplay 
+              amount={total} 
+              size="lg" 
+              showBs={true} 
+              direction="vertical" 
+              containerStyle={{ alignItems: 'flex-end' }} 
+              style={{ textAlign: 'right' }} 
+              bsStyle={{ textAlign: 'right' }} 
+            />
           </View>
 
           <View style={styles.paymentSection}>
@@ -388,6 +412,8 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           tax={completedSale.tax}
           subtotal={completedSale.subtotal}
           paymentMethod={completedSale.paymentMethod}
+          exchangeRate={completedSale.exchangeRate}
+          totalAmountBs={completedSale.totalAmountBs}
           onClose={handleCloseModal}
         />
       )}
@@ -395,6 +421,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       <ChangeCalculatorModal
         visible={isCalculatorVisible}
         total={total}
+        rate={rate}
         onClose={() => setIsCalculatorVisible(false)}
         onConfirm={confirmSale}
         loading={createSale.isPending}
@@ -536,6 +563,18 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     fontWeight: '700',
     color: tokens.colors.text,
+  },
+  summaryValueContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: verticalScale(1),
+  },
+  summaryValueBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '500',
+    color: tokens.colors.textMuted,
+    textAlign: 'right',
   },
   ivaRow: {
     flexDirection: 'row',

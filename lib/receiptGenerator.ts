@@ -17,6 +17,8 @@ export interface ReceiptData {
   tax: number;
   total: number;
   paymentMethod: string;
+  exchangeRate?: number;
+  totalAmountBs?: number;
 }
 
 const getPaymentLabel = (method: string) => {
@@ -152,8 +154,12 @@ export const generateReceiptHTML = (data: ReceiptData) => {
           ` : ''}
           <div class="total-row">
             <span class="total-label">TOTAL</span>
-            <span class="total-label" style="font-size: 24px; color: ${BRAND_COLOR};">$${data.total.toFixed(2)}</span>
+            <div style="text-align: right;">
+              <span class="total-label" style="font-size: 24px; color: ${BRAND_COLOR};">$${data.total.toFixed(2)}</span>
+              ${data.totalAmountBs ? `<div style="font-size: 13px; color: ${MUTED_COLOR}; margin-top: 3px; font-weight: 600;">Bs. ${Number(data.totalAmountBs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>` : ''}
+            </div>
           </div>
+          ${data.exchangeRate ? `<div style="font-size: 11px; color: ${MUTED_COLOR}; margin-top: 4px; text-align: right;">Tasa BCV: ${Number(data.exchangeRate).toFixed(2)} Bs/$</div>` : ''}
         </div>
         
         <div class="payment-info">

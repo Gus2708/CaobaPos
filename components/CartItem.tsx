@@ -8,6 +8,7 @@ import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
 import { BrandMark } from './BrandMark';
+import { useExchangeRate } from '../hooks/useExchangeRate';
 
 interface CartItemProps {
   item: CartItemType;
@@ -27,6 +28,7 @@ export const CartItemRow = memo(function CartItemRow({
 }: CartItemProps) {
   const totalPrice = (item.price * item.quantity).toFixed(2);
   const qtyScale = useRef(new Animated.Value(1)).current;
+  const { formatBs, toBs } = useExchangeRate();
 
   useEffect(() => {
     Animated.sequence([
@@ -55,7 +57,7 @@ export const CartItemRow = memo(function CartItemRow({
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.unitPrice}>${item.price.toFixed(2)} c/u</Text>
+        <Text style={styles.unitPrice}>${item.price.toFixed(2)} • {formatBs(toBs(item.price))}</Text>
       </View>
       
       <View style={styles.rightSection}>
@@ -84,7 +86,10 @@ export const CartItemRow = memo(function CartItemRow({
         </View>
 
         <View style={styles.totalAndAction}>
-          <Text style={styles.total}>${totalPrice}</Text>
+          <View style={styles.totalPriceContainer}>
+            <Text style={styles.total}>${totalPrice}</Text>
+            <Text style={styles.totalBs} numberOfLines={1}>{formatBs(toBs(item.price * item.quantity))}</Text>
+          </View>
           <PressableScale
             style={styles.removeButton}
             onPress={onRemove}
@@ -193,6 +198,19 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(15),
     fontWeight: '800',
     color: tokens.colors.text,
+    textAlign: 'right',
+  },
+  totalBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+    textAlign: 'right',
+  },
+  totalPriceContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: verticalScale(1),
   },
   removeButton: {
     width: scale(30),

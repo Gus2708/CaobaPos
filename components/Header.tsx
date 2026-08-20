@@ -10,6 +10,8 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { Icon } from './Icon';
 import { usePressAnimation } from '../hooks/usePressAnimation';
 import { useAuth } from '../hooks/useAuth';
+import { useExchangeRate } from '../hooks/useExchangeRate';
+import { ExchangeRateModal } from './ExchangeRateModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -88,6 +90,8 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const { role, signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const { rate } = useExchangeRate();
   const menuAnim = useRef(new RNAnimated.Value(0)).current;
 
   const toggleAnim = useRef(new RNAnimated.Value(0)).current;
@@ -174,6 +178,19 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
 
         {/* Action Section */}
         <View style={styles.actionSection}>
+          {/* BCV Exchange Rate Badge */}
+          <TouchableOpacity
+            style={styles.bcvPill}
+            onPress={() => setIsRateModalOpen(true)}
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Tasa BCV actual: ${rate.toFixed(2)} bolívares por dólar`}
+          >
+            <View style={styles.bcvIndicatorDot} />
+            <Text style={styles.bcvPillText}>BCV: {rate.toFixed(2)}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.toggleContainer}
             onPress={toggleMenu}
@@ -209,6 +226,12 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* BCV Exchange Rate Modal */}
+      <ExchangeRateModal
+        visible={isRateModalOpen}
+        onClose={() => setIsRateModalOpen(false)}
+      />
 
       {/* Navigation Menu Overlay */}
       <Modal
@@ -278,6 +301,30 @@ const styles = StyleSheet.create({
   actionSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: scale(10),
+  },
+  bcvPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: tokens.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(5),
+    borderRadius: tokens.radius.pill,
+    gap: scale(6),
+  },
+  bcvIndicatorDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: tokens.colors.sage,
+  },
+  bcvPillText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: tokens.colors.amberGold,
   },
   toggleContainer: {
     width: scale(36),

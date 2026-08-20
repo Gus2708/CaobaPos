@@ -10,6 +10,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
 import { BrandMark } from './BrandMark';
+import { useExchangeRate, formatBs } from '../hooks/useExchangeRate';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -19,6 +20,8 @@ interface SaleSummaryModalProps {
   tax: number;
   subtotal: number;
   paymentMethod: string;
+  exchangeRate?: number;
+  totalAmountBs?: number;
   onClose: () => void;
 }
 
@@ -30,9 +33,14 @@ export function SaleSummaryModal({
   tax,
   subtotal,
   paymentMethod,
+  exchangeRate: propExchangeRate,
+  totalAmountBs: propTotalAmountBs,
   onClose,
 }: SaleSummaryModalProps) {
   const [loading, setLoading] = useState(false);
+  const { rate: currentRate, toBs } = useExchangeRate();
+  const exchangeRate = propExchangeRate || currentRate;
+  const totalAmountBs = propTotalAmountBs || toBs(total);
 
   const getPaymentLabel = (method: string) => {
     switch (method) {
@@ -61,6 +69,8 @@ export function SaleSummaryModal({
         tax,
         total,
         paymentMethod: getPaymentLabel(paymentMethod),
+        exchangeRate,
+        totalAmountBs,
       };
 
       await shareReceiptPDF(receiptData);
@@ -122,8 +132,19 @@ export function SaleSummaryModal({
               )}
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>TOTAL</Text>
-                <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+                  <Text style={styles.grandTotalValueBs} numberOfLines={1}>
+                    {formatBs(totalAmountBs)}
+                  </Text>
+                </View>
               </View>
+              {exchangeRate ? (
+                <View style={styles.exchangeRateRow}>
+                  <Text style={styles.exchangeRateLabel}>Tasa BCV:</Text>
+                  <Text style={styles.exchangeRateValue}>{exchangeRate.toFixed(2)} Bs/$</Text>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.paymentMethod}>
@@ -297,7 +318,36 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono, 
     fontSize: moderateScale(22), 
     fontWeight: '800', 
-    color: tokens.colors.mahogany 
+    color: tokens.colors.mahogany,
+    textAlign: 'right',
+  },
+  grandTotalValueBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(13),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
+    textAlign: 'right',
+    marginTop: verticalScale(2),
+  },
+  exchangeRateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: verticalScale(10),
+    paddingTop: verticalScale(8),
+    borderTopWidth: 1,
+    borderTopColor: tokens.colors.borderLight,
+  },
+  exchangeRateLabel: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(12),
+    color: tokens.colors.textDim,
+  },
+  exchangeRateValue: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: tokens.colors.textSecondary,
   },
   paymentMethod: {
     alignItems: 'center',
