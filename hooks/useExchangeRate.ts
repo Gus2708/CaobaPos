@@ -41,6 +41,36 @@ export function bsToUsd(amountBs: number, rate: number): number {
   return Number((amountBs / rate).toFixed(2));
 }
 
+// --- Module-level singleton for Realtime subscription ---
+// Prevents duplicate WebSocket channels when many components call useExchangeRate()
+let realtimeInitialized = false;
+let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+function ensureRealtimeSubscription(queryClient: ReturnType<typeof useQueryClient>) {
+  if (realtimeInitialized) return;
+  realtimeInitialized = true;
+
+  try {
+    realtimeChannel = supabase
+      .channel('exchange_rates_singleton')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: EXCHANGE_RATES_TABLE,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['exchange_rate', 'current'] });
+        }
+      )
+      .subscribe();
+  } catch (err) {
+    console.warn('[useExchangeRate] Realtime subscription failed:', err);
+    realtimeInitialized = false;
+  }
+}
+
 /**
  * useExchangeRate Hook
  * Retrieves the current official BCV exchange rate from Supabase
@@ -89,29 +119,13 @@ export function useExchangeRate() {
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes cache
+    retry: false, // Don't retry if table doesn't exist
     placeholderData: (prev) => prev || DEFAULT_BCV_RATE,
   });
 
-  // Realtime subscription for automatic rate updates across devices
+  // Initialize singleton Realtime subscription (safe to call multiple times)
   useEffect(() => {
-    const channel = supabase
-      .channel('public:exchange_rates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: EXCHANGE_RATES_TABLE,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['exchange_rate', 'current'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    ensureRealtimeSubscription(queryClient);
   }, [queryClient]);
 
   const activeRate = query.data?.rate || DEFAULT_BCV_RATE.rate;
