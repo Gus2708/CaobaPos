@@ -57,7 +57,7 @@ export const CartItemRow = memo(function CartItemRow({
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.unitPrice}>${item.price.toFixed(2)} • {formatBs(item.price)}</Text>
+        <Text style={styles.unitPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>${item.price.toFixed(2)} • {formatBs(item.price)}</Text>
       </View>
       
       <View style={styles.rightSection}>
@@ -88,7 +88,7 @@ export const CartItemRow = memo(function CartItemRow({
         <View style={styles.totalAndAction}>
           <View style={styles.totalPriceContainer}>
             <Text style={styles.total}>${totalPrice}</Text>
-            <Text style={styles.totalBs} numberOfLines={1}>{formatBs(item.price * item.quantity)}</Text>
+            <Text style={styles.totalBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(item.price * item.quantity)}</Text>
           </View>
           <PressableScale
             style={styles.removeButton}
