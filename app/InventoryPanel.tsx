@@ -817,8 +817,8 @@ export const InventoryPanel = memo(function InventoryPanel({
     <View style={{ marginBottom: verticalScale(16) }}>
       <View style={styles.inlineHeader}>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.titleMini}>Inventario</Text>
-          <BrandMark motif="flor2" style={{ width: scale(20), height: scale(20) }} />
+          <Text style={styles.titleMini} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Inventario</Text>
+          <BrandMark motif="flor2" style={{ width: scale(18), height: scale(18) }} />
         </View>
         <View style={styles.headerButtonsMini}>
            <TouchableOpacity style={styles.manageCatBtnMini} onPress={() => setShowCategoryManager(!showCategoryManager)}>

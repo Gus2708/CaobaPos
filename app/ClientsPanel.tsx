@@ -66,12 +66,12 @@ export default function ClientsPanel() {
   const ListHeader = useMemo(() => (
     <View style={styles.listHeader}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Gestión de cartera</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(8) }}>
-          <Text style={styles.title}>Clientes y Créditos</Text>
-          <BrandMark motif="flor1" style={{ width: scale(22), height: scale(22) }} />
+        <Text style={styles.headerLabel} numberOfLines={1}>Gestión de cartera</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6), flexWrap: 'nowrap' }}>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Clientes y Créditos</Text>
+          <BrandMark motif="flor1" style={{ width: scale(18), height: scale(18) }} />
         </View>
-        <Text style={styles.subtitle}>Supervisión de saldos y cuentas por cobrar</Text>
+        <Text style={styles.subtitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Supervisión de saldos y cuentas por cobrar</Text>
       </View>
 
       <View style={styles.summarySection}>
@@ -194,10 +194,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(32),
+    fontSize: moderateScale(22),
     fontWeight: '800',
     color: tokens.colors.text,
-    letterSpacing: scale(-0.8),
+    letterSpacing: scale(-0.5),
   },
   subtitle: {
     fontFamily: FontNames.parkinsans,
