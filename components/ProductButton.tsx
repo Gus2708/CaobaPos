@@ -344,24 +344,24 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 {formatBs(product.price)}
               </Text>
             </View>
-            <View style={[
-              styles.stockDotRow, 
-              { 
-                backgroundColor: isOutOfStock 
-                  ? 'rgba(201, 107, 107, 0.15)' 
-                  : product.stock_quantity < 10 
-                  ? tokens.colors.coralDim 
-                  : 'rgba(255,255,255,0.05)' 
-              }
-            ]}>
-               <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
-               <Text style={[
-                 styles.itemStockText, 
-                 { color: isOutOfStock ? tokens.colors.coral : product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }
-               ]}>
-                 {isOutOfStock ? 'Sin stock' : `${product.stock_quantity} uds`}
-               </Text>
-            </View>
+            {!isOutOfStock && (
+              <View style={[
+                styles.stockDotRow, 
+                { 
+                  backgroundColor: product.stock_quantity < 10 
+                    ? tokens.colors.coralDim 
+                    : 'rgba(255,255,255,0.05)' 
+                }
+              ]}>
+                 <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
+                 <Text style={[
+                   styles.itemStockText, 
+                   { color: product.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }
+                 ]}>
+                   {`${product.stock_quantity} uds`}
+                 </Text>
+              </View>
+            )}
           </View>
         </View>
 
