@@ -97,6 +97,17 @@ export function useCategories() {
   return query;
 }
 
+export function getEmployeeDisplayName(user: any): string {
+  if (!user) return 'Desconocido';
+  if (user.user_metadata?.full_name) return user.user_metadata.full_name;
+  if (user.user_metadata?.name) return user.user_metadata.name;
+  if (user.email) {
+    const username = user.email.split('@')[0];
+    return username.charAt(0).toUpperCase() + username.slice(1);
+  }
+  return 'Empleado';
+}
+
 export function useCreateSale() {
   const queryClient = useQueryClient();
 
@@ -110,6 +121,9 @@ export function useCreateSale() {
       taxAmount,
       exchangeRate,
       totalAmountBs,
+      createdBy,
+      employeeName,
+      createdByEmail,
     }: {
       totalAmount: number;
       paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
@@ -125,7 +139,28 @@ export function useCreateSale() {
       taxAmount?: number;
       exchangeRate?: number;
       totalAmountBs?: number;
+      createdBy?: string;
+      employeeName?: string;
+      createdByEmail?: string;
     }) => {
+      // Resolve user if not explicitly passed
+      let resolvedCreatedBy = createdBy;
+      let resolvedEmployeeName = employeeName;
+      let resolvedCreatedByEmail = createdByEmail;
+
+      if (!resolvedCreatedBy || !resolvedEmployeeName) {
+        try {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            resolvedCreatedBy = resolvedCreatedBy || authData.user.id;
+            resolvedEmployeeName = resolvedEmployeeName || getEmployeeDisplayName(authData.user);
+            resolvedCreatedByEmail = resolvedCreatedByEmail || authData.user.email || undefined;
+          }
+        } catch (e) {
+          // ignore if offline
+        }
+      }
+
       const isOnline = getIsOnline();
 
       if (!isOnline) {
@@ -138,6 +173,9 @@ export function useCreateSale() {
           taxAmount,
           exchangeRate,
           totalAmountBs,
+          createdBy: resolvedCreatedBy,
+          employeeName: resolvedEmployeeName,
+          createdByEmail: resolvedCreatedByEmail,
         });
       }
 
@@ -176,6 +214,9 @@ export function useCreateSale() {
             status,
             iva_enabled: ivaEnabled || false,
             tax_amount: taxAmount || 0,
+            created_by: resolvedCreatedBy || null,
+            employee_name: resolvedEmployeeName || null,
+            created_by_email: resolvedCreatedByEmail || null,
           })
           .select()
           .single();
@@ -225,6 +266,11 @@ export function useCreateSale() {
             clientId,
             ivaEnabled,
             taxAmount,
+            exchangeRate,
+            totalAmountBs,
+            createdBy: resolvedCreatedBy,
+            employeeName: resolvedEmployeeName,
+            createdByEmail: resolvedCreatedByEmail,
           });
         }
         throw err;
@@ -260,6 +306,9 @@ async function processOfflineSale(payload: {
   taxAmount?: number;
   exchangeRate?: number;
   totalAmountBs?: number;
+  createdBy?: string;
+  employeeName?: string;
+  createdByEmail?: string;
 }) {
   const offlineSaleId = 'offline-' + Date.now();
   const status = payload.paymentMethod === 'credito' ? 'pending_payment' : 'paid';
@@ -285,6 +334,9 @@ async function processOfflineSale(payload: {
     status,
     iva_enabled: payload.ivaEnabled || false,
     tax_amount: payload.taxAmount || 0,
+    created_by: payload.createdBy || null,
+    employee_name: payload.employeeName || null,
+    created_by_email: payload.createdByEmail || null,
     is_offline: true,
   };
   await addOfflineSale(offlineSale);

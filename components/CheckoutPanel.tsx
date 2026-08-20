@@ -20,6 +20,8 @@ import { ClientBalance } from '../hooks/useClients';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { BrandMark } from './BrandMark';
 import { useExchangeRate } from '../hooks/useExchangeRate';
+import { useAuth } from '../hooks/useAuth';
+import { getEmployeeDisplayName } from '../hooks/useProducts';
 
 const TAX_RATE = 0.16;
 const PAYMENT_METHODS = [
@@ -40,6 +42,7 @@ interface SaleResult {
   paymentMethod: string;
   exchangeRate?: number;
   totalAmountBs?: number;
+  employeeName?: string;
 }
 
 interface CheckoutPanelProps {
@@ -47,6 +50,8 @@ interface CheckoutPanelProps {
 }
 
 export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }: CheckoutPanelProps) {
+  const { user } = useAuth();
+  const currentEmployeeName = user ? getEmployeeDisplayName(user) : 'Empleado';
   const items = useCartStore((state) => state.items);
 
   const updateQuantity = useCartStore((state) => state.updateQuantity);
@@ -139,6 +144,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         taxAmount: tax,
         exchangeRate: rate,
         totalAmountBs: totalBsVal,
+        createdBy: user?.id,
+        employeeName: currentEmployeeName,
+        createdByEmail: user?.email,
       });
 
       setCompletedSale({
@@ -150,6 +158,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         paymentMethod: selectedPayment!,
         exchangeRate: rate,
         totalAmountBs: totalBsVal,
+        employeeName: currentEmployeeName,
       });
 
       clearCart();
@@ -165,7 +174,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } finally {
       isSubmittingRef.current = false;
     }
-  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast, rate, toBs]);
+  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast, rate, toBs, user, currentEmployeeName]);
 
   const handleCheckout = useCallback(async () => {
     if (isSubmittingRef.current || createSale.isPending) return;
@@ -414,6 +423,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           paymentMethod={completedSale.paymentMethod}
           exchangeRate={completedSale.exchangeRate}
           totalAmountBs={completedSale.totalAmountBs}
+          employeeName={completedSale.employeeName}
           onClose={handleCloseModal}
         />
       )}

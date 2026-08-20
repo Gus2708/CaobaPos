@@ -33,6 +33,9 @@ interface Sale {
   iva_enabled?: boolean;
   tax_amount?: number;
   client_id?: string;
+  created_by?: string;
+  employee_name?: string;
+  created_by_email?: string;
   sale_items?: SaleItem[];
 }
 
@@ -166,6 +169,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
         paymentMethod: sale.payment_method,
         exchangeRate: sale.exchange_rate,
         totalAmountBs: sale.total_amount_bs,
+        employeeName: sale.employee_name,
       };
 
       await shareReceiptPDF(receiptData);
@@ -241,6 +245,11 @@ export const SaleDetailModal = memo(function SaleDetailModal({
             </View>
             
             <View style={styles.headerBadges}>
+              {sale.employee_name && (
+                <Badge variant="mahogany">
+                  {`👤 ${sale.employee_name}`}
+                </Badge>
+              )}
               <Badge variant={ivaEnabled ? "mahogany" : "neutral"}>
                 {ivaEnabled ? "Con IVA" : "Sin IVA"}
               </Badge>

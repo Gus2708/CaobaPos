@@ -43,6 +43,9 @@ interface Sale {
   iva_enabled?: boolean;
   tax_amount?: number;
   client_id?: string;
+  created_by?: string;
+  employee_name?: string;
+  created_by_email?: string;
   sale_items?: SaleItem[];
 }
 
@@ -85,7 +88,7 @@ const SaleCard = React.memo(function SaleCard({
       activeOpacity={0.7}
       onLongPress={onDelete}
       accessibilityRole="button"
-      accessibilityLabel={`Venta del ${formatDate(item.created_at)}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
+      accessibilityLabel={`Venta del ${formatDate(item.created_at)}${item.employee_name ? ` por ${item.employee_name}` : ''}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
     >
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
@@ -93,9 +96,17 @@ const SaleCard = React.memo(function SaleCard({
         </View>
 
         <View style={styles.saleInfo}>
-          <Text style={styles.saleTotal} numberOfLines={1}>
-            {hideAmounts ? '$ ———' : `$${Number(item.total_amount).toFixed(2)}`}
-          </Text>
+          <View style={styles.saleHeaderRow}>
+            <Text style={styles.saleTotal} numberOfLines={1}>
+              {hideAmounts ? '$ ———' : `$${Number(item.total_amount).toFixed(2)}`}
+            </Text>
+            {item.employee_name && (
+              <View style={styles.employeeBadge}>
+                <Icon name="user" size={10} color={tokens.colors.mahogany} />
+                <Text style={styles.employeeBadgeText} numberOfLines={1}>{item.employee_name}</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.saleDate}>{formatDate(item.created_at)}</Text>
         </View>
 
@@ -222,9 +233,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const filteredSales = useMemo(() => {
     if (!sales) return [];
     if (!search.trim()) return sales;
+    const q = search.toLowerCase();
     return sales.filter((s) =>
-      s.id.toLowerCase().includes(search.toLowerCase()) ||
-      s.payment_method.toLowerCase().includes(search.toLowerCase())
+      s.id.toLowerCase().includes(q) ||
+      s.payment_method.toLowerCase().includes(q) ||
+      s.employee_name?.toLowerCase().includes(q)
     );
   }, [sales, search]);
 
@@ -1040,6 +1053,30 @@ const styles = StyleSheet.create({
   saleInfo: {
     flex: 1,
     gap: verticalScale(4),
+  },
+  saleHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: scale(8),
+  },
+  employeeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    backgroundColor: tokens.colors.mahoganyDim,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(2),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    maxWidth: scale(110),
+  },
+  employeeBadgeText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: tokens.colors.mahogany,
   },
   saleTotal: { 
     fontFamily: FontNames.jetBrainsMono, 
