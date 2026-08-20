@@ -28,7 +28,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
   const isOutOfStock = product.stock_quantity <= 0;
   const { scale: scaleAnim, onPressIn, onPressOut } = usePressAnimation({ scaleTo: 0.97 });
   const badgeScale = useRef(new Animated.Value(1)).current;
-  const { formatBs, toBs } = useExchangeRate();
+  const { formatBs } = useExchangeRate();
 
   // Zustand Store integrations for active selection and inline quantity management
   const cartItem = useCartStore((state) => state.items.find((item) => item.id === product.id));
@@ -134,7 +134,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                   ${product.price.toFixed(2)}
                 </Text>
                 <Text style={[styles.cardPriceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
-                  {formatBs(toBs(product.price))}
+                  {formatBs(product.price)}
                 </Text>
               </View>
             </View>
@@ -227,7 +227,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                     ${product.price.toFixed(2)}
                   </Text>
                   <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
-                    {formatBs(toBs(product.price))}
+                    {formatBs(product.price)}
                   </Text>
                 </View>
                 <View style={[
@@ -327,7 +327,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 ${product.price.toFixed(2)}
               </Text>
               <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1}>
-                {formatBs(toBs(product.price))}
+                {formatBs(product.price)}
               </Text>
             </View>
             <View style={[
