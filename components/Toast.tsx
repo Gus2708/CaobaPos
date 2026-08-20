@@ -124,45 +124,47 @@ const ToastItem = memo(function ToastItem({
   }));
 
   return (
-    <GestureDetector gesture={pan}>
-      <Animated.View
-        entering={reducedMotion ? undefined : TOAST_ENTER}
-        exiting={reducedMotion ? undefined : TOAST_EXIT}
-        layout={TOAST_LAYOUT}
-        style={[styles.toast, dismissStyle]}
-      >
-        {/* Left accent bar */}
-        <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+    <Animated.View
+      entering={reducedMotion ? undefined : TOAST_ENTER}
+      exiting={reducedMotion ? undefined : TOAST_EXIT}
+      layout={TOAST_LAYOUT}
+      style={styles.toastWrapper}
+    >
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.toast, dismissStyle]}>
+          {/* Left accent bar */}
+          <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
 
-        {/* Icon circle */}
-        <View style={[styles.iconCircle, { backgroundColor: `${accentColor}22` }]}>
-          <Text style={[styles.iconText, { color: accentColor }]}>
-            {SYMBOLS[toast.type]}
-          </Text>
-        </View>
+          {/* Icon circle */}
+          <View style={[styles.iconCircle, { backgroundColor: `${accentColor}22` }]}>
+            <Text style={[styles.iconText, { color: accentColor }]}>
+              {SYMBOLS[toast.type]}
+            </Text>
+          </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={[styles.label, { color: accentColor }]}>
-            {LABELS[toast.type]}
-          </Text>
-          <Text style={styles.message} numberOfLines={2}>
-            {toast.message}
-          </Text>
-        </View>
+          {/* Content */}
+          <View style={styles.content}>
+            <Text style={[styles.label, { color: accentColor }]}>
+              {LABELS[toast.type]}
+            </Text>
+            <Text style={styles.message} numberOfLines={2}>
+              {toast.message}
+            </Text>
+          </View>
 
-        {/* Hardware-accelerated progress bar */}
-        <View style={styles.progressBarTrack}>
-          <Animated.View
-            style={[
-              styles.progressBar,
-              { backgroundColor: accentColor },
-              progressStyle,
-            ]}
-          />
-        </View>
-      </Animated.View>
-    </GestureDetector>
+          {/* Hardware-accelerated progress bar */}
+          <View style={styles.progressBarTrack}>
+            <Animated.View
+              style={[
+                styles.progressBar,
+                { backgroundColor: accentColor },
+                progressStyle,
+              ]}
+            />
+          </View>
+        </Animated.View>
+      </GestureDetector>
+    </Animated.View>
   );
 });
 
@@ -213,6 +215,9 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     gap: verticalScale(8),
     alignItems: 'stretch',
+  },
+  toastWrapper: {
+    width: '100%',
   },
   toast: {
     flexDirection: 'row',
