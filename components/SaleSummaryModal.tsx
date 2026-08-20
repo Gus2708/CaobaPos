@@ -134,7 +134,7 @@ export function SaleSummaryModal({
                 <Text style={styles.grandTotalLabel}>TOTAL</Text>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
-                  <Text style={styles.grandTotalValueBs} numberOfLines={1}>
+                  <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                     {formatBs(totalAmountBs)}
                   </Text>
                 </View>

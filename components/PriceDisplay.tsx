@@ -86,6 +86,8 @@ export function PriceDisplay({
           style,
         ]}
         numberOfLines={numberOfLines}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {formattedUsd}
       </Text>
@@ -101,6 +103,8 @@ export function PriceDisplay({
           bsStyle,
         ]}
         numberOfLines={numberOfLines}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
       >
         {formattedBs}
       </Text>
