@@ -335,7 +335,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>${total.toFixed(2)}</Text>
                   {sale.total_amount_bs ? (
-                    <Text style={styles.grandTotalValueBs} numberOfLines={1}>
+                    <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                       {formatBs(sale.total_amount_bs)}
                     </Text>
                   ) : null}
