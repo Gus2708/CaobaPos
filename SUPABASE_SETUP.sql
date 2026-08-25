@@ -16,11 +16,19 @@ CREATE TABLE IF NOT EXISTS exchange_rates (
   is_current BOOLEAN DEFAULT true
 );
 
-ALTER TABLE exchange_rates DISABLE ROW LEVEL SECURITY;
+-- Habilitar Row-Level Security (RLS)
+ALTER TABLE exchange_rates ENABLE ROW LEVEL SECURITY;
 
 CREATE INDEX IF NOT EXISTS idx_exchange_rates_currency_current ON exchange_rates(currency, is_current);
 
--- 3. Función para actualizar la tasa oficial
+-- Políticas RLS
+CREATE POLICY "admin_all" ON exchange_rates FOR ALL TO authenticated USING (is_admin()) WITH CHECK (is_admin());
+CREATE POLICY "auth_select" ON exchange_rates FOR SELECT TO authenticated USING (true);
+CREATE POLICY "anon_select" ON exchange_rates FOR SELECT TO anon USING (true);
+CREATE POLICY "auth_insert" ON exchange_rates FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "auth_update" ON exchange_rates FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+-- 3. Función para actualizar la tasa oficial (restringida a usuarios autenticados)
 CREATE OR REPLACE FUNCTION update_exchange_rate(
   p_rate NUMERIC,
   p_source TEXT DEFAULT 'bcv',
@@ -28,6 +36,8 @@ CREATE OR REPLACE FUNCTION update_exchange_rate(
 )
 RETURNS UUID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_new_id UUID;
@@ -46,11 +56,15 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION update_exchange_rate(NUMERIC, TEXT, JSONB) FROM public, anon;
+GRANT EXECUTE ON FUNCTION update_exchange_rate(NUMERIC, TEXT, JSONB) TO authenticated, service_role;
+
 -- 4. Trigger para procesar la respuesta HTTP de DolarAPI e insertar en exchange_rates
 CREATE OR REPLACE FUNCTION process_bcv_http_response()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_payload JSONB;
@@ -75,6 +89,8 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE EXECUTE ON FUNCTION process_bcv_http_response() FROM public, anon, authenticated;
 
 DROP TRIGGER IF EXISTS trg_process_bcv_response ON net._http_response;
 CREATE TRIGGER trg_process_bcv_response
