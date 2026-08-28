@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Animated, Easing, StyleSheet, useWindowDimensions, Dimensions } from 'react-native';
+import { View, Animated, Easing, StyleSheet, Dimensions } from 'react-native';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale } from '../lib/responsive';
@@ -61,7 +62,7 @@ function Shimmer({ style }: { style: any }) {
 }
 
 export function SkeletonItem({ layout, count = 1 }: SkeletonItemProps) {
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const isMobile = width < 768;
   const numColumns = isMobile ? 1 : 3;
 

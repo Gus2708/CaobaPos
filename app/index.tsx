@@ -1,4 +1,5 @@
-import { View, StyleSheet, RefreshControl, TextInput, useWindowDimensions, TouchableOpacity, Modal, Animated, ScrollView, Platform } from 'react-native';
+import { View, StyleSheet, RefreshControl, TextInput, TouchableOpacity, Modal, Animated, ScrollView, Platform } from 'react-native';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { AppBlurView } from '../components/AppBlurView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/Text';
@@ -56,7 +57,7 @@ export function POSScreen() {
   const isSearchFocusedRef = useRef(false);
 
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const isMobile = width < 768;
   const numColumns = useMemo(() => {
     if (isMobile) return 1;

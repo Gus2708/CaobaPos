@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Animated, Platform } from 'react-native';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,7 +50,7 @@ export default function ClientsPanel() {
   const totalDeuda = clients?.reduce((sum, c) => sum + (c.balance_due > 0 ? c.balance_due : 0), 0) || 0;
   const debtorsCount = clients?.filter(c => c.balance_due > 0).length || 0;
   const [search, setSearch] = useState('');
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const isMobile = width < 768;
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
