@@ -37,13 +37,27 @@ const TEXT_COLOR = BRAND_COLORS.text;
 const MUTED_COLOR = BRAND_COLORS.muted;
 const BORDER_COLOR = BRAND_COLORS.border;
 
+/**
+ * HTML sanitization utility to prevent Cross-Site Scripting (XSS) in generated tickets/PDFs.
+ * Complies with OWASP Top 10 A03 (Injection) and Security & Hardening rules.
+ */
+export function escapeHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const generateReceiptHTML = (data: ReceiptData) => {
   const itemsHTML = data.items
     .map(
       (item) => `
       <tr class="item-row">
         <td class="item-name">
-          <div class="name">${item.name}</div>
+          <div class="name">${escapeHtml(item.name)}</div>
           <div class="details">$${item.price.toFixed(2)} x ${item.quantity}</div>
         </td>
         <td class="item-total">$${item.subtotal.toFixed(2)}</td>
@@ -140,10 +154,10 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         </div>
         
         <div class="receipt-info">
-          <div>FECHA: ${data.date}</div>
-          <div>FOLIO: <span class="folio">${data.saleId.slice(0, 8).toUpperCase()}</span></div>
+          <div>FECHA: ${escapeHtml(data.date)}</div>
+          <div>FOLIO: <span class="folio">${escapeHtml(data.saleId.slice(0, 8).toUpperCase())}</span></div>
         </div>
-        ${data.employeeName ? `<div class="employee-info">ATENDIDO POR: <strong style="color: ${TEXT_COLOR};">${data.employeeName.toUpperCase()}</strong></div>` : ''}
+        ${data.employeeName ? `<div class="employee-info">ATENDIDO POR: <strong style="color: ${TEXT_COLOR};">${escapeHtml(data.employeeName.toUpperCase())}</strong></div>` : ''}
         
         <table>
           ${itemsHTML}
@@ -172,7 +186,7 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         
         <div class="payment-info">
           <div class="payment-label">Método de Pago</div>
-          <div class="payment-method">${getPaymentLabel(data.paymentMethod)}</div>
+          <div class="payment-method">${escapeHtml(getPaymentLabel(data.paymentMethod))}</div>
         </div>
         
         <div class="footer">

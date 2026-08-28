@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
+import { isSafeFileOrRemoteUrl } from './safeUrl';
 
 const CACHE_FOLDER = `${FileSystem.cacheDirectory}product_images/`;
 const MAX_CACHE_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -38,7 +39,7 @@ async function getFilename(url: string): Promise<string> {
  * Uses in-memory cache first to avoid repeated hashing and stat calls.
  */
 export async function getCachedImage(url: string): Promise<string> {
-  if (!url) return '';
+  if (!url || !isSafeFileOrRemoteUrl(url)) return '';
   if (url.startsWith('file://') || url.startsWith('content://')) return url;
 
   // 1. Check in-memory cache (fastest path)
