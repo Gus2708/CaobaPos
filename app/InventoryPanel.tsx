@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, ActivityIndicator } from 'react-native';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
@@ -22,6 +23,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
 import { BrandMark } from '../components/BrandMark';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -352,7 +354,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   const [isAddingQuickCat, setIsAddingQuickCat] = useState<'new' | 'edit' | null>(null);
   const [quickCatText, setQuickCatText] = useState('');
   
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const isMobile = width < 768;
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
@@ -373,6 +375,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   const removeCategory = useSettingsStore((state) => state.removeCategory);
 
   const PAGE_SIZE = 25;
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
 
   const { 
     data, 
@@ -383,9 +386,16 @@ export const InventoryPanel = memo(function InventoryPanel({
     hasNextPage, 
     isFetchingNextPage 
   } = useInfiniteQuery({
-    queryKey: ['inventory-products'],
+    queryKey: ['inventory-products', isDemoMode],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        const list = state.demoProducts;
+        const startIdx = (pageParam as number) * PAGE_SIZE;
+        return list.slice(startIdx, startIdx + PAGE_SIZE);
+      }
+
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -426,6 +436,18 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const updateMutation = useMutation({
     mutationFn: async (item: EditState) => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateUpdateProduct(item.id, {
+          name: item.name,
+          price: parseFloat(item.price) || 0,
+          cost: parseFloat(item.cost) || 0,
+          stock_quantity: parseInt(item.stock) || 0,
+          categories: item.categories,
+          barcode: item.barcode || undefined,
+        });
+        return;
+      }
+
       if (item.barcode) {
         const { data: duplicateData } = await supabase
           .from('products')
@@ -523,6 +545,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setEditing(null);
       showToast('Producto actualizado', 'success');
@@ -536,16 +559,36 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, imageUrl }: { id: string; imageUrl?: string }) => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateDeleteProduct(id);
+        return;
+      }
       // 1. Soft delete (Archive)
       const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory-products'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
     onError: () => showToast('No se pudo eliminar', 'error'),
   });
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateAddProduct({
+          name: newProduct.name,
+          price: parseFloat(newProduct.price) || 0,
+          cost: parseFloat(newProduct.cost) || 0,
+          stock_quantity: parseInt(newProduct.stock) || 0,
+          barcode: newProduct.barcode || undefined,
+          is_active: true,
+          categories: newProduct.categories,
+        });
+        return;
+      }
+
       if (newProduct.barcode) {
         const { data: duplicateData } = await supabase
           .from('products')
@@ -607,6 +650,7 @@ export const InventoryPanel = memo(function InventoryPanel({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setNewProduct({ name: '', price: '', cost: '', stock: '', categories: [], barcode: '' });
       setShowAddForm(false);
@@ -621,6 +665,13 @@ export const InventoryPanel = memo(function InventoryPanel({
 
   const syncCategoryMutation = useMutation({
     mutationFn: async (name: string) => {
+      if (isDemoActive()) {
+        useDemoStore.setState((s) => ({
+          demoCategories: Array.from(new Set([...s.demoCategories, name.trim()])),
+        }));
+        return;
+      }
+
       const { error } = await supabase
         .from('categories')
         .upsert({ name: name.toLowerCase().trim() }, { onConflict: 'name' });

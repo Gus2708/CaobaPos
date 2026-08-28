@@ -9,6 +9,7 @@ import { LoginScreen } from './app/LoginScreen';
 import { FontLoader } from './hooks/useFonts';
 import { isSupabaseConfigured } from './lib/supabase';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useDemoStore } from './store/demoStore';
 import { scale, verticalScale, moderateScale } from './lib/responsive';
 import { tokens } from './lib/designTokens';
 
@@ -73,8 +74,9 @@ export default function App() {
 
 function AppContent() {
   const { session, isLoading } = useAuth();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
 
-  if (isLoading) {
+  if (isLoading && !isDemoMode) {
     return (
       <View style={styles.authLoadingContainer}>
         <ActivityIndicator size="large" color={tokens.colors.gold} />
@@ -82,7 +84,7 @@ function AppContent() {
     );
   }
 
-  if (!session) {
+  if (!session && !isDemoMode) {
     return <LoginScreen />;
   }
 

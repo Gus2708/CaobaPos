@@ -8,6 +8,7 @@ import {
   DEFAULT_BCV_RATE,
   CachedExchangeRate,
 } from '../lib/offlineCache';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 const EXCHANGE_RATES_TABLE = 'exchange_rates';
 const DOLAR_API_BCV_URL = 'https://ve.dolarapi.com/v1/dolares/oficial';
@@ -78,10 +79,22 @@ function ensureRealtimeSubscription(queryClient: ReturnType<typeof useQueryClien
  */
 export function useExchangeRate() {
   const queryClient = useQueryClient();
+  const isDemo = useDemoStore((s) => s.isDemoMode);
+  const demoRate = useDemoStore((s) => s.demoExchangeRate);
 
   const query = useQuery({
-    queryKey: ['exchange_rate', 'current'],
+    queryKey: ['exchange_rate', 'current', isDemo],
     queryFn: async (): Promise<CachedExchangeRate> => {
+      if (isDemoActive()) {
+        return {
+          id: 'demo-rate',
+          currency: 'USD_VES',
+          source: 'demo',
+          rate: demoRate,
+          updated_at: new Date().toISOString(),
+        };
+      }
+
       if (!getIsOnline()) {
         return await getCachedExchangeRate();
       }
@@ -125,8 +138,10 @@ export function useExchangeRate() {
 
   // Initialize singleton Realtime subscription (safe to call multiple times)
   useEffect(() => {
-    ensureRealtimeSubscription(queryClient);
-  }, [queryClient]);
+    if (!isDemoActive()) {
+      ensureRealtimeSubscription(queryClient);
+    }
+  }, [queryClient, isDemo]);
 
   const activeRate = query.data?.rate || DEFAULT_BCV_RATE.rate;
 
@@ -149,6 +164,17 @@ export function useSyncBcvRate() {
 
   return useMutation({
     mutationFn: async () => {
+      if (isDemoActive()) {
+        const rate = useDemoStore.getState().demoExchangeRate;
+        return {
+          id: 'demo-rate',
+          currency: 'USD_VES',
+          source: 'demo',
+          rate,
+          updated_at: new Date().toISOString(),
+        };
+      }
+
       const response = await fetch(DOLAR_API_BCV_URL);
       if (!response.ok) {
         throw new Error(`DolarAPI respondió con error ${response.status}`);
@@ -217,6 +243,19 @@ export function useUpdateManualRate() {
     mutationFn: async (newRate: number) => {
       if (!newRate || isNaN(newRate) || newRate <= 0) {
         throw new Error('La tasa debe ser un número mayor a cero.');
+      }
+
+      if (isDemoActive()) {
+        useDemoStore.setState({ demoExchangeRate: newRate });
+        const cached: CachedExchangeRate = {
+          id: 'demo-rate',
+          currency: 'USD_VES',
+          source: 'manual',
+          rate: newRate,
+          updated_at: new Date().toISOString(),
+          raw_payload: { manual: true },
+        };
+        return cached;
       }
 
       try {

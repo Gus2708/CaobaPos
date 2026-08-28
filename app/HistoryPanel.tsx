@@ -1,4 +1,5 @@
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated } from 'react-native';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { BrandMark } from '../components/BrandMark';
 
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
@@ -21,6 +22,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { useAuth } from '../hooks/useAuth';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -42,10 +44,11 @@ interface Sale {
   created_at: string;
   iva_enabled?: boolean;
   tax_amount?: number;
-  client_id?: string;
-  created_by?: string;
-  employee_name?: string;
-  created_by_email?: string;
+  // Postgres returns NULL for walk-in sales, so null is part of the real shape.
+  client_id?: string | null;
+  created_by?: string | null;
+  employee_name?: string | null;
+  created_by_email?: string | null;
   sale_items?: SaleItem[];
 }
 
@@ -126,7 +129,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const isMobile = width < 768;
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
@@ -191,6 +194,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   ];
 
   const PAGE_SIZE = 20;
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
 
   const {
     data,
@@ -201,9 +205,25 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
     hasNextPage,
     isFetchingNextPage
   } = useInfiniteQuery({
-    queryKey: ['sales-history', selectedMethod, period, dateRange.start, dateRange.end],
+    queryKey: ['sales-history', selectedMethod, period, dateRange.start, dateRange.end, isDemoMode],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        let list = [...state.demoSales];
+        if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        if (dateRange.end) {
+          list = list.filter(s => s.created_at <= dateRange.end!);
+        }
+        if (selectedMethod) {
+          list = list.filter(s => s.payment_method === selectedMethod);
+        }
+        const startIdx = (pageParam as number) * PAGE_SIZE;
+        return list.slice(startIdx, startIdx + PAGE_SIZE);
+      }
+
       let query = supabase.from('sales').select('*');
 
       if (dateRange.start) {
@@ -242,8 +262,23 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   }, [sales, search]);
 
   const { data: totalSum, isLoading: loadingTotal } = useQuery({
-    queryKey: ['sales-history-total', selectedMethod, period, dateRange.start, dateRange.end],
+    queryKey: ['sales-history-total', selectedMethod, period, dateRange.start, dateRange.end, isDemoMode],
     queryFn: async () => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        let list = [...state.demoSales];
+        if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        if (dateRange.end) {
+          list = list.filter(s => s.created_at <= dateRange.end!);
+        }
+        if (selectedMethod) {
+          list = list.filter(s => s.payment_method === selectedMethod);
+        }
+        return list.reduce((acc, sale) => acc + (sale.total_amount || 0), 0);
+      }
+
       let query = supabase.from('sales').select('total_amount');
 
       if (dateRange.start) {
@@ -264,6 +299,11 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const deleteMutation = useMutation({
     mutationFn: async (sale: Sale) => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateDeleteSale(sale.id);
+        return { stockWarn: false };
+      }
+
       try {
         // 1. Get items to restore stock (best-effort — failures here must not block the delete)
         const { data: items, error: itemsError } = await supabase
@@ -401,6 +441,17 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       ivaEnabled: boolean;
       taxAmount: number;
     }) => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateUpdateSale({
+          saleId,
+          items,
+          newTotal,
+          ivaEnabled,
+          taxAmount,
+        });
+        return;
+      }
+
       const { data: oldItems, error: fetchError } = await supabase
         .from('sale_items')
         .select('product_id, quantity')
@@ -537,6 +588,15 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        const fullSale = state.demoSales.find((s) => s.id === sale.id) || sale;
+        const items = state.demoSaleItems.filter((i) => i.sale_id === sale.id);
+        setSelectedSale({ ...fullSale, sale_items: items });
+        setShowDetail(true);
+        return;
+      }
+
       // Fetch complete sale details to ensure we have client_id and all fields
       const { data: fullSale, error: saleError } = await supabase
         .from('sales')

@@ -12,6 +12,7 @@ import {
   addOfflineSale,
 } from '../lib/offlineCache';
 import { enqueueOfflineItem } from '../lib/offlineQueue';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 const PRODUCTS_TABLE = 'products';
 
@@ -22,9 +23,15 @@ export type Category = string | 'todos';
  * Fetches active products with offline-first fallback.
  */
 export function useProducts(category: Category = 'todos') {
+  const isDemo = useDemoStore((s) => s.isDemoMode);
+
   return useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', isDemo],
     queryFn: async (): Promise<Product[]> => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().demoProducts;
+      }
+
       if (!getIsOnline()) {
         const cached = await getCachedProducts();
         return cached;
@@ -65,10 +72,15 @@ export function useProducts(category: Category = 'todos') {
 
 export function useCategories() {
   const setCategories = useSettingsStore((state) => state.setCategories);
+  const isDemo = useDemoStore((s) => s.isDemoMode);
 
   const query = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', isDemo],
     queryFn: async (): Promise<string[]> => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().demoCategories;
+      }
+
       if (!getIsOnline()) {
         return await getCachedCategories();
       }
@@ -147,6 +159,30 @@ export function useCreateSale() {
       let resolvedCreatedBy = createdBy;
       let resolvedEmployeeName = employeeName;
       let resolvedCreatedByEmail = createdByEmail;
+
+      if (isDemoActive()) {
+        const demoProducts = useDemoStore.getState().demoProducts;
+        for (const item of items) {
+          const dbProduct = demoProducts.find((p) => p.id === item.product_id);
+          if (dbProduct && dbProduct.stock_quantity < item.quantity) {
+            throw new Error(
+              `Stock insuficiente para ${dbProduct.name}. Disponible: ${dbProduct.stock_quantity}`
+            );
+          }
+        }
+
+        return useDemoStore.getState().simulateCreateSale({
+          totalAmount,
+          paymentMethod,
+          items,
+          clientId,
+          ivaEnabled,
+          taxAmount,
+          exchangeRate,
+          totalAmountBs,
+          employeeName: resolvedEmployeeName || 'Evaluador Demo',
+        });
+      }
 
       if (!resolvedCreatedBy || !resolvedEmployeeName) {
         try {
@@ -279,6 +315,7 @@ export function useCreateSale() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       if (variables.paymentMethod === 'credito') {
         queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
         if (variables.clientId) {

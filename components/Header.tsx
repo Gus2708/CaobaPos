@@ -12,6 +12,7 @@ import { Icon } from './Icon';
 import { PressableScale } from './PressableScale';
 import { useAuth } from '../hooks/useAuth';
 import { useExchangeRate } from '../hooks/useExchangeRate';
+import { useDemoStore } from '../store/demoStore';
 import { ExchangeRateModal } from './ExchangeRateModal';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -85,6 +86,7 @@ interface HeaderProps {
 
 export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const { role, signOut } = useAuth();
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
@@ -176,6 +178,20 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
 
         {/* Action Section */}
         <View style={styles.actionSection}>
+          {isDemoMode && (
+            <TouchableOpacity
+              style={styles.demoPill}
+              onPress={handleSignOut}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+              accessibilityRole="button"
+              accessibilityLabel="Modo Demo activo. Tocar para salir."
+            >
+              <View style={styles.demoIndicatorDot} />
+              <Text style={styles.demoPillText}>DEMO</Text>
+            </TouchableOpacity>
+          )}
+
           {/* BCV Exchange Rate Badge */}
           <TouchableOpacity
             style={styles.bcvPill}
@@ -266,7 +282,9 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
           <View style={styles.menuFooter}>
             <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
               <Icon name="sign-out-alt" size={18} color={tokens.colors.textMuted} />
-              <Text style={styles.signOutText}>Cerrar sesión</Text>
+              <Text style={styles.signOutText}>
+                {isDemoMode ? 'Salir del Modo Demo' : 'Cerrar sesión'}
+              </Text>
             </TouchableOpacity>
             <Text style={styles.footerText}>CaobaPOS v2026</Text>
           </View>
@@ -300,6 +318,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(10),
+  },
+  demoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(205, 155, 70, 0.15)',
+    borderWidth: 1,
+    borderColor: tokens.colors.gold,
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(5),
+    borderRadius: tokens.radius.pill,
+    gap: scale(5),
+  },
+  demoIndicatorDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: tokens.colors.gold,
+  },
+  demoPillText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(10),
+    fontWeight: '800',
+    color: tokens.colors.gold,
+    letterSpacing: 0.5,
   },
   bcvPill: {
     flexDirection: 'row',

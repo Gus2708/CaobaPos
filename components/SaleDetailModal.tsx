@@ -32,10 +32,11 @@ interface Sale {
   created_at: string;
   iva_enabled?: boolean;
   tax_amount?: number;
-  client_id?: string;
-  created_by?: string;
-  employee_name?: string;
-  created_by_email?: string;
+  // Postgres returns NULL for walk-in sales, so null is part of the real shape.
+  client_id?: string | null;
+  created_by?: string | null;
+  employee_name?: string | null;
+  created_by_email?: string | null;
   sale_items?: SaleItem[];
 }
 
@@ -169,7 +170,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
         paymentMethod: sale.payment_method,
         exchangeRate: sale.exchange_rate,
         totalAmountBs: sale.total_amount_bs,
-        employeeName: sale.employee_name,
+        employeeName: sale.employee_name ?? undefined,
       };
 
       await shareReceiptPDF(receiptData);

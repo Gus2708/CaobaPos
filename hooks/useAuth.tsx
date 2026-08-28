@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from 'react';
 import { type Session, type User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { useDemoStore } from '../store/demoStore';
 
 export type Role = 'admin' | 'empleado';
 
@@ -22,9 +23,30 @@ const AuthContext = createContext<AuthContextValue>({
   signOut: async () => {},
 });
 
+const SYNTHETIC_DEMO_USER: User = {
+  id: 'demo-user-evaluator',
+  app_metadata: { role: 'admin' },
+  user_metadata: { full_name: 'Evaluador Demo', name: 'Evaluador Demo' },
+  aud: 'authenticated',
+  created_at: '2026-01-01T00:00:00.000Z',
+  email: 'demo@caobapos.local',
+} as User;
+
+const SYNTHETIC_DEMO_SESSION: Session = {
+  access_token: 'demo-token',
+  refresh_token: 'demo-refresh-token',
+  expires_in: 86400,
+  token_type: 'bearer',
+  user: SYNTHETIC_DEMO_USER,
+} as Session;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
+  const setDemoMode = useDemoStore((s) => s.setDemoMode);
+  const resetDemoData = useDemoStore((s) => s.resetDemoData);
 
   useEffect(() => {
     let mounted = true;
@@ -38,22 +60,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     supabase.auth
       .getSession()
-      .then((response) => {
+      .then(async (response) => {
+        if (response?.error) {
+          console.warn('[Auth] Session error on startup, clearing storage:', response.error);
+          await supabase.auth.signOut().catch(() => {});
+          if (mounted) {
+            setSession(null);
+            setIsLoading(false);
+          }
+          return;
+        }
         if (mounted) {
           setSession(response?.data?.session ?? null);
           setIsLoading(false);
         }
       })
-      .catch((err) => {
-        console.error('[Auth] Error getting session on startup:', err);
+      .catch(async (err) => {
+        console.error('[Auth] Error getting session on startup, purging token storage:', err);
+        // Clean orphaned or expired refresh token from storage to avoid frozen app loops (Rule 2.B)
+        await supabase.auth.signOut().catch(() => {});
         if (mounted) {
+          setSession(null);
           setIsLoading(false);
         }
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (_event === 'TOKEN_REFRESHED' && !newSession) {
+        await supabase.auth.signOut().catch(() => {});
+      }
       if (mounted) {
-        setSession(session);
+        setSession(newSession);
         setIsLoading(false);
       }
     });
@@ -65,11 +102,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // El rol de autoridad vive en app_metadata (no manipulable por el usuario; lo usa el RLS).
-  // Se mantiene el fallback a user_metadata por compatibilidad con sesiones antiguas.
-  const roleClaim =
-    session?.user?.app_metadata?.role ?? session?.user?.user_metadata?.role;
-  const role: Role = roleClaim === 'admin' ? 'admin' : 'empleado';
+  // Compute effective session, user and role (giving admin permissions in Demo Mode)
+  const effectiveSession = useMemo(() => {
+    if (isDemoMode) return SYNTHETIC_DEMO_SESSION;
+    return session;
+  }, [isDemoMode, session]);
+
+  const effectiveUser = useMemo(() => {
+    if (isDemoMode) return SYNTHETIC_DEMO_USER;
+    return session?.user ?? null;
+  }, [isDemoMode, session]);
+
+  // Security Hardening: Never trust user_metadata for authorization.
+  // In Supabase, user_metadata is client-mutable via supabase.auth.updateUser().
+  // Only app_metadata is immutable from client-side and set by admin/triggers.
+  const roleClaim = session?.user?.app_metadata?.role;
+  const role: Role = isDemoMode || roleClaim === 'admin' ? 'admin' : 'empleado';
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -77,11 +125,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    if (isDemoMode) {
+      setDemoMode(false);
+      resetDemoData();
+      return;
+    }
     await supabase.auth.signOut();
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, role, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session: effectiveSession, user: effectiveUser, role, isLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

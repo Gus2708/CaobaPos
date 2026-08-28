@@ -8,6 +8,7 @@ import {
   addOfflinePayment,
 } from '../lib/offlineCache';
 import { enqueueOfflineItem } from '../lib/offlineQueue';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 export interface Client {
   id: string;
@@ -33,9 +34,15 @@ export interface ClientPayment {
 }
 
 export function useClients() {
+  const isDemo = useDemoStore((s) => s.isDemoMode);
+
   return useQuery({
-    queryKey: ['clients_balances'],
+    queryKey: ['clients_balances', isDemo],
     queryFn: async (): Promise<ClientBalance[]> => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().demoClients;
+      }
+
       if (!getIsOnline()) {
         return await getCachedClients();
       }
@@ -61,10 +68,15 @@ export function useClients() {
 }
 
 export function useClientPayments(clientId: string | null) {
+  const isDemo = useDemoStore((s) => s.isDemoMode);
+
   return useQuery({
-    queryKey: ['client_payments', clientId],
+    queryKey: ['client_payments', clientId, isDemo],
     queryFn: async (): Promise<ClientPayment[]> => {
       if (!clientId) return [];
+      if (isDemoActive()) {
+        return useDemoStore.getState().demoPayments.filter((p) => p.client_id === clientId);
+      }
       if (!getIsOnline()) return [];
 
       try {
@@ -86,10 +98,22 @@ export function useClientPayments(clientId: string | null) {
 }
 
 export function useClientCreditSales(clientId: string | null) {
+  const isDemo = useDemoStore((s) => s.isDemoMode);
+
   return useQuery({
-    queryKey: ['client_credit_sales', clientId],
+    queryKey: ['client_credit_sales', clientId, isDemo],
     queryFn: async () => {
       if (!clientId) return [];
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        const clientSales = state.demoSales.filter(
+          (s) => s.client_id === clientId && s.payment_method === 'credito'
+        );
+        return clientSales.map((s) => ({
+          ...s,
+          sale_items: state.demoSaleItems.filter((i) => i.sale_id === s.id),
+        }));
+      }
       if (!getIsOnline()) return [];
 
       try {
@@ -116,6 +140,10 @@ export function useCreateClient() {
 
   return useMutation({
     mutationFn: async ({ name, phone }: { name: string; phone?: string }) => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().simulateCreateClient({ name, phone });
+      }
+
       if (!getIsOnline()) {
         const tempId = 'offline-' + Date.now();
         await enqueueOfflineItem('CREATE_CLIENT', { tempId, name, phone });
@@ -190,6 +218,15 @@ export function useAddPayment() {
       paymentMethod: string;
       saleId?: string;
     }) => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().simulateAddPayment({
+          clientId,
+          amount,
+          paymentMethod,
+          saleId,
+        });
+      }
+
       if (!getIsOnline()) {
         await enqueueOfflineItem('ADD_PAYMENT', {
           clientId,
@@ -253,6 +290,7 @@ export function useAddPayment() {
       queryClient.invalidateQueries({
         queryKey: ['client_payments', variables.clientId],
       });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -268,6 +306,11 @@ export function useDeletePayment() {
       paymentId: string;
       clientId: string;
     }) => {
+      if (isDemoActive()) {
+        useDemoStore.getState().simulateDeletePayment(paymentId);
+        return;
+      }
+
       const { error } = await supabase
         .from('client_payments')
         .delete()
@@ -280,6 +323,7 @@ export function useDeletePayment() {
       queryClient.invalidateQueries({
         queryKey: ['client_payments', variables.clientId],
       });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }
@@ -289,6 +333,13 @@ export function useDeleteClient() {
 
   return useMutation({
     mutationFn: async (clientId: string) => {
+      if (isDemoActive()) {
+        useDemoStore.setState((s) => ({
+          demoClients: s.demoClients.filter((c) => c.id !== clientId),
+        }));
+        return;
+      }
+
       if (!getIsOnline()) {
         await enqueueOfflineItem('DELETE_CLIENT', { id: clientId });
         return;

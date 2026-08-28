@@ -12,9 +12,11 @@ import {
 import { useState, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { Text } from '../components/Text';
 import { Icon } from '../components/Icon';
 import { useAuth } from '../hooks/useAuth';
+import { useDemoStore } from '../store/demoStore';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { FontNames } from '../lib/fontNames';
@@ -22,6 +24,7 @@ import { BrandMark } from '../components/BrandMark';
 
 export function LoginScreen() {
   const { signIn } = useAuth();
+  const setDemoMode = useDemoStore((s) => s.setDemoMode);
   const insets = useSafeAreaInsets();
   const passwordRef = useRef<TextInput>(null);
 
@@ -183,6 +186,36 @@ export function LoginScreen() {
                 ) : (
                   <Text style={styles.buttonText}>Entrar</Text>
                 )}
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>o pruébalo sin credenciales</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Demo Mode Button */}
+              <TouchableOpacity
+                style={styles.demoButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setDemoMode(true);
+                }}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Entrar en Modo Demo con datos de prueba precargados"
+              >
+                <View style={styles.demoButtonContent}>
+                  <View style={styles.demoBadge}>
+                    <Icon name="star" size={12} color={tokens.colors.gold} />
+                    <Text style={styles.demoBadgeText}>RECLUTADORES / SHOWCASE</Text>
+                  </View>
+                  <Text style={styles.demoButtonTitle}>Entrar en Modo Demo</Text>
+                  <Text style={styles.demoButtonSubtitle}>
+                    Explora el POS, inventario y métricas con datos simulados en memoria
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -349,5 +382,64 @@ const styles = StyleSheet.create({
     width: scale(18),
     height: scale(18),
     opacity: 0.7,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: verticalScale(6),
+    gap: scale(10),
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: tokens.colors.borderMedium,
+  },
+  dividerText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(11),
+    color: tokens.colors.textDim,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  demoButton: {
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1.5,
+    borderColor: tokens.colors.gold,
+    backgroundColor: 'rgba(205, 155, 70, 0.08)',
+    padding: scale(14),
+    overflow: 'hidden',
+  },
+  demoButtonContent: {
+    alignItems: 'center',
+    gap: verticalScale(4),
+  },
+  demoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(6),
+    backgroundColor: 'rgba(205, 155, 70, 0.18)',
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(3),
+    borderRadius: tokens.radius.pill,
+    marginBottom: verticalScale(2),
+  },
+  demoBadgeText: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(10),
+    fontWeight: '800',
+    color: tokens.colors.gold,
+    letterSpacing: 0.8,
+  },
+  demoButtonTitle: {
+    fontFamily: FontNames.parkinsansBold,
+    fontSize: moderateScale(15),
+    fontWeight: '800',
+    color: tokens.colors.text,
+  },
+  demoButtonSubtitle: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(11),
+    color: tokens.colors.textMuted,
+    textAlign: 'center',
   },
 });

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Animated, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
 
@@ -19,6 +20,7 @@ import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { GlassCard } from '../components/GlassCard';
 import { globalScrollY } from '../store/uiStore';
 import { BrandMark } from '../components/BrandMark';
+import { isDemoActive, useDemoStore } from '../store/demoStore';
 
 interface Sale {
   id: string;
@@ -129,7 +131,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [methodModalVisible, setMethodModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
-  const { width } = useWindowDimensions();
+  const { width } = useDeviceSize();
   const insets = useSafeAreaInsets();
   const isMobile = width < 768;
   const HEADER_HEIGHT = verticalScale(50) + insets.top;
@@ -165,9 +167,22 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     return { start: limitDate, end: null };
   }, [period, limitDate, startDate, endDate]);
 
+  const isDemoMode = useDemoStore((s) => s.isDemoMode);
+
   const { data: sales, isLoading: loadingSales } = useQuery<Sale[]>({
-    queryKey: ['dashboard', 'sales', period, dateRange],
+    queryKey: ['dashboard', 'sales', period, dateRange, isDemoMode],
     queryFn: async () => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        let list = [...state.demoSales];
+        if (period === 'personalizado') {
+          if (dateRange.start) list = list.filter(s => s.created_at >= dateRange.start!);
+          if (dateRange.end) list = list.filter(s => s.created_at <= dateRange.end!);
+        } else if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        return list;
+      }
       let query = supabase.from('sales').select('*');
       if (period === 'personalizado') {
         query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
@@ -181,8 +196,20 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   });
 
   const { data: saleItems } = useQuery<SaleItem[]>({
-    queryKey: ['dashboard', 'sale_items', period, dateRange],
+    queryKey: ['dashboard', 'sale_items', period, dateRange, isDemoMode],
     queryFn: async () => {
+      if (isDemoActive()) {
+        // Resolve sale ids from the store (not from the `sales` closure) so a refetch
+        // triggered right after a new demo sale cannot read a stale sales list.
+        const state = useDemoStore.getState();
+        const inRange = state.demoSales.filter(s => {
+          if (dateRange.start && s.created_at < dateRange.start) return false;
+          if (period === 'personalizado' && dateRange.end && s.created_at > dateRange.end) return false;
+          return true;
+        });
+        const currentSaleIds = new Set(inRange.map(s => s.id));
+        return state.demoSaleItems.filter(i => currentSaleIds.has(i.sale_id));
+      }
       // PostgREST does not support dot-notation filters on joined tables via .gte().
       // Instead fetch sale_ids from the already-loaded sales and query items by those IDs.
       // This avoids a broken cross-table filter that silently returns all rows.
@@ -210,8 +237,19 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   });
 
   const { data: allPayments } = useQuery<ClientPayment[]>({
-    queryKey: ['dashboard', 'client_payments', period, dateRange],
+    queryKey: ['dashboard', 'client_payments', period, dateRange, isDemoMode],
     queryFn: async () => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        let list = [...state.demoPayments];
+        if (period === 'personalizado') {
+          if (dateRange.start) list = list.filter(p => p.created_at >= dateRange.start!);
+          if (dateRange.end) list = list.filter(p => p.created_at <= dateRange.end!);
+        } else if (dateRange.start) {
+          list = list.filter(p => p.created_at >= dateRange.start!);
+        }
+        return list;
+      }
       let query = supabase.from('client_payments').select('*');
       if (period === 'personalizado') {
         query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
@@ -225,8 +263,11 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   });
 
   const { data: products } = useQuery<Product[]>({
-    queryKey: ['dashboard', 'products'],
+    queryKey: ['dashboard', 'products', isDemoMode],
     queryFn: async () => {
+      if (isDemoActive()) {
+        return useDemoStore.getState().demoProducts;
+      }
       const { data, error } = await supabase
         .from('products')
         .select('id, name, cost, price, stock_quantity');
