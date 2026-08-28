@@ -13,6 +13,7 @@ import {
 } from '../lib/offlineCache';
 import { enqueueOfflineItem } from '../lib/offlineQueue';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { isServerRejection } from '../lib/queryErrors';
 
 const PRODUCTS_TABLE = 'products';
 
@@ -57,13 +58,32 @@ export function useProducts(category: Category = 'todos') {
         await saveCachedProducts(formatted);
         return formatted;
       } catch (err) {
+        // The server answered and refused: auth failure, RLS denial, bad query.
+        // The cache cannot stand in for that, and returning it would render a
+        // real failure as an empty catalogue.
+        if (isServerRejection(err)) throw err;
+
         console.warn('[useProducts] Network request failed, reading from offline cache');
-        return await getCachedProducts();
+        const cached = await getCachedProducts();
+
+        // An empty cache after a failed request is not "no products", it is
+        // "unknown". Surface the error so the screen shows its retry state
+        // instead of claiming the catalogue is empty.
+        if (cached.length === 0) throw err;
+
+        return cached;
       }
     },
     select: (products) => {
       if (category === 'todos') return products;
       return products.filter((p) => p.categories?.includes(category));
+    },
+    retry: (failureCount, error) => {
+      // A refusal from the server will not resolve itself. Retrying an auth
+      // failure or an RLS denial three times only delays the error the screen
+      // needs to show.
+      if (isServerRejection(error)) return false;
+      return failureCount < 3;
     },
     staleTime: 1000 * 30,
     placeholderData: (prev) => prev,
