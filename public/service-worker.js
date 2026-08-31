@@ -1,7 +1,7 @@
 // Bump on every change to index.html, the manifest or the fonts it references —
 // the activate handler drops caches whose name no longer matches, so installed
 // PWAs keep serving the old shell until this version changes.
-const CACHE_NAME = 'caobapos-pwa-v3';
+const CACHE_NAME = 'caobapos-pwa-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -169,56 +169,12 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 3. API / Remote services (Supabase queries) - Network First with safe 503 fallback
+  // 3. API / Remote services (Supabase queries) - DO NOT CACHE
+  // Let React Query (offlineFirst) and lib/syncEngine handle data persistence.
+  // Intercepting these and returning cached 200 OK responses tricks React Query
+  // into thinking the network is online, which breaks local mutation queues and 
+  // overwrites local state with stale SW cache data.
   if (url.hostname.includes('supabase.co') || url.pathname.includes('/api/')) {
-    event.respondWith(
-      fetch(request)
-        .then(networkResponse => {
-          // Dynamic clone caching for safe operations
-          if (networkResponse && networkResponse.status === 200 && request.method === 'GET') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(err => {
-          console.warn('🔌 Conectividad perdida. Intentando responder con caché de API...', request.url);
-          
-          if (request.method === 'GET') {
-            return caches.match(request).then(cachedResponse => {
-              if (cachedResponse) return cachedResponse;
-              
-              // If no API response cached, return a clean offline JSON fallback
-              return new Response(
-                JSON.stringify({ 
-                  error: 'Offline', 
-                  message: 'El dispositivo no está conectado a internet. La consulta se resolverá al restablecer la conexión.',
-                  status: 503 
-                }),
-                { 
-                  status: 503, 
-                  headers: { 'Content-Type': 'application/json' } 
-                }
-              );
-            });
-          }
-
-          // Non-GET requests (POST, PUT, DELETE sales, inventory adjustments, etc.)
-          return new Response(
-            JSON.stringify({ 
-              error: 'Offline_Write', 
-              message: 'Operación local guardada. Se sincronizará automáticamente cuando vuelvas a tener red.', 
-              status: 503 
-            }),
-            { 
-              status: 503, 
-              headers: { 'Content-Type': 'application/json' } 
-            }
-          );
-        })
-    );
-    return;
+    return; // Pass through to browser fetch. If offline, it will naturally fail and trigger RQ offline mode.
   }
 });
