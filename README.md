@@ -1,5 +1,7 @@
 # Caoba POS - Mobile & Web App
 
+[English](README.md) · [Español](README.es.md)
+
 This directory contains the main Point of Sale (POS) application, built on **React Native** and **Expo (SDK 54)**. It is highly optimized for tablet layouts (landscape mode) and features a modern, premium **Dark Glassmorphic** UI.
 
 ## 📱 Application Modules
