@@ -1,11 +1,12 @@
 import React, { memo } from 'react';
-import { StyleSheet, Alert, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { showDialog } from '../lib/dialog';
 import { PressableScale } from './PressableScale';
 
 interface QuickActionsProps {
@@ -15,20 +16,23 @@ interface QuickActionsProps {
 }
 
 export const QuickActions = memo(function QuickActions({ onClear, hasItems, compact }: QuickActionsProps) {
+  const confirmClear = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onClear();
+  };
+
   const handleClear = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Limpiar Carrito',
+
+    showDialog(
+      'Vaciar carrito',
       '¿Vaciar todos los productos del carrito?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Limpiar', 
-          style: 'destructive', 
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onClear();
-          }
+        {
+          text: 'Vaciar',
+          style: 'destructive',
+          onPress: confirmClear,
         },
       ]
     );
@@ -41,7 +45,9 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
         onPress={handleClear}
         disabled={!hasItems}
         scaleTo={0.97}
-        accessibilityLabel="Limpiar carrito"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !hasItems }}
+        accessibilityLabel="Vaciar carrito"
       >
         <Icon
           name="trash"
@@ -58,7 +64,9 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
       onPress={handleClear}
       disabled={!hasItems}
       scaleTo={0.97}
-      accessibilityLabel="Limpiar carrito"
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !hasItems }}
+      accessibilityLabel="Vaciar carrito"
     >
       <View style={styles.content}>
         <Icon
@@ -67,7 +75,7 @@ export const QuickActions = memo(function QuickActions({ onClear, hasItems, comp
           color={hasItems ? tokens.colors.coral : tokens.colors.textDim}
         />
         <Text style={[styles.buttonText, !hasItems && styles.buttonTextDisabled]}>
-          Limpiar Carrito
+          Vaciar carrito
         </Text>
       </View>
     </PressableScale>

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Alert, Platform, KeyboardAvoidingView, StatusBar, Animated, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, KeyboardAvoidingView, StatusBar, ActivityIndicator } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,16 +22,13 @@ import { BrandMark } from './BrandMark';
 import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useAuth } from '../hooks/useAuth';
 import { getEmployeeDisplayName } from '../hooks/useProducts';
-
-const TAX_RATE = 0.16;
+import { TAX_RATE } from '../lib/constants';
 const PAYMENT_METHODS = [
   { key: 'cash', label: 'Efectivo', icon: 'money-bill' },
   { key: 'card', label: 'Tarjeta', icon: 'credit-card' },
   { key: 'transfer', label: 'Transferencia', icon: 'mobile-alt' },
   { key: 'credito', label: 'Crédito', icon: 'user' },
 ] as const;
-
-const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
 
 interface SaleResult {
   id: string;
@@ -82,24 +79,12 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   }, [subtotal, tax]);
 
   const insets = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
 
-  const MAX_HIDE = verticalScale(60);
-  const clampedScrollY = Animated.diffClamp(scrollY, 0, MAX_HIDE);
-
-  const subtotalOpacity = clampedScrollY.interpolate({
-    inputRange: [0, MAX_HIDE / 2],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const onScroll = React.useMemo(() => 
-    Animated.event(
-      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-      { useNativeDriver: true }
-    ),
-    [scrollY]
-  );
+  // The checkout button reads as gold when it can complete a sale and as a dark
+  // outline when it cannot, so its content flips between the two safe
+  // foregrounds: onGold (7.8:1 on gold) and text (17.2:1 on the dark surface).
+  const isCheckoutInactive = !selectedPayment || items.length === 0;
+  const checkoutForeground = isCheckoutInactive ? tokens.colors.text : tokens.colors.onGold;
 
   const renderItem = useCallback(({ item }: { item: CartItem }) => (
     <CartItemRow
@@ -201,7 +186,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
 
   const handleCloseModal = useCallback(() => {
     setCompletedSale(null);
-  }, []);
+    if (onCloseMobile) {
+      onCloseMobile();
+    }
+  }, [onCloseMobile]);
 
 
 
@@ -235,7 +223,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <Text style={styles.itemCount}>{items.length}</Text>
             </View>
             {onCloseMobile && (
-              <PressableScale onPress={onCloseMobile} style={styles.closeButton} scaleTo={0.88}>
+              <PressableScale
+                onPress={onCloseMobile}
+                style={styles.closeButton}
+                scaleTo={0.88}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar carrito"
+              >
                 <Icon name="close" size={24} color={tokens.colors.text} />
               </PressableScale>
             )}
@@ -243,16 +237,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         </View>
       </View>
 
-      <AnimatedFlashList
+      <FlashList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item: any) => item.id}
-        estimatedItemSize={verticalScale(84)}
+        keyExtractor={(item: CartItem) => item.id}
         extraData={items}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.itemsContent}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconCircle}>
@@ -265,7 +256,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       />
 
       <View style={styles.summaryWrapper}>
-        <Animated.View style={[styles.summaryTop, { opacity: subtotalOpacity }]}>
+        <View style={styles.summaryTop}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <View style={styles.summaryValueContainer}>
@@ -278,10 +269,13 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             style={styles.ivaRow}
             onPress={toggleIva}
             scaleTo={0.98}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: ivaEnabled }}
+            accessibilityLabel="IVA (16%)"
           >
             <View style={styles.ivaLabelContainer}>
               <View style={[styles.checkbox, ivaEnabled && styles.checkboxActive]}>
-                {ivaEnabled && <Icon name="check" size={16} color="#FFFFFF" />}
+                {ivaEnabled && <Icon name="check" size={16} color={tokens.colors.onGold} />}
               </View>
               <Text style={styles.ivaLabel}>IVA (16%)</Text>
             </View>
@@ -292,7 +286,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               {ivaEnabled && <Text style={styles.summaryValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(tax)}</Text>}
             </View>
           </PressableScale>
-        </Animated.View>
+        </View>
 
         <View style={styles.summaryBottomSliding}>
           <View style={styles.totalRow}>
@@ -327,13 +321,16 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                     style={[styles.paymentChip, isActive && styles.paymentChipActive]}
                     onPress={() => setSelectedPayment(method.key)}
                     scaleTo={0.96}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                    accessibilityLabel={method.label}
                   >
                     <Icon
                       name={method.icon}
                       size={18}
                       color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
                     />
-                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                       {method.label}
                     </Text>
                   </PressableScale>
@@ -350,13 +347,16 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                     style={[styles.paymentChip, isActive && styles.paymentChipActive]}
                     onPress={() => setSelectedPayment(method.key)}
                     scaleTo={0.96}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                    accessibilityLabel={method.label}
                   >
                     <Icon
                       name={method.icon}
                       size={18}
                       color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
                     />
-                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]}>
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                       {method.label}
                     </Text>
                   </PressableScale>
@@ -370,7 +370,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <View style={styles.selectedClientRow}>
                 <View style={styles.selectedClientInfo}>
                   <Icon name="user" size={20} color={tokens.colors.text} />
-                  <Text style={styles.selectedClientName}>{selectedClient.name}</Text>
+                  <Text style={styles.selectedClientName} numberOfLines={1}>{selectedClient.name}</Text>
                 </View>
                 <PressableScale onPress={() => setIsClientModalVisible(true)} style={styles.changeClientBtn} scaleTo={0.92}>
                   <Text style={styles.changeClientText}>Cambiar</Text>
@@ -389,23 +389,26 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       <PressableScale
         style={[
           styles.checkoutButton,
-          (!selectedPayment || items.length === 0 || createSale.isPending) && styles.checkoutButtonDisabled,
+          (isCheckoutInactive || createSale.isPending) && styles.checkoutButtonDisabled,
         ]}
         onPress={handleCheckout}
         disabled={createSale.isPending}
         scaleTo={0.97}
+        accessibilityRole="button"
+        accessibilityLabel="Completar venta"
+        accessibilityState={{ disabled: createSale.isPending, busy: createSale.isPending }}
       >
         <View style={[
           styles.checkoutContent,
-          (!selectedPayment || items.length === 0) ? styles.checkoutContentDisabled : styles.checkoutContentActive
+          isCheckoutInactive ? styles.checkoutContentDisabled : styles.checkoutContentActive
         ]}>
           {createSale.isPending ? (
-            <ActivityIndicator size="small" color={tokens.colors.text} />
+            <ActivityIndicator size="small" color={checkoutForeground} />
           ) : (
-            <Icon name="check" size={22} color={tokens.colors.text} />
+            <Icon name="check" size={22} color={checkoutForeground} />
           )}
-          <Text style={styles.checkoutText}>
-            {createSale.isPending ? 'Procesando...' : 'Completar Venta'}
+          <Text style={[styles.checkoutText, { color: checkoutForeground }]}>
+            {createSale.isPending ? 'Procesando...' : 'Completar venta'}
           </Text>
         </View>
       </PressableScale>
@@ -486,7 +489,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   itemCountBadge: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: tokens.colors.glass.light,
     paddingHorizontal: scale(10),
     paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,
@@ -500,10 +503,11 @@ const styles = StyleSheet.create({
     color: tokens.colors.textDim,
   },
   closeButton: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
+    backgroundColor: tokens.colors.glass.light,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -535,7 +539,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '700',
-    color: tokens.colors.textDim,
+    color: tokens.colors.textSecondary,
   },
   emptySubtext: {
     fontFamily: FontNames.parkinsans,
@@ -592,6 +596,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: verticalScale(6),
     paddingVertical: verticalScale(2),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    minHeight: scale(44),
   },
   ivaLabelContainer: {
     flexDirection: 'row',
@@ -715,7 +721,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.mahogany,
   },
   checkoutContentDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: tokens.colors.glass.light,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
   },
@@ -726,11 +732,11 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
   clientSelectionBox: {
     marginTop: verticalScale(16),
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.glass.light,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
@@ -758,6 +764,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(10),
+    flexShrink: 1,
   },
   selectedClientName: {
     fontFamily: FontNames.parkinsans,
@@ -766,9 +773,12 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   changeClientBtn: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: tokens.colors.borderLight,
     paddingHorizontal: scale(12),
     paddingVertical: verticalScale(6),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    minHeight: scale(44),
+    justifyContent: 'center',
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,

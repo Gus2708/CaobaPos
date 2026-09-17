@@ -81,7 +81,11 @@ export const CartItemRow = memo(function CartItemRow({
 
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.unitPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>${item.price.toFixed(2)} • {formatBs(item.price)}</Text>
+        <View style={styles.unitPriceRow}>
+          <Text style={styles.unitPriceDollar} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.unitPriceSeparator}>•</Text>
+          <Text style={styles.unitPriceBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(item.price)}</Text>
+        </View>
       </View>
       
       <View style={styles.rightSection}>
@@ -90,6 +94,7 @@ export const CartItemRow = memo(function CartItemRow({
             style={styles.button}
             onPress={handleDecrement}
             scaleTo={0.97}
+            accessibilityRole="button"
             accessibilityLabel={`Disminuir ${item.name}`}
           >
             <Icon name="minus" size={14} color={tokens.colors.text} />
@@ -105,6 +110,8 @@ export const CartItemRow = memo(function CartItemRow({
             style={styles.button}
             onPress={handleIncrement}
             scaleTo={0.97}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: item.quantity >= item.stock_quantity }}
             accessibilityLabel={`Aumentar ${item.name}`}
           >
             <Icon name="plus" size={14} color={tokens.colors.text} />
@@ -120,6 +127,7 @@ export const CartItemRow = memo(function CartItemRow({
             style={styles.removeButton}
             onPress={handleRemove}
             scaleTo={0.97}
+            accessibilityRole="button"
             accessibilityLabel={`Eliminar ${item.name} del carrito`}
           >
             <Icon name="trash" size={18} color={tokens.colors.coral} />
@@ -177,11 +185,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: tokens.colors.text,
   },
-  unitPrice: {
+  unitPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    marginTop: verticalScale(2),
+  },
+  unitPriceDollar: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    fontWeight: '800',
+    color: tokens.colors.text,
+  },
+  unitPriceSeparator: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(12),
     color: tokens.colors.textMuted,
-    marginTop: verticalScale(2),
+  },
+  unitPriceBs: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: tokens.colors.textMuted,
   },
   rightSection: {
     flexDirection: 'column',
@@ -198,9 +223,10 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   button: {
-    width: scale(26),
-    height: scale(26),
-    borderRadius: scale(13),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -241,8 +267,9 @@ const styles = StyleSheet.create({
     gap: verticalScale(1),
   },
   removeButton: {
-    width: scale(30),
-    height: scale(30),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
     borderRadius: tokens.radius.pill,
     backgroundColor: tokens.colors.coralDim,
     justifyContent: 'center',

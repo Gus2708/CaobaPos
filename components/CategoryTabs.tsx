@@ -115,13 +115,15 @@ const styles = StyleSheet.create({
     gap: scale(6),
     paddingHorizontal: scale(14),
     paddingVertical: verticalScale(8),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    minHeight: scale(44),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: 'transparent',
     backgroundColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: tokens.colors.goldDim,
     borderColor: tokens.colors.mahogany,
   },
   iconWrapper: {

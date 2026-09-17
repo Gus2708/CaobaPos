@@ -98,6 +98,9 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             onPressOut={onPressOut}
             activeOpacity={0.85}
             disabled={isOutOfStock}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isOutOfStock }}
+            accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
           >
             {/* Image or placeholder */}
             <View style={styles.cardImageWrapper}>
@@ -120,7 +123,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               {isOutOfStock ? (
                 <View style={styles.cardOutOfStockOverlay}>
                   <View style={styles.outOfStockPill}>
-                    <Text style={styles.outOfStockPillText}>AGOTADO</Text>
+                    <Text style={styles.outOfStockPillText}>Agotado</Text>
                   </View>
                 </View>
               ) : (
@@ -141,7 +144,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             </View>
             
             <View style={styles.cardInfo}>
-              <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} adjustsFontSizeToFit>
+              <Text style={[styles.cardName, isOutOfStock && styles.nameDisabled]} numberOfLines={2} ellipsizeMode="tail">
                 {product.name}
               </Text>
               <View style={styles.cardPriceContainer}>
@@ -162,6 +165,8 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 style={styles.cardControlBtn}
                 onPress={() => updateQuantity(product.id, quantityInCart - 1)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Quitar uno"
               >
                 <Icon name="minus" size={14} color={tokens.colors.text} />
               </TouchableOpacity>
@@ -172,8 +177,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 style={[styles.cardControlBtn, styles.cardControlBtnAdd]}
                 onPress={handlePress}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: quantityInCart >= product.stock_quantity }}
+                accessibilityLabel="Agregar uno"
               >
-                <Icon name="plus" size={14} color="#FFFFFF" />
+                <Icon name="plus" size={14} color={tokens.colors.onGold} />
               </TouchableOpacity>
             </View>
           )}
@@ -201,6 +209,9 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             onPressOut={onPressOut}
             activeOpacity={0.85}
             disabled={isOutOfStock}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isOutOfStock }}
+            accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
           >
             {/* Image or placeholder */}
             <View style={styles.imageWrapper}>
@@ -252,6 +263,8 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               style={styles.controlBtn}
               onPress={() => updateQuantity(product.id, quantityInCart - 1)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Quitar uno"
             >
               <Icon name="minus" size={18} color={tokens.colors.text} />
             </TouchableOpacity>
@@ -262,8 +275,11 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               style={[styles.controlBtn, styles.controlBtnAdd]}
               onPress={handlePress}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: quantityInCart >= product.stock_quantity }}
+              accessibilityLabel="Agregar uno"
             >
-              <Icon name="plus" size={18} color="#FFFFFF" />
+              <Icon name="plus" size={18} color={tokens.colors.onGold} />
             </TouchableOpacity>
           </View>
         </View>
@@ -339,7 +355,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 { 
                   backgroundColor: product.stock_quantity < 10 
                     ? tokens.colors.coralDim 
-                    : 'rgba(255,255,255,0.05)' 
+                    : tokens.colors.glass.light 
                 }
               ]}>
                  <View style={[styles.stockDot, { backgroundColor: stockColor }]} />
@@ -358,7 +374,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         <View style={styles.actionSection}>
           {!isOutOfStock ? (
             <View style={styles.addBtn}>
-              <Icon name="plus" size={24} color="rgba(255, 255, 255, 0.7)" />
+              <Icon name="plus" size={24} color={tokens.colors.textMuted} />
             </View>
           ) : (
             <View style={styles.mobileOutOfStockPill}>
@@ -457,7 +473,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(2.5),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: tokens.colors.glass.borderLight,
   },
   stockDot: {
     width: scale(6),
@@ -512,21 +528,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(6),
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.glass.light,
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: tokens.colors.glass.borderLight,
     padding: scale(2),
   },
   controlBtn: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: tokens.colors.goldGlow,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
   },
   controlBtnAdd: {
     backgroundColor: tokens.colors.mahogany,
@@ -618,13 +635,13 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: tokens.colors.borderAccent,
   },
   outOfStockPillText: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(11),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
     letterSpacing: 0.5,
   },
   imageOutOfStockDim: {
@@ -649,7 +666,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: scale(8),
     right: scale(8),
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: tokens.colors.cream,
     paddingHorizontal: scale(8),
     paddingVertical: verticalScale(2),
     borderRadius: tokens.radius.pill,
@@ -658,6 +675,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(10),
     fontWeight: '800',
+    color: tokens.colors.onGold,
   },
   cardQuantityBadge: {
     position: 'absolute',
@@ -670,7 +688,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: tokens.colors.text,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -681,7 +699,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
   cardInlineControls: {
     flexDirection: 'row',
@@ -692,14 +710,15 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(-4),
   },
   cardControlBtn: {
-    width: scale(30),
-    height: scale(30),
-    borderRadius: scale(15),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: tokens.colors.goldGlow,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: tokens.colors.borderLight,
   },
   cardControlBtnAdd: {
     backgroundColor: tokens.colors.mahogany,

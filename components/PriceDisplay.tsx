@@ -29,7 +29,7 @@ export function PriceDisplay({
   color,
   numberOfLines = 1,
 }: PriceDisplayProps) {
-  const { rate, toBs } = useExchangeRate();
+  const { toBs } = useExchangeRate();
 
   const usdSizes = {
     xs: moderateScale(12),

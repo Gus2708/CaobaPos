@@ -22,6 +22,7 @@ import { supabase } from '../lib/supabase';
 import { prefetchImages } from '../lib/imageCache';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { TAX_RATE } from '../lib/constants';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
@@ -216,7 +217,7 @@ export function POSScreen() {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
-          <Icon name="search-plus" size={64} color={tokens.colors.mahoganyDim} />
+          <Icon name="search-plus" size={64} color={tokens.colors.gold} />
         </View>
         <Text style={styles.emptyText}>
           {searchQuery ? 'Sin resultados' : 'No hay productos'}
@@ -231,7 +232,7 @@ export function POSScreen() {
   }, [searchQuery, isLoading]);
 
   const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
-  const finalTotal = ivaEnabled ? subtotal * 1.16 : subtotal;
+  const finalTotal = ivaEnabled ? subtotal * (1 + TAX_RATE) : subtotal;
 
   return (
     <View style={[styles.main, isMobile && { flexDirection: 'column' }]}>
@@ -389,14 +390,16 @@ export function POSScreen() {
               style={styles.mobileCheckoutBtn} 
               onPress={() => setShowMobileCart(true)}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir carrito, ${items.length} ${items.length === 1 ? 'producto' : 'productos'}, total ${finalTotal.toFixed(2).replace('.', ',')} dólares`}
             >
               <LinearGradient
-                colors={['#CD9B46', '#9E722C']}
+                colors={[tokens.colors.gold, tokens.colors.goldDark]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.checkoutBtnContent}>
-                <Icon name="shopping-cart" size={24} color={tokens.colors.text} />
+                <Icon name="shopping-cart" size={24} color={tokens.colors.onGold} />
                 <Text style={styles.mobileFabText}>Carrito ({items.length})</Text>
                 <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
               </View>
@@ -445,12 +448,12 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(24),
     borderRadius: tokens.radius.xl,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.glass.light,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: tokens.colors.glass.borderLight,
     // Glass highlight for depth
-    borderTopColor: 'rgba(255, 255, 255, 0.12)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
+    borderTopColor: tokens.colors.border,
+    borderLeftColor: tokens.colors.borderLight,
   },
   islandContent: {
     paddingBottom: verticalScale(18),
@@ -459,17 +462,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(16),
     marginTop: verticalScale(4), // Space after tabs
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)', // Subtle separator
+    borderTopColor: tokens.colors.glass.borderLight, // Subtle separator
     paddingTop: verticalScale(16),
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: tokens.colors.glass.light,
     borderRadius: tokens.radius.pill,
     paddingHorizontal: scale(18),
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: tokens.colors.border,
     gap: scale(12),
     height: verticalScale(54),
   },
@@ -589,13 +592,13 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
   mobileFabTotal: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(18),
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
   mobileCartOverlay: {
     flex: 1,
@@ -636,6 +639,6 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
 });
