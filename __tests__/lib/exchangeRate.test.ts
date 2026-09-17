@@ -5,6 +5,7 @@ import {
   DEFAULT_BCV_RATE,
 } from '../../lib/offlineCache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDemoStore } from '../../store/demoStore';
 
 describe('Exchange Rate Utilities & Conversion', () => {
   beforeEach(async () => {
@@ -61,5 +62,30 @@ describe('Exchange Rate Utilities & Conversion', () => {
       const retrieved = await getCachedExchangeRate();
       expect(retrieved.rate).toBe(800.50);
     });
+  });
+});
+
+describe('demo exchange rate follows the live BCV rate', () => {
+  beforeEach(() => {
+    useDemoStore.setState({ demoExchangeRate: DEFAULT_BCV_RATE.rate });
+    useDemoStore.getState().resetDemoData();
+  });
+
+  it('reprices the seeded demo sales when the live rate arrives', () => {
+    const seeded = useDemoStore.getState().demoSales[0];
+    useDemoStore.getState().syncDemoExchangeRate(842);
+
+    const state = useDemoStore.getState();
+    expect(state.demoExchangeRate).toBe(842);
+    expect(state.demoSales[0].exchange_rate).toBe(842);
+    expect(state.demoSales[0].total_amount_bs).toBe(Number((seeded.total_amount * 842).toFixed(2)));
+  });
+
+  it('keeps the current rate when the live value is missing or invalid', () => {
+    const before = useDemoStore.getState().demoExchangeRate;
+    useDemoStore.getState().syncDemoExchangeRate(0);
+    useDemoStore.getState().syncDemoExchangeRate(NaN);
+    useDemoStore.getState().syncDemoExchangeRate(-5);
+    expect(useDemoStore.getState().demoExchangeRate).toBe(before);
   });
 });

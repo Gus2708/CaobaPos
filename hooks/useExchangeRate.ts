@@ -9,22 +9,13 @@ import {
   CachedExchangeRate,
 } from '../lib/offlineCache';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { formatBs } from '../lib/money';
 
 const EXCHANGE_RATES_TABLE = 'exchange_rates';
 const DOLAR_API_BCV_URL = 'https://ve.dolarapi.com/v1/dolares/oficial';
 
-/**
- * Venezuelan currency formatter (e.g. "Bs. 1.234,56")
- */
-export function formatBs(amount: number): string {
-  if (isNaN(amount) || amount === null || amount === undefined) {
-    return 'Bs. 0,00';
-  }
-  const parts = Number(amount).toFixed(2).split('.');
-  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  const decPart = parts[1];
-  return `Bs. ${intPart},${decPart}`;
-}
+// Re-export formatBs from lib/money for backward compatibility
+export { formatBs } from '../lib/money';
 
 /**
  * Converts USD amount to Bolivars (VES)
@@ -86,6 +77,34 @@ export function useExchangeRate() {
     queryKey: ['exchange_rate', 'current', isDemo],
     queryFn: async (): Promise<CachedExchangeRate> => {
       if (isDemoActive()) {
+        // Demo mode reads the live BCV rate so bolivar amounts match the real ones.
+        if (getIsOnline()) {
+          try {
+            const { data, error } = await supabase
+              .from(EXCHANGE_RATES_TABLE)
+              .select('*')
+              .eq('currency', 'USD_VES')
+              .eq('is_current', true)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (!error && data?.rate) {
+              const liveRate = Number(data.rate);
+              useDemoStore.getState().syncDemoExchangeRate(liveRate);
+              return {
+                id: 'demo-rate',
+                currency: 'USD_VES',
+                source: 'demo',
+                rate: liveRate,
+                updated_at: data.updated_at || new Date().toISOString(),
+              };
+            }
+          } catch {
+            // Fall back to the rate the demo already holds.
+          }
+        }
+
         return {
           id: 'demo-rate',
           currency: 'USD_VES',
@@ -165,6 +184,23 @@ export function useSyncBcvRate() {
   return useMutation({
     mutationFn: async () => {
       if (isDemoActive()) {
+        try {
+          const { data } = await supabase
+            .from(EXCHANGE_RATES_TABLE)
+            .select('*')
+            .eq('currency', 'USD_VES')
+            .eq('is_current', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (data?.rate) {
+            useDemoStore.getState().syncDemoExchangeRate(Number(data.rate));
+          }
+        } catch {
+          // Keep the rate the demo already holds.
+        }
+
         const rate = useDemoStore.getState().demoExchangeRate;
         return {
           id: 'demo-rate',

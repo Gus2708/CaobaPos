@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Product } from './cartStore';
 import { ClientBalance, ClientPayment } from '../hooks/useClients';
+import { DEFAULT_BCV_RATE } from '../lib/offlineCache';
 
 export interface DemoSale {
   id: string;
@@ -193,7 +194,7 @@ const INITIAL_DEMO_CLIENTS: ClientBalance[] = [
   },
 ];
 
-function generateInitialDemoSales() {
+function generateInitialDemoSales(rate: number = DEFAULT_BCV_RATE.rate) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -207,8 +208,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-1',
       total_amount: 6.30,
-      exchange_rate: 65.50,
-      total_amount_bs: 412.65,
+      exchange_rate: rate,
+      total_amount_bs: Number((6.30 * rate).toFixed(2)),
       payment_method: 'cash',
       client_id: null,
       status: 'paid',
@@ -220,8 +221,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-2',
       total_amount: 8.90,
-      exchange_rate: 65.50,
-      total_amount_bs: 582.95,
+      exchange_rate: rate,
+      total_amount_bs: Number((8.90 * rate).toFixed(2)),
       payment_method: 'card',
       client_id: null,
       status: 'paid',
@@ -233,8 +234,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-3',
       total_amount: 14.00,
-      exchange_rate: 65.50,
-      total_amount_bs: 917.00,
+      exchange_rate: rate,
+      total_amount_bs: Number((14.00 * rate).toFixed(2)),
       payment_method: 'transfer',
       client_id: null,
       status: 'paid',
@@ -246,8 +247,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-4',
       total_amount: 18.00,
-      exchange_rate: 65.50,
-      total_amount_bs: 1179.00,
+      exchange_rate: rate,
+      total_amount_bs: Number((18.00 * rate).toFixed(2)),
       payment_method: 'credito',
       client_id: 'demo-client-3',
       status: 'pending_payment',
@@ -259,8 +260,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-5',
       total_amount: 9.40,
-      exchange_rate: 65.50,
-      total_amount_bs: 615.70,
+      exchange_rate: rate,
+      total_amount_bs: Number((9.40 * rate).toFixed(2)),
       payment_method: 'cash',
       client_id: null,
       status: 'paid',
@@ -272,8 +273,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-6',
       total_amount: 7.80,
-      exchange_rate: 65.50,
-      total_amount_bs: 510.90,
+      exchange_rate: rate,
+      total_amount_bs: Number((7.80 * rate).toFixed(2)),
       payment_method: 'card',
       client_id: null,
       status: 'paid',
@@ -286,8 +287,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-h1',
       total_amount: 75.50,
-      exchange_rate: 65.50,
-      total_amount_bs: 4945.25,
+      exchange_rate: rate,
+      total_amount_bs: Number((75.50 * rate).toFixed(2)),
       payment_method: 'credito',
       client_id: 'demo-client-1',
       status: 'pending_payment',
@@ -299,8 +300,8 @@ function generateInitialDemoSales() {
     {
       id: 'demo-sale-h2',
       total_amount: 120.00,
-      exchange_rate: 65.50,
-      total_amount_bs: 7860.00,
+      exchange_rate: rate,
+      total_amount_bs: Number((120.00 * rate).toFixed(2)),
       payment_method: 'credito',
       client_id: 'demo-client-2',
       status: 'paid',
@@ -374,6 +375,7 @@ export interface DemoState {
   setDemoMode: (active: boolean) => void;
   toggleDemoMode: () => void;
   resetDemoData: () => void;
+  syncDemoExchangeRate: (rate: number) => void;
 
   simulateCreateSale: (payload: {
     totalAmount: number;
@@ -425,7 +427,7 @@ export interface DemoState {
 
 export const useDemoStore = create<DemoState>((set, get) => ({
   isDemoMode: false,
-  demoExchangeRate: 65.50,
+  demoExchangeRate: DEFAULT_BCV_RATE.rate,
   demoCategories: [...INITIAL_DEMO_CATEGORIES],
   demoProducts: [...INITIAL_DEMO_PRODUCTS],
   demoClients: [...INITIAL_DEMO_CLIENTS],
@@ -438,15 +440,29 @@ export const useDemoStore = create<DemoState>((set, get) => ({
   toggleDemoMode: () => set((s) => ({ isDemoMode: !s.isDemoMode })),
 
   resetDemoData: () => {
-    const freshSales = generateInitialDemoSales();
+    const freshSales = generateInitialDemoSales(get().demoExchangeRate);
     set({
       demoCategories: [...INITIAL_DEMO_CATEGORIES],
       demoProducts: [...INITIAL_DEMO_PRODUCTS],
       demoClients: [...INITIAL_DEMO_CLIENTS],
       demoSales: [...freshSales.sales],
       demoSaleItems: freshSales.items,
-      demoExchangeRate: 65.50,
       demoPayments: [...INITIAL_DEMO_PAYMENTS],
+    });
+  },
+
+  // Demo mode runs on the live BCV rate, so the seeded sales are repriced with it.
+  syncDemoExchangeRate: (rate: number) => {
+    if (!rate || isNaN(rate) || rate <= 0) return;
+    const { demoExchangeRate: previousRate, demoSales } = get();
+    if (previousRate === rate) return;
+    set({
+      demoExchangeRate: rate,
+      demoSales: demoSales.map((sale) =>
+        sale.exchange_rate === previousRate
+          ? { ...sale, exchange_rate: rate, total_amount_bs: Number((sale.total_amount * rate).toFixed(2)) }
+          : sale
+      ),
     });
   },
 
