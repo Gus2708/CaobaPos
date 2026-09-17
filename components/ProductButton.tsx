@@ -18,6 +18,7 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { usePressAnimation } from '../hooks/usePressAnimation';
 import { BrandMark } from './BrandMark';
 import { useExchangeRate } from '../hooks/useExchangeRate';
+import { formatUsd } from '../lib/money';
 
 interface ProductButtonProps {
   product: Product;
@@ -100,7 +101,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             disabled={isOutOfStock}
             accessibilityRole="button"
             accessibilityState={{ disabled: isOutOfStock }}
-            accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
+            accessibilityLabel={`${product.name}, ${formatUsd(product.price)}, ${product.stock_quantity} en stock`}
           >
             {/* Image or placeholder */}
             <View style={styles.cardImageWrapper}>
@@ -149,7 +150,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               </Text>
               <View style={styles.cardPriceContainer}>
                 <Text style={[styles.cardPrice, isOutOfStock && styles.priceDisabled]}>
-                  ${product.price.toFixed(2)}
+                  {formatUsd(product.price)}
                 </Text>
                 <Text style={[styles.cardPriceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                   {formatBs(product.price)}
@@ -181,7 +182,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
                 accessibilityState={{ disabled: quantityInCart >= product.stock_quantity }}
                 accessibilityLabel="Agregar uno"
               >
-                <Icon name="plus" size={14} color={tokens.colors.onGold} />
+                <Icon name="plus" size={14} color={tokens.colors.gold} />
               </TouchableOpacity>
             </View>
           )}
@@ -211,7 +212,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
             disabled={isOutOfStock}
             accessibilityRole="button"
             accessibilityState={{ disabled: isOutOfStock }}
-            accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
+            accessibilityLabel={`${product.name}, ${formatUsd(product.price)}, ${product.stock_quantity} en stock`}
           >
             {/* Image or placeholder */}
             <View style={styles.imageWrapper}>
@@ -248,7 +249,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               </Text>
               <View style={styles.priceContainer}>
                 <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
-                  ${product.price.toFixed(2)}
+                  {formatUsd(product.price)}
                 </Text>
                 <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                   {formatBs(product.price)}
@@ -279,7 +280,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
               accessibilityState={{ disabled: quantityInCart >= product.stock_quantity }}
               accessibilityLabel="Agregar uno"
             >
-              <Icon name="plus" size={18} color={tokens.colors.onGold} />
+              <Icon name="plus" size={18} color={tokens.colors.gold} />
             </TouchableOpacity>
           </View>
         </View>
@@ -296,7 +297,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         activeOpacity={0.85}
-        accessibilityLabel={`${product.name}, $${product.price.toFixed(2)}, ${product.stock_quantity} en stock`}
+        accessibilityLabel={`${product.name}, ${formatUsd(product.price)}, ${product.stock_quantity} en stock`}
         accessibilityRole="button"
         disabled={isOutOfStock}
       >
@@ -343,7 +344,7 @@ function ProductButtonComponent({ product, onPress, compact = false }: ProductBu
           <View style={styles.priceAndStockRow}>
             <View style={styles.priceContainer}>
               <Text style={[styles.price, isOutOfStock && styles.priceDisabled]}>
-                ${product.price.toFixed(2)}
+                {formatUsd(product.price)}
               </Text>
               <Text style={[styles.priceBs, isOutOfStock && styles.priceDisabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                 {formatBs(product.price)}
@@ -501,7 +502,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(15),
     fontWeight: '800',
-    color: tokens.colors.amberGold, // Gold/Amber for premium feel
+    color: tokens.colors.text,
     lineHeight: moderateScale(18),
   },
   priceBs: {
@@ -546,8 +547,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   controlBtnAdd: {
-    backgroundColor: tokens.colors.mahogany,
-    borderColor: tokens.colors.mahoganyBright,
+    backgroundColor: tokens.colors.goldDim,
+    borderColor: tokens.colors.borderAccent,
   },
   quantityText: {
     fontFamily: FontNames.jetBrainsMono,
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    color: tokens.colors.amberGold,
+    color: tokens.colors.text,
   },
   cardPriceBs: {
     fontFamily: FontNames.jetBrainsMono,
@@ -681,14 +682,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: scale(8),
     right: scale(8),
-    backgroundColor: tokens.colors.mahogany,
+    backgroundColor: tokens.colors.surfaceElevated,
     width: scale(26),
     height: scale(26),
     borderRadius: scale(13),
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: tokens.colors.text,
+    borderColor: tokens.colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
     fontWeight: '800',
-    color: tokens.colors.onGold,
+    color: tokens.colors.text,
   },
   cardInlineControls: {
     flexDirection: 'row',
@@ -721,8 +722,8 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   cardControlBtnAdd: {
-    backgroundColor: tokens.colors.mahogany,
-    borderColor: tokens.colors.mahoganyBright,
+    backgroundColor: tokens.colors.goldDim,
+    borderColor: tokens.colors.borderAccent,
   },
   cardQuantityText: {
     fontFamily: FontNames.jetBrainsMono,

@@ -46,8 +46,8 @@ Rampa cálida, todos los pasos superan WCAG AA (4.5:1) sobre `bg` y sobre `surfa
 
 ### Status & Feedback
 - **Sage (`#6DB88A`)**: Éxito, stock suficiente, ganancias.
-- **Coral (`#C96B6B`)**: Error, eliminación, stock agotado.
-- **Amber (`#CD9B46`)**: Advertencia, stock bajo.
+- **Coral (`#C96B6B`)**: Requiere atención: error, eliminación, stock bajo (relleno tenue) y stock agotado (sólido).
+- **Ámbar**: es el mismo hex que Caoba Gold (`#CD9B46`), así que no se usa como color de estado. El dorado se reserva para la acción principal, la selección y la barra del carrito; los precios van en texto crema.
 
 ```typescript
 onSage: '#140906'          // Único color de texto válido sobre sage sólido

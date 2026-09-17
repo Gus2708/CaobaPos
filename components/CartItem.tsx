@@ -15,8 +15,8 @@ import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
-import { BrandMark } from './BrandMark';
 import { useExchangeRate } from '../hooks/useExchangeRate';
+import { formatUsd } from '../lib/money';
 
 interface CartItemProps {
   item: CartItemType;
@@ -35,7 +35,7 @@ export const CartItemRow = memo(function CartItemRow({
   onDecrement, 
   onRemove 
 }: CartItemProps) {
-  const totalPrice = (item.price * item.quantity).toFixed(2);
+  const totalPrice = formatUsd(item.price * item.quantity);
   const qtyScale = useSharedValue(1);
   const reducedMotion = useReducedMotion();
   const { formatBs } = useExchangeRate();
@@ -73,7 +73,6 @@ export const CartItemRow = memo(function CartItemRow({
   return (
     <View style={styles.container}>
       <View style={styles.itemIconCircle}>
-        <BrandMark motif="flor2" style={styles.itemIconFlorWatermark} />
         <Text style={styles.itemInitial}>
           {item.name.charAt(0).toUpperCase()}
         </Text>
@@ -82,7 +81,7 @@ export const CartItemRow = memo(function CartItemRow({
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
         <View style={styles.unitPriceRow}>
-          <Text style={styles.unitPriceDollar} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>${item.price.toFixed(2)}</Text>
+          <Text style={styles.unitPriceDollar} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatUsd(item.price)}</Text>
           <Text style={styles.unitPriceSeparator}>•</Text>
           <Text style={styles.unitPriceBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(item.price)}</Text>
         </View>
@@ -120,7 +119,7 @@ export const CartItemRow = memo(function CartItemRow({
 
         <View style={styles.totalAndAction}>
           <View style={styles.totalPriceContainer}>
-            <Text style={styles.total}>${totalPrice}</Text>
+            <Text style={styles.total}>{totalPrice}</Text>
             <Text style={styles.totalBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(item.price * item.quantity)}</Text>
           </View>
           <PressableScale
@@ -162,12 +161,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
     overflow: 'hidden',
-  },
-  itemIconFlorWatermark: {
-    position: 'absolute',
-    width: '80%',
-    height: '80%',
-    opacity: 0.18,
   },
   itemInitial: {
     fontFamily: FontNames.parkinsans,

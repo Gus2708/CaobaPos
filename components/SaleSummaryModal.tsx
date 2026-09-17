@@ -13,6 +13,7 @@ import { BrandMark } from './BrandMark';
 import { useExchangeRate, formatBs } from '../hooks/useExchangeRate';
 import { useToast } from './Toast';
 import { formatFolio } from '../lib/formatFolio';
+import { formatUsd, formatRate } from '../lib/money';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -123,9 +124,9 @@ export function SaleSummaryModal({
                 <View key={`${item.id}-${index}`} style={styles.itemRow}>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.itemMeta}>${item.price.toFixed(2)} x{item.quantity}</Text>
+                    <Text style={styles.itemMeta}>{formatUsd(item.price)} x{item.quantity}</Text>
                   </View>
-                  <Text style={styles.itemPrice}>${Number(item.price * item.quantity).toFixed(2)}</Text>
+                  <Text style={styles.itemPrice}>{formatUsd(item.price * item.quantity)}</Text>
                 </View>
               ))}
             </View>
@@ -133,18 +134,18 @@ export function SaleSummaryModal({
             <View style={styles.summaryCard}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{formatUsd(subtotal)}</Text>
               </View>
               {tax > 0 && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>IVA (16%)</Text>
-                  <Text style={styles.totalValue}>${tax.toFixed(2)}</Text>
+                  <Text style={styles.totalValue}>{formatUsd(tax)}</Text>
                 </View>
               )}
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>Total</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
+                  <Text style={styles.grandTotalValue}>{formatUsd(total)}</Text>
                   <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                     {formatBs(totalAmountBs)}
                   </Text>
@@ -153,7 +154,7 @@ export function SaleSummaryModal({
               {exchangeRate ? (
                 <View style={styles.exchangeRateRow}>
                   <Text style={styles.exchangeRateLabel}>Tasa BCV</Text>
-                  <Text style={styles.exchangeRateValue}>{exchangeRate.toFixed(2)} Bs/$</Text>
+                  <Text style={styles.exchangeRateValue}>{formatRate(exchangeRate)} Bs/$</Text>
                 </View>
               ) : null}
             </View>
@@ -177,10 +178,10 @@ export function SaleSummaryModal({
               accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={tokens.colors.onGold} />
+                <ActivityIndicator size="small" color={tokens.colors.gold} />
               ) : (
                 <>
-                  <Icon name="file-pdf" size={22} color={tokens.colors.onGold} />
+                  <Icon name="file-pdf" size={22} color={tokens.colors.gold} />
                   <Text style={styles.shareButtonText}>Compartir recibo</Text>
                 </>
               )}
@@ -190,9 +191,9 @@ export function SaleSummaryModal({
               style={styles.closeButton}
               onPress={onClose}
               accessibilityRole="button"
-              accessibilityLabel="Finalizar y volver"
+              accessibilityLabel="Nueva venta"
             >
-              <Text style={styles.closeButtonText}>Finalizar y volver</Text>
+              <Text style={styles.closeButtonText}>Nueva venta</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
     paddingBottom: verticalScale(16),
   },
   shareButton: {
-    backgroundColor: tokens.colors.mahogany,
+    backgroundColor: 'transparent',
     borderRadius: tokens.radius.pill,
     height: verticalScale(54),
     flexDirection: 'row',
@@ -410,22 +411,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: scale(10),
     marginBottom: verticalScale(12),
+    borderWidth: 1,
+    borderColor: tokens.colors.gold,
   },
   shareButtonText: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    color: tokens.colors.onGold,
+    color: tokens.colors.gold,
   },
   closeButton: {
-    height: verticalScale(50),
+    backgroundColor: tokens.colors.gold,
+    borderRadius: tokens.radius.pill,
+    height: verticalScale(54),
     justifyContent: 'center',
     alignItems: 'center',
   },
   closeButtonText: {
     fontFamily: FontNames.parkinsans,
-    fontSize: moderateScale(15),
-    fontWeight: '700',
-    color: tokens.colors.textDim,
+    fontSize: moderateScale(16),
+    fontWeight: '800',
+    color: tokens.colors.onGold,
   },
 });

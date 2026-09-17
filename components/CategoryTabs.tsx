@@ -9,7 +9,6 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { PressableScale } from './PressableScale';
-import { BrandMark } from './BrandMark';
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
 
@@ -60,15 +59,11 @@ function CategoryTabsComponent({ selected, onSelect }: CategoryTabsProps) {
         accessibilityLabel={`Categoría ${label}`}
       >
         <View style={styles.iconWrapper}>
-          {isActive ? (
-            <BrandMark motif="flor1" style={{ width: scale(16), height: scale(16) }} />
-          ) : (
-            <Icon
-              name={iconName}
-              size={16}
-              color={tokens.colors.textMuted}
-            />
-          )}
+          <Icon
+            name={iconName}
+            size={16}
+            color={isActive ? tokens.colors.gold : tokens.colors.textMuted}
+          />
         </View>
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
           {label}
