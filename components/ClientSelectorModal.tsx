@@ -31,6 +31,8 @@ import { FontNames } from '../lib/fontNames';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useClients, useCreateClient, ClientBalance } from '../hooks/useClients';
 import { PressableScale } from './PressableScale';
+import { useToast } from './Toast';
+import { SkeletonItem } from './SkeletonItem';
 
 interface ClientSelectorModalProps {
   visible: boolean;
@@ -55,6 +57,7 @@ function rubberband(overshoot: number, dimension: number, constant = 0.55) {
 
 export function ClientSelectorModal({ visible, onClose, onSelectClient }: ClientSelectorModalProps) {
   const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
   const { data: clients, isLoading } = useClients();
   const createClient = useCreateClient();
   const reducedMotion = useReducedMotion();
@@ -167,6 +170,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
       setNewPhone('');
       onClose();
     } catch (e) {
+      showToast('No se pudo guardar el cliente', 'error');
       console.error(e);
     }
   };
@@ -185,7 +189,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
         <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
       </View>
       <View style={styles.clientInfo}>
-        <Text style={styles.clientName}>{item.name}</Text>
+        <Text style={styles.clientName} numberOfLines={1}>{item.name}</Text>
         <Text style={styles.clientPhone}>{item.phone || 'Sin número'}</Text>
       </View>
       {item.balance_due > 0 && (
@@ -235,10 +239,15 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
             <View style={styles.header}>
               <View style={styles.headerTop}>
                 <View>
-                  <Text style={styles.title}>Seleccionar Cliente</Text>
+                  <Text style={styles.title}>Seleccionar cliente</Text>
                   <Text style={styles.subtitleCount}>{filteredClients.length} clientes encontrados</Text>
                 </View>
-                <PressableScale onPress={onClose} style={styles.closeButton}>
+                <PressableScale
+                  onPress={onClose}
+                  style={styles.closeButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
+                >
                   <Icon name="close" size={24} color={tokens.colors.textDim} />
                 </PressableScale>
               </View>
@@ -249,6 +258,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                     <Icon name="search" size={18} color={tokens.colors.mahogany} />
                     <TextInput
                       style={styles.searchInput}
+                      accessibilityLabel="Buscar cliente por nombre o teléfono"
                       placeholder="Buscar por nombre o teléfono..."
                       placeholderTextColor={tokens.colors.textDim}
                       value={searchQuery}
@@ -267,7 +277,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={styles.sectionTitle}>Nuevo Cliente</Text>
+                <Text style={styles.sectionTitle}>Nuevo cliente</Text>
                 <View style={styles.inputGroup}>
                   <View style={styles.inputContainer}>
                     <Icon name="user" size={18} color={tokens.colors.mahogany} />
@@ -301,16 +311,23 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                   >
                     <Text style={styles.cancelText}>Cancelar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.button, styles.saveButton]} 
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.saveButton,
+                      (!newName.trim() || createClient.isPending) && styles.saveButtonDisabled,
+                    ]}
                     onPress={handleCreateClient}
                     disabled={!newName.trim() || createClient.isPending}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Guardar cliente"
+                    accessibilityState={{ disabled: !newName.trim() || createClient.isPending, busy: createClient.isPending }}
                   >
                     {createClient.isPending ? (
-                      <ActivityIndicator size="small" color="#FFF" />
+                      <ActivityIndicator size="small" color={tokens.colors.onGold} />
                     ) : (
-                      <Text style={styles.saveText}>Guardar Cliente</Text>
+                      <Text style={styles.saveText}>Guardar</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -323,14 +340,12 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
                   activeOpacity={0.7}
                 >
                   <Icon name="user-plus" size={18} color={tokens.colors.mahogany} />
-                  <Text style={styles.createButtonText}>Registrar Nuevo Cliente</Text>
+                  <Text style={styles.createButtonText}>Nuevo cliente</Text>
                 </TouchableOpacity>
 
                 <View style={styles.listWrapper}>
                   {isLoading ? (
-                    <View style={styles.centerContainer}>
-                      <ActivityIndicator size="large" color={tokens.colors.mahogany} />
-                    </View>
+                    <SkeletonItem layout="row" count={6} />
                   ) : (
                     <FlashList
                       data={filteredClients}
@@ -514,7 +529,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.mahogany,
   },
-  clientInfo: { flex: 1 },
+  clientInfo: { flex: 1, flexShrink: 1 },
   clientName: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
@@ -588,6 +603,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.borderLight,
   },
   saveButton: { backgroundColor: tokens.colors.mahogany },
+  saveButtonDisabled: { opacity: 0.4 },
   cancelText: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
@@ -598,7 +614,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
-    color: '#FFF',
+    color: tokens.colors.onGold,
   },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: scale(40) },
   emptyContainer: { alignItems: 'center', marginTop: verticalScale(40) },
@@ -628,7 +644,7 @@ const styles = StyleSheet.create({
   createFromEmptyText: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(14),
-    color: '#FFF',
+    color: tokens.colors.onGold,
     fontWeight: '800',
   },
 });
