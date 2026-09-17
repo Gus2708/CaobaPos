@@ -15,6 +15,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
+import { OverlayPortal } from './OverlayPortal';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
@@ -188,21 +189,24 @@ export const ToastProvider = memo(function ToastProvider({
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <View
-        style={[
-          styles.container,
-          { bottom: insets.bottom + verticalScale(80) },
-        ]}
-        pointerEvents="box-none"
-      >
-        {toasts.map((toast) => (
-          <ToastItem
-            key={toast.id}
-            toast={toast}
-            onRemove={() => removeToast(toast.id)}
-          />
-        ))}
-      </View>
+      {/* On web this lifts the toasts above any open modal; native renders them in place. */}
+      <OverlayPortal>
+        <View
+          style={[
+            styles.container,
+            { bottom: insets.bottom + verticalScale(80) },
+          ]}
+          pointerEvents="box-none"
+        >
+          {toasts.map((toast) => (
+            <ToastItem
+              key={toast.id}
+              toast={toast}
+              onRemove={() => removeToast(toast.id)}
+            />
+          ))}
+        </View>
+      </OverlayPortal>
     </ToastContext.Provider>
   );
 });
