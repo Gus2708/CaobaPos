@@ -73,7 +73,9 @@ export function ChangeCalculatorModal({
   }, [paymentCurrency, changePrimary, rate]);
 
   const handleQuickAmount = (amt: number) => {
-    setReceivedAmount(amt.toFixed(paymentCurrency === 'USD' ? 2 : 0));
+    // Both currencies keep two decimals: dropping the cents of a Bs total made
+    // an exact payment read as insufficient. `received` parses the dot form.
+    setReceivedAmount(amt.toFixed(2));
   };
 
   return (
@@ -99,10 +101,16 @@ export function ChangeCalculatorModal({
                   <Icon name="calculator" size={22} color={tokens.colors.mahogany} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.headerTitle}>Calculadora de Cambio</Text>
+                  <Text style={styles.headerTitle}>Calculadora de cambio</Text>
                   <Text style={styles.headerSubtitle}>Tasa BCV: {rate.toFixed(2)} Bs/$</Text>
                 </View>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                  onPress={onClose}
+                  style={styles.closeButton}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar calculadora"
+                >
                   <Icon name="close" size={18} color={tokens.colors.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -120,6 +128,9 @@ export function ChangeCalculatorModal({
                       setReceivedAmount('');
                     }}
                     activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: paymentCurrency === 'USD' }}
+                    accessibilityLabel="Pagar en dólares"
                   >
                     <Text
                       style={[
@@ -141,6 +152,9 @@ export function ChangeCalculatorModal({
                       setReceivedAmount('');
                     }}
                     activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: paymentCurrency === 'VES' }}
+                    accessibilityLabel="Pagar en bolívares"
                   >
                     <Text
                       style={[
@@ -167,7 +181,7 @@ export function ChangeCalculatorModal({
                 {/* Received Input Section */}
                 <View style={styles.inputSection}>
                   <Text style={styles.inputLabel}>
-                    {paymentCurrency === 'USD' ? '¿Cuánto entregó en Dólares ($)?' : '¿Cuánto entregó en Bolívares (Bs)?'}
+                    {paymentCurrency === 'USD' ? '¿Cuánto te dio el cliente en dólares?' : '¿Cuánto te dio el cliente en bolívares?'}
                   </Text>
                   <View style={[
                     styles.inputContainer,
@@ -179,6 +193,7 @@ export function ChangeCalculatorModal({
                     <TextInput
                       ref={inputRef}
                       style={styles.input}
+                      accessibilityLabel={paymentCurrency === 'USD' ? 'Monto entregado en dólares' : 'Monto entregado en bolívares'}
                       placeholder={paymentCurrency === 'USD' ? '0.00' : '0,00'}
                       placeholderTextColor={tokens.colors.textDim}
                       keyboardType="numeric"
@@ -187,7 +202,12 @@ export function ChangeCalculatorModal({
                       selectionColor={tokens.colors.mahogany}
                     />
                     {receivedAmount.length > 0 && (
-                      <TouchableOpacity onPress={() => setReceivedAmount('')} style={styles.clearInputBtn}>
+                      <TouchableOpacity
+                        onPress={() => setReceivedAmount('')}
+                        style={styles.clearInputBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel="Borrar monto"
+                      >
                         <Icon name="close" size={16} color={tokens.colors.textMuted} />
                       </TouchableOpacity>
                     )}
@@ -226,7 +246,7 @@ export function ChangeCalculatorModal({
 
                 {/* Change Result Section */}
                 <View style={styles.changeSection}>
-                  <Text style={styles.changeLabel}>Cambio a devolver:</Text>
+                  <Text style={styles.changeLabel}>Cambio a devolver</Text>
                   <View style={[
                     styles.changeContainer,
                     isValid && styles.changeContainerActive
@@ -256,14 +276,17 @@ export function ChangeCalculatorModal({
                   onPress={onConfirm}
                   disabled={!isValid || loading}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Completar venta"
+                  accessibilityState={{ disabled: !isValid || loading, busy: loading }}
                 >
                   {loading ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(10) }}>
-                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <ActivityIndicator size="small" color={tokens.colors.onGold} />
                       <Text style={styles.confirmText}>Procesando...</Text>
                     </View>
                   ) : (
-                    <Text style={styles.confirmText}>Completar Venta</Text>
+                    <Text style={styles.confirmText}>Completar venta</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -327,9 +350,10 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(2),
   },
   closeButton: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
     backgroundColor: tokens.colors.surface,
     borderWidth: 1,
     borderColor: tokens.colors.borderLight,
@@ -353,6 +377,8 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(8),
     alignItems: 'center',
     justifyContent: 'center',
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    minHeight: scale(44),
     borderRadius: tokens.radius.pill,
   },
   currencyToggleBtnActive: {
@@ -365,7 +391,7 @@ const styles = StyleSheet.create({
     color: tokens.colors.textDim,
   },
   currencyToggleTextActive: {
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
     fontWeight: '700',
   },
   infoCard: {
@@ -438,7 +464,11 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   clearInputBtn: {
-    padding: scale(4),
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    width: scale(44),
+    height: scale(44),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickChipsRow: {
     flexDirection: 'row',
@@ -448,7 +478,11 @@ const styles = StyleSheet.create({
   },
   quickChip: {
     paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(4),
+    paddingVertical: tokens.spacing.md,
+    // 44pt minimum touch target: react-native-web ignores hitSlop.
+    minHeight: scale(44),
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: tokens.radius.pill,
     backgroundColor: tokens.colors.surfaceElevated,
     borderWidth: 1,
@@ -456,7 +490,7 @@ const styles = StyleSheet.create({
   },
   quickChipText: {
     fontFamily: FontNames.jetBrainsMono,
-    fontSize: moderateScale(11),
+    fontSize: tokens.typography.base,
     fontWeight: '600',
     color: tokens.colors.textSecondary,
   },
@@ -524,7 +558,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(15),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
     letterSpacing: scale(0.5),
   },
 });
