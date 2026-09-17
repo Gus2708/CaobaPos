@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { useQuery } from '@tanstack/react-query';
@@ -12,6 +12,8 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
 import { Badge } from './Badge';
 import { formatBs } from '../hooks/useExchangeRate';
+import { showDialog } from '../lib/dialog';
+import { formatFolio } from '../lib/formatFolio';
 
 interface SaleItem {
   id: string;
@@ -175,7 +177,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
 
       await shareReceiptPDF(receiptData);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo generar el PDF');
+      showDialog('Error', 'No se pudo generar el PDF');
     } finally {
       setLoadingPdf(false);
     }
@@ -183,7 +185,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
 
   const handleSave = () => {
     if (editedItems.length === 0) {
-      Alert.alert('Error', 'Debe haber al menos un producto');
+      showDialog('Error', 'Debe haber al menos un producto');
       return;
     }
     // Pass back updated values including IVA
@@ -198,7 +200,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showDialog(
       'Eliminar Venta',
       '¿Eliminar esta venta? El stock será restaurado.',
       [
@@ -237,7 +239,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                  <Icon name={getMethodIcon(sale.payment_method)} size={20} color={tokens.colors.mahogany} />
               </View>
               <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>Venta {sale.id.slice(0, 8).toUpperCase()}</Text>
+                <Text style={styles.headerTitle} numberOfLines={1}>Venta {formatFolio(sale.id)}</Text>
                 <Text style={styles.headerDate}>{formatDate(sale.created_at)}</Text>
               </View>
               <TouchableOpacity style={styles.closeIconButton} onPress={handleClose} activeOpacity={0.7}>

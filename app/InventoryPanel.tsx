@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, ScrollView, Platform, KeyboardAvoidingView, RefreshControl, Animated, ActivityIndicator } from 'react-native';
 import { useDeviceSize } from '../hooks/useDeviceSize';
 
 import { FlashList } from '@shopify/flash-list';
@@ -20,6 +20,7 @@ import { ImagePickerModal } from '../components/ImagePickerModal';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { showDialog } from '../lib/dialog';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
 import { BrandMark } from '../components/BrandMark';
@@ -738,14 +739,14 @@ export const InventoryPanel = memo(function InventoryPanel({
   }, [quickCatText, categories, addCategory, syncCategoryMutation, showToast, newProduct.categories, editing]);
 
   const handleDeleteCategory = useCallback((cat: string) => {
-    Alert.alert('Eliminar Categoría', `¿Eliminar "${cat}"?`, [
+    showDialog('Eliminar Categoría', `¿Eliminar "${cat}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => removeCategory(cat) },
     ]);
   }, [removeCategory]);
 
   const handleDelete = useCallback((id: string, name: string, imageUrl?: string) => {
-    Alert.alert('Eliminar', `¿Eliminar "${name}"?`, [
+    showDialog('Eliminar', `¿Eliminar "${name}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => deleteMutation.mutate({ id, imageUrl }) },
     ]);
