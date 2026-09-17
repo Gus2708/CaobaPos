@@ -85,7 +85,7 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
       <View style={styles.overlay}>
         <View style={styles.container}>
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'transparent']}
+            colors={tokens.styles.liquidCard.reflectionColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colors.border,
   },
   totalContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: tokens.colors.glass.light,
     borderRadius: tokens.radius.card,
     padding: scale(16),
     marginBottom: verticalScale(20),
