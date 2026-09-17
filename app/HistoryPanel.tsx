@@ -26,6 +26,7 @@ import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { useAuth } from '../hooks/useAuth';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
 import { formatFolio } from '../lib/formatFolio';
+import { formatUsd } from '../lib/money';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -104,7 +105,7 @@ const SaleCard = React.memo(function SaleCard({
         <View style={styles.saleInfo}>
           <View style={styles.saleHeaderRow}>
             <Text style={styles.saleTotal} numberOfLines={1}>
-              {hideAmounts ? '$ ———' : `$${Number(item.total_amount).toFixed(2)}`}
+              {hideAmounts ? '$ ———' : formatUsd(item.total_amount)}
             </Text>
             {item.employee_name && (
               <View style={styles.employeeBadge}>
@@ -639,7 +640,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
                   <ActivityIndicator size="small" color={tokens.colors.mahogany} />
                 ) : (
                   <Text style={styles.statsValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
-                    $ {totalSum?.toLocaleString()}
+                    {formatUsd(totalSum ?? 0)}
                   </Text>
                 )}
               </View>

@@ -16,6 +16,7 @@ import { useToast } from './Toast';
 import { SaleDetailModal } from './SaleDetailModal';
 import { supabase } from '../lib/supabase';
 import { BrandMark } from './BrandMark';
+import { formatUsd, formatAmountInput, parseAmount } from '../lib/money';
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -270,7 +271,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   if (!client) return null;
 
   const handleAddPayment = async () => {
-    const amount = parseFloat(paymentAmount);
+    const amount = parseAmount(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
       showToast('Ingresa un monto válido', 'warning');
       return;
@@ -282,7 +283,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
     }
     
     if (amount > client.balance_due + 0.01) {
-      showToast(`El saldo es de $${client.balance_due.toFixed(2)}`, 'warning');
+      showToast(`El saldo es de ${formatUsd(client.balance_due)}`, 'warning');
       return;
     }
 
@@ -441,7 +442,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
             {!isPayment && !isPaid && (
               <View style={styles.balanceTag}>
                 <Text style={styles.balanceTagLabel}>Resta </Text>
-                <Text style={styles.balanceTagValue}>${balance.remaining.toFixed(2)}</Text>
+                <Text style={styles.balanceTagValue}>{formatUsd(balance.remaining)}</Text>
               </View>
             )}
           </View>
@@ -452,7 +453,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
               styles.historyAmount, 
               isPayment ? styles.amountGreen : isPaid ? styles.amountMuted : styles.amountRed
             ]}>
-              {isPayment ? '+' : '-'}${amount.toFixed(2)}
+              {isPayment ? '+' : '-'}{formatUsd(amount)}
             </Text>
 
             <View style={styles.historyActions}>
@@ -571,18 +572,18 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
           <View style={styles.balanceContainer}>
             <View style={styles.balanceBox}>
               <Text style={styles.balanceLabel}>Deuda Total</Text>
-              <Text style={styles.balanceAmount}>${client.total_credit_sales.toFixed(2)}</Text>
+              <Text style={styles.balanceAmount}>{formatUsd(client.total_credit_sales)}</Text>
             </View>
             <View style={styles.balanceDivider} />
             <View style={styles.balanceBox}>
               <Text style={styles.balanceLabel}>Abonado</Text>
-              <Text style={styles.balanceAmountPaid}>${client.total_paid.toFixed(2)}</Text>
+              <Text style={styles.balanceAmountPaid}>{formatUsd(client.total_paid)}</Text>
             </View>
             <View style={styles.balanceDivider} />
             <View style={styles.balanceBox}>
               <Text style={styles.balanceLabel}>Saldo Actual</Text>
               <Text style={[styles.balanceAmountNet, client.balance_due > 0 ? styles.amountRed : styles.amountGreen]}>
-                ${client.balance_due.toFixed(2)}
+                {formatUsd(client.balance_due)}
               </Text>
             </View>
           </View>
@@ -682,7 +683,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
                   <View style={styles.quickAmounts}>
                     <TouchableOpacity 
                       style={styles.quickAmountBtn}
-                      onPress={() => setPaymentAmount(client.balance_due.toFixed(2))}
+                      onPress={() => setPaymentAmount(formatAmountInput(client.balance_due))}
                     >
                       <Text style={styles.quickAmountText}>Saldar deuda completa</Text>
                     </TouchableOpacity>

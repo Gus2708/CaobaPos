@@ -84,7 +84,7 @@ describe('DashboardPanel Metrics', () => {
     const ventashoy = await screen.findByText(/Ventas \(Hoy\)/);
     expect(ventashoy).toBeOnTheScreen();
     
-    // Profit Hoy: Should find $20.00 (could be formatted with spaces or different dots)
+    // Profit Hoy: Should find $20,00 (could be formatted with spaces or different dots)
     const profitElements = await screen.findAllByText(/\$?\s*20[.,]00/);
     expect(profitElements.length).toBeGreaterThanOrEqual(1);
 
@@ -95,7 +95,7 @@ describe('DashboardPanel Metrics', () => {
     // Now it should show "Ventas (Este Mes)"
     expect(await screen.findByText(/Ventas \(Este Mes\)/)).toBeOnTheScreen();
     
-    // Total profit for both mock products is $70.00
+    // Total profit for both mock products is $70,00
     const totalProfitElements = await screen.findAllByText(/\$?\s*70[.,]00/);
     expect(totalProfitElements.length).toBeGreaterThanOrEqual(1);
 
@@ -105,7 +105,7 @@ describe('DashboardPanel Metrics', () => {
 
     // Our modal should pop up showing 'Total en Efectivo'
     expect(await screen.findByText('Total en Efectivo')).toBeOnTheScreen();
-    // And exactly $40.00 (the single cash sale)
+    // And exactly $40,00 (the single cash sale)
     const cashElements = await screen.findAllByText(/\$?\s*40[.,]00/);
     expect(cashElements.length).toBeGreaterThanOrEqual(1);
   }, 20000);

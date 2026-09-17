@@ -20,6 +20,7 @@ import { ImagePickerModal } from '../components/ImagePickerModal';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 import { showDialog } from '../lib/dialog';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
@@ -316,7 +317,7 @@ const ProductItem = memo(({
           <View style={styles.itemInfo}>
             <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
             <View style={styles.itemMeta}>
-              <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
+              <Text style={styles.itemPrice}>{formatUsd(Number(item.price))}</Text>
               <View style={[styles.stockDotRow, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.05)', borderColor: item.stock_quantity < 10 ? tokens.colors.coralDim : 'rgba(255,255,255,0.1)' }]}>
                  <View style={[styles.stockDot, { backgroundColor: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.sage }]} />
                  <Text style={[styles.itemStockText, { color: item.stock_quantity < 10 ? tokens.colors.coral : tokens.colors.textSecondary }]}>{item.stock_quantity} uds</Text>

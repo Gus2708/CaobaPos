@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { LOGO_BASE64, ISOTIPO_BASE64, BRAND_COLORS } from './brandAssets';
 import { formatFolio } from './formatFolio';
+import { formatUsd, formatRate, formatBs } from './money';
 
 export interface ReceiptItem {
   name: string;
@@ -59,9 +60,9 @@ export const generateReceiptHTML = (data: ReceiptData) => {
       <tr class="item-row">
         <td class="item-name">
           <div class="name">${escapeHtml(item.name)}</div>
-          <div class="details">$${item.price.toFixed(2)} x ${item.quantity}</div>
+          <div class="details">${formatUsd(item.price)} x ${item.quantity}</div>
         </td>
-        <td class="item-total">$${item.subtotal.toFixed(2)}</td>
+        <td class="item-total">${formatUsd(item.subtotal)}</td>
       </tr>
     `
     )
@@ -167,22 +168,22 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         <div class="summary">
           <div class="summary-row">
             <span class="summary-label">Subtotal</span>
-            <span class="summary-value">$${data.subtotal.toFixed(2)}</span>
+            <span class="summary-value">${formatUsd(data.subtotal)}</span>
           </div>
           ${data.tax > 0 ? `
           <div class="summary-row">
             <span class="summary-label">IVA (16%)</span>
-            <span class="summary-value">$${data.tax.toFixed(2)}</span>
+            <span class="summary-value">${formatUsd(data.tax)}</span>
           </div>
           ` : ''}
           <div class="total-row">
             <span class="total-label">TOTAL</span>
             <div style="text-align: right;">
-              <span class="total-label" style="font-size: 24px; color: ${BRAND_COLOR};">$${data.total.toFixed(2)}</span>
-              ${data.totalAmountBs ? `<div style="font-size: 13px; color: ${MUTED_COLOR}; margin-top: 3px; font-weight: 600;">Bs. ${Number(data.totalAmountBs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>` : ''}
+              <span class="total-label" style="font-size: 24px; color: ${BRAND_COLOR};">${formatUsd(data.total)}</span>
+              ${data.totalAmountBs ? `<div style="font-size: 13px; color: ${MUTED_COLOR}; margin-top: 3px; font-weight: 600;">${formatBs(Number(data.totalAmountBs))}</div>` : ''}
             </div>
           </div>
-          ${data.exchangeRate ? `<div style="font-size: 11px; color: ${MUTED_COLOR}; margin-top: 4px; text-align: right;">Tasa BCV: ${Number(data.exchangeRate).toFixed(2)} Bs/$</div>` : ''}
+          ${data.exchangeRate ? `<div style="font-size: 11px; color: ${MUTED_COLOR}; margin-top: 4px; text-align: right;">Tasa BCV: ${formatRate(data.exchangeRate)} Bs/$</div>` : ''}
         </div>
         
         <div class="payment-info">

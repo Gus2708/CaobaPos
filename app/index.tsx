@@ -27,6 +27,7 @@ import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
 import { validateStockAddition } from '../lib/stockUtils';
+import { formatUsd } from '../lib/money';
 
 // Row height = item minHeight (84) + vertical padding (8+8 = 16). Used for getItemLayout.
 const ITEM_HEIGHT = verticalScale(84) + verticalScale(16);
@@ -391,7 +392,7 @@ export function POSScreen() {
               onPress={() => setShowMobileCart(true)}
               activeOpacity={0.9}
               accessibilityRole="button"
-              accessibilityLabel={`Abrir carrito, ${items.length} ${items.length === 1 ? 'producto' : 'productos'}, total ${finalTotal.toFixed(2).replace('.', ',')} dólares`}
+              accessibilityLabel={`Abrir carrito, ${items.length} ${items.length === 1 ? 'producto' : 'productos'}, total ${formatUsd(finalTotal)} dólares`}
             >
               <LinearGradient
                 colors={[tokens.colors.gold, tokens.colors.goldDark]}
@@ -401,7 +402,7 @@ export function POSScreen() {
               <View style={styles.checkoutBtnContent}>
                 <Icon name="shopping-cart" size={24} color={tokens.colors.onGold} />
                 <Text style={styles.mobileFabText}>Carrito ({items.length})</Text>
-                <Text style={styles.mobileFabTotal}>${finalTotal.toFixed(2)}</Text>
+                <Text style={styles.mobileFabTotal}>{formatUsd(finalTotal)}</Text>
               </View>
             </TouchableOpacity>
           </View>

@@ -13,6 +13,7 @@ import { tokens } from '../lib/designTokens';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { scale, verticalScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 
 interface SyncStatusModalProps {
   visible: boolean;
@@ -46,13 +47,13 @@ export function SyncStatusModal({ visible, onClose }: SyncStatusModalProps) {
 
   const getActionDetails = (item: any) => {
     if (item.type === 'CREATE_SALE' && item.payload) {
-      return `$${item.payload.totalAmount?.toFixed(2)} (${item.payload.items?.length || 0} productos)`;
+      return `${formatUsd(item.payload.totalAmount ?? 0)} (${item.payload.items?.length || 0} productos)`;
     }
     if (item.type === 'CREATE_CLIENT' && item.payload) {
       return `${item.payload.name}`;
     }
     if (item.type === 'ADD_PAYMENT' && item.payload) {
-      return `$${item.payload.amount?.toFixed(2)}`;
+      return formatUsd(item.payload.amount ?? 0);
     }
     return '';
   };

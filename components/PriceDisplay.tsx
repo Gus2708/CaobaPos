@@ -5,6 +5,7 @@ import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { moderateScale, scale } from '../lib/responsive';
 import { useExchangeRate, formatBs } from '../hooks/useExchangeRate';
+import { formatUsd } from '../lib/money';
 
 interface PriceDisplayProps {
   amount: number;
@@ -47,7 +48,7 @@ export function PriceDisplay({
     xl: moderateScale(18),
   };
 
-  const formattedUsd = `$${Number(amount || 0).toFixed(2)}`;
+  const formattedUsd = formatUsd(amount || 0);
   const bsAmount = toBs(amount || 0);
   const formattedBs = formatBs(bsAmount);
 

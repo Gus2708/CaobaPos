@@ -45,12 +45,12 @@ const renderWithProviders = async (ui: React.ReactElement) => {
 describe('PriceDisplay component', () => {
   it('renders standard USD price correctly without Bs', async () => {
     await renderWithProviders(<PriceDisplay amount={25.5} />);
-    expect(screen.getByText('$25.50')).toBeOnTheScreen();
+    expect(screen.getByText('$25,50')).toBeOnTheScreen();
   });
 
   it('renders dual USD and Bs price when showBs is true', async () => {
     await renderWithProviders(<PriceDisplay amount={10} showBs={true} />);
-    expect(screen.getByText('$10.00')).toBeOnTheScreen();
+    expect(screen.getByText('$10,00')).toBeOnTheScreen();
     expect(screen.getByText('Bs. 7.774,16')).toBeOnTheScreen();
   });
 });

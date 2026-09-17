@@ -17,6 +17,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useExchangeRate, formatBs, usdToBs, bsToUsd } from '../hooks/useExchangeRate';
+import { formatUsd, formatAmountInput, formatRate, parseAmount } from '../lib/money';
 
 interface ChangeCalculatorModalProps {
   visible: boolean;
@@ -59,7 +60,7 @@ export function ChangeCalculatorModal({
     }
   }, [visible]);
 
-  const received = parseFloat(receivedAmount.replace(',', '.')) || 0;
+  const received = parseAmount(receivedAmount) || 0;
   const isInsufficient = received < targetTotal && receivedAmount.length > 0;
   const isValid = received >= targetTotal && targetTotal > 0;
 
@@ -74,8 +75,8 @@ export function ChangeCalculatorModal({
 
   const handleQuickAmount = (amt: number) => {
     // Both currencies keep two decimals: dropping the cents of a Bs total made
-    // an exact payment read as insufficient. `received` parses the dot form.
-    setReceivedAmount(amt.toFixed(2));
+    // an exact payment read as insufficient. `received` parses via parseAmount.
+    setReceivedAmount(formatAmountInput(amt));
   };
 
   return (
@@ -102,7 +103,7 @@ export function ChangeCalculatorModal({
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.headerTitle}>Calculadora de cambio</Text>
-                  <Text style={styles.headerSubtitle}>Tasa BCV: {rate.toFixed(2)} Bs/$</Text>
+                  <Text style={styles.headerSubtitle}>Tasa BCV: {formatRate(rate)} Bs/$</Text>
                 </View>
                 <TouchableOpacity
                   onPress={onClose}
@@ -171,10 +172,10 @@ export function ChangeCalculatorModal({
                 <View style={styles.infoCard}>
                   <Text style={styles.infoLabel}>Total a pagar</Text>
                   <Text style={styles.totalPricePrimary}>
-                    {paymentCurrency === 'USD' ? `$${totalInUsd.toFixed(2)}` : formatBs(totalInBs)}
+                    {paymentCurrency === 'USD' ? formatUsd(totalInUsd) : formatBs(totalInBs)}
                   </Text>
                   <Text style={styles.totalPriceSecondary}>
-                    {paymentCurrency === 'USD' ? formatBs(totalInBs) : `$${totalInUsd.toFixed(2)} USD`}
+                    {paymentCurrency === 'USD' ? formatBs(totalInBs) : `${formatUsd(totalInUsd)} USD`}
                   </Text>
                 </View>
 
@@ -194,7 +195,7 @@ export function ChangeCalculatorModal({
                       ref={inputRef}
                       style={styles.input}
                       accessibilityLabel={paymentCurrency === 'USD' ? 'Monto entregado en dólares' : 'Monto entregado en bolívares'}
-                      placeholder={paymentCurrency === 'USD' ? '0.00' : '0,00'}
+                      placeholder="0,00"
                       placeholderTextColor={tokens.colors.textDim}
                       keyboardType="numeric"
                       value={receivedAmount}
@@ -255,11 +256,11 @@ export function ChangeCalculatorModal({
                       styles.changeValuePrimary,
                       isValid && { color: tokens.colors.sage }
                     ]}>
-                      {paymentCurrency === 'USD' ? `$${changePrimary.toFixed(2)}` : formatBs(changePrimary)}
+                      {paymentCurrency === 'USD' ? formatUsd(changePrimary) : formatBs(changePrimary)}
                     </Text>
                     {isValid && changePrimary > 0 && (
                       <Text style={styles.changeValueSecondary}>
-                        Equivalente: {paymentCurrency === 'USD' ? formatBs(changeSecondary) : `$${changeSecondary.toFixed(2)} USD`}
+                        Equivalente: {paymentCurrency === 'USD' ? formatBs(changeSecondary) : `${formatUsd(changeSecondary)} USD`}
                       </Text>
                     )}
                   </View>

@@ -49,14 +49,14 @@ describe('ClientDetailsModal - Debts Calculations', () => {
 
     // 3. Assert: Check all calculated fields map correctly to the UI
     expect(screen.getByText('Deuda Total')).toBeOnTheScreen();
-    // Assuming UI formatted as $15.50
-    expect(screen.getByText('$15.50')).toBeOnTheScreen(); 
+    // Assuming UI formatted as $15,50
+    expect(screen.getByText('$15,50')).toBeOnTheScreen(); 
 
     expect(screen.getByText('Abonado')).toBeOnTheScreen();
-    expect(screen.getByText('$5.50')).toBeOnTheScreen();
+    expect(screen.getByText('$5,50')).toBeOnTheScreen();
 
     expect(screen.getByText('Saldo Actual')).toBeOnTheScreen();
-    expect(screen.getByText('$10.00')).toBeOnTheScreen();
+    expect(screen.getByText('$10,00')).toBeOnTheScreen();
   });
 
   it('displays NO active debt if fully paid', async () => {
@@ -76,11 +76,11 @@ describe('ClientDetailsModal - Debts Calculations', () => {
     );
 
     expect(screen.getByText('Deuda Total')).toBeOnTheScreen();
-    expect(screen.getAllByText('$10.00')[0]).toBeOnTheScreen();
+    expect(screen.getAllByText('$10,00')[0]).toBeOnTheScreen();
 
-    // Saldo Actual should format down to $0.00
+    // Saldo Actual should format down to $0,00
     expect(screen.getByText('Saldo Actual')).toBeOnTheScreen();
-    expect(screen.getAllByText('$0.00')[0]).toBeOnTheScreen();
+    expect(screen.getAllByText('$0,00')[0]).toBeOnTheScreen();
   });
 
   it('displays negative balance if overpaid', async () => {
@@ -100,10 +100,10 @@ describe('ClientDetailsModal - Debts Calculations', () => {
     );
 
     expect(screen.getByText('Deuda Total')).toBeOnTheScreen();
-    expect(screen.getByText('$10.00')).toBeOnTheScreen();
+    expect(screen.getByText('$10,00')).toBeOnTheScreen();
 
-    // Assuming negative is shown correctly
-    expect(screen.getByText('$-5.00')).toBeOnTheScreen();
+    // Negative balances put the sign before the currency symbol
+    expect(screen.getByText('-$5,00')).toBeOnTheScreen();
   });
 });
 

@@ -18,6 +18,7 @@ import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { useExchangeRate, useSyncBcvRate, useUpdateManualRate } from '../hooks/useExchangeRate';
 import { useToast } from './Toast';
+import { formatRate, formatAmountInput, parseAmount } from '../lib/money';
 
 interface ExchangeRateModalProps {
   visible: boolean;
@@ -46,14 +47,14 @@ export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) 
   const handleSyncNow = async () => {
     try {
       const result = await syncMutation.mutateAsync();
-      showToast(`Tasa sincronizada: ${result.rate.toFixed(2)} Bs/$`, 'success');
+      showToast(`Tasa sincronizada: ${formatRate(result.rate)} Bs/$`, 'success');
     } catch (err: any) {
       showToast(err?.message || 'Error al sincronizar con DolarAPI', 'error');
     }
   };
 
   const handleSaveManual = async () => {
-    const parsed = parseFloat(manualRateInput.replace(',', '.'));
+    const parsed = parseAmount(manualRateInput);
     if (!parsed || isNaN(parsed) || parsed <= 0) {
       showToast('Ingresa un valor de tasa válido', 'warning');
       return;
@@ -61,7 +62,7 @@ export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) 
 
     try {
       await manualMutation.mutateAsync(parsed);
-      showToast(`Tasa manual guardada: ${parsed.toFixed(2)} Bs/$`, 'success');
+      showToast(`Tasa manual guardada: ${formatRate(parsed)} Bs/$`, 'success');
       setIsManualMode(false);
       setManualRateInput('');
     } catch (err: any) {
@@ -154,7 +155,7 @@ export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) 
                       style={styles.manualModeToggleBtn}
                       onPress={() => {
                         setIsManualMode(true);
-                        setManualRateInput(rate.toFixed(2));
+                        setManualRateInput(formatAmountInput(rate));
                       }}
                       activeOpacity={0.7}
                     >

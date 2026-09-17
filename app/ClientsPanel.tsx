@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { FontNames } from '../lib/fontNames';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 import { useClients, ClientBalance } from '../hooks/useClients';
 import { globalScrollY } from '../store/uiStore';
 import { ClientDetailsModal } from '../components/ClientDetailsModal';
@@ -33,7 +34,7 @@ const ClientItem = memo(({ item, onSelect }: { item: ClientBalance, onSelect: (c
     <View style={styles.clientDebt}>
       <Text style={styles.debtLabel}>Saldo Pendiente</Text>
       <Text style={[styles.debtAmount, item.balance_due > 0 ? styles.debtRed : styles.debtGreen]} numberOfLines={1} adjustsFontSizeToFit>
-        ${item.balance_due.toFixed(2)}
+        {formatUsd(item.balance_due)}
       </Text>
     </View>
   </TouchableOpacity>
@@ -84,7 +85,7 @@ export default function ClientsPanel() {
             </View>
             <View style={{ gap: verticalScale(2) }}>
               <Text style={styles.summaryLabel}>Total por cobrar</Text>
-              <Text style={styles.summaryValue}>${totalDeuda.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.summaryValue}>{formatUsd(totalDeuda)}</Text>
             </View>
           </View>
           <View style={styles.debtorsBadge}>

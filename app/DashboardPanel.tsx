@@ -16,6 +16,7 @@ import AnimatedReanimated, { FadeIn, Easing as ReanimatedEasing, useReducedMotio
 import { PeriodSelector, DashboardPeriod } from '../components/PeriodSelector';
 import { PaymentDetailsModal } from '../components/PaymentDetailsModal';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { GlassCard } from '../components/GlassCard';
 import { globalScrollY } from '../store/uiStore';
@@ -490,7 +491,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           />
           <StatCard 
             label={`Ganancia (${periodLabel})`} 
-            value={`$${currentMetrics.profit.toFixed(2)}`}
+            value={formatUsd(currentMetrics.profit)}
             variant="profit"
             icon="trending-up"
             subtitle={`Margen: ${currentMetrics.margin.toFixed(1)}%`}
@@ -500,14 +501,14 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         <View style={styles.statsGrid}>
           <StatCard 
             label={`Venta en BS (${periodLabel})`} 
-            value={`$${currentMetrics.bsRevenue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+            value={formatUsd(currentMetrics.bsRevenue)}
             variant="default"
             icon="mobile-alt"
             subtitle="Ventas y Abonos (T/T)"
           />
           <StatCard 
             label={`Caja Real (${periodLabel})`} 
-            value={`$${currentMetrics.receivedMoney.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}
+            value={formatUsd(currentMetrics.receivedMoney)}
             variant="success"
             icon="money-bill"
             subtitle="Ventas y Abonos (Efectivo)"
@@ -527,7 +528,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
             <BrandMark motif="espiral" style={styles.cardWatermarkEspiral} />
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Total Facturado (con IVA)</Text>
-              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.revenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatUsd((currentMetrics.revenue ?? 0))}</Text>
             </View>
             <View style={styles.financialItem}>
               <View style={styles.financialLeft}>
@@ -536,7 +537,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
                   <Text style={[styles.receivedBadgeText, { color: tokens.colors.sage }]}>Caja</Text>
                 </View>
               </View>
-              <Text style={styles.financialValueReceived} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.receivedMoney ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValueReceived} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatUsd((currentMetrics.receivedMoney ?? 0))}</Text>
             </View>
             <View style={styles.financialItem}>
               <View style={styles.financialLeft}>
@@ -545,19 +546,19 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
                   <Text style={[styles.receivedBadgeText, { color: tokens.colors.mahogany }]}>Banco</Text>
                 </View>
               </View>
-              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.bsRevenue ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatUsd((currentMetrics.bsRevenue ?? 0))}</Text>
             </View>
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Crédito Pendiente</Text>
-              <Text style={styles.financialValuePending} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.pendingCredit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValuePending} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatUsd((currentMetrics.pendingCredit ?? 0))}</Text>
             </View>
             <View style={styles.financialItem}>
               <Text style={styles.financialLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Costos Totales</Text>
-              <Text style={styles.financialValueCost} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>-${(currentMetrics.cost ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValueCost} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>-{formatUsd((currentMetrics.cost ?? 0))}</Text>
             </View>
             <View style={[styles.financialItem, styles.financialItemHighlight]}>
               <Text style={styles.financialLabelHighlight} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Ganancia Estimada</Text>
-              <Text style={styles.financialValueProfit} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>${(currentMetrics.profit ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+              <Text style={styles.financialValueProfit} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{formatUsd((currentMetrics.profit ?? 0))}</Text>
             </View>
           </View>
         </View>
@@ -669,7 +670,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
             {(sales ?? []).slice(0, 10).map((sale) => (
               <View key={sale.id} style={styles.saleItem}>
                 <View style={styles.saleLeft}>
-                  <Text style={styles.saleAmount}>${Number(sale.total_amount ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</Text>
+                  <Text style={styles.saleAmount}>{formatUsd(Number(sale.total_amount ?? 0))}</Text>
                   <View style={styles.paymentBadge}>
                     <Text style={styles.saleMethod}>{sale.payment_method}</Text>
                   </View>

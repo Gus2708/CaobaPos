@@ -23,6 +23,7 @@ import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useAuth } from '../hooks/useAuth';
 import { getEmployeeDisplayName } from '../hooks/useProducts';
 import { TAX_RATE } from '../lib/constants';
+import { formatUsd } from '../lib/money';
 const PAYMENT_METHODS = [
   { key: 'cash', label: 'Efectivo', icon: 'money-bill' },
   { key: 'card', label: 'Tarjeta', icon: 'credit-card' },
@@ -260,7 +261,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
             <View style={styles.summaryValueContainer}>
-              <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>{formatUsd(subtotal)}</Text>
               <Text style={styles.summaryValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(subtotal)}</Text>
             </View>
           </View>
@@ -281,7 +282,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
             </View>
             <View style={styles.summaryValueContainer}>
               <Text style={[styles.summaryValue, ivaEnabled && styles.taxValue]}>
-                ${tax.toFixed(2)}
+                {formatUsd(tax)}
               </Text>
               {ivaEnabled && <Text style={styles.summaryValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(tax)}</Text>}
             </View>

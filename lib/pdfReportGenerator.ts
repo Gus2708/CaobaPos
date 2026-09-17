@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { LOGO_BASE64, ISOTIPO_BASE64, BRAND_COLORS } from './brandAssets';
+import { formatUsd } from './money';
 
 interface Sale {
   id: string;
@@ -44,7 +45,7 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${index + 1}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${new Date(sale.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${methodLabels[sale.payment_method] || sale.payment_method}</td>
-      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">$${Number(sale.total_amount).toFixed(2)}</td>
+      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">${formatUsd(sale.total_amount)}</td>
     </tr>
   `).join('');
 
@@ -107,20 +108,20 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
         <div class="summary-grid">
           <div class="summary-card">
             <div class="summary-label">Ventas Totales</div>
-            <div class="summary-value">$${metrics.revenue.toFixed(2)}</div>
+            <div class="summary-value">${formatUsd(metrics.revenue)}</div>
           </div>
           <div class="summary-card">
             <div class="summary-label">Dinero en Caja</div>
-            <div class="summary-value" style="color: ${BRAND_COLORS.info};">$${(metrics.receivedMoney || 0).toFixed(2)}</div>
+            <div class="summary-value" style="color: ${BRAND_COLORS.info};">${formatUsd(metrics.receivedMoney || 0)}</div>
           </div>
           <div class="summary-card">
             <div class="summary-label">Ganancia Est.</div>
-            <div class="summary-value profit-value">$${metrics.profit.toFixed(2)}</div>
+            <div class="summary-value profit-value">${formatUsd(metrics.profit)}</div>
           </div>
           ${metrics.pendingCredit ? `
           <div class="summary-card" style="grid-column: span 3; background-color: #FFF9F2; border-color: #FFEBD6;">
             <div class="summary-label" style="color: #CD9B46;">Crédito Pendiente por Cobrar</div>
-            <div class="summary-value credit-value">$${metrics.pendingCredit.toFixed(2)}</div>
+            <div class="summary-value credit-value">${formatUsd(metrics.pendingCredit)}</div>
           </div>
           ` : ''}
         </div>
@@ -175,7 +176,7 @@ export const generatePaymentMethodReport = async (sales: Sale[], totalAmount: nu
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${index + 1}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${new Date(sale.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} ${new Date(sale.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${methodLabels[sale.payment_method] || sale.payment_method}</td>
-      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">$${Number(sale.total_amount).toFixed(2)}</td>
+      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">${formatUsd(sale.total_amount)}</td>
     </tr>
   `).join('');
 
@@ -233,7 +234,7 @@ export const generatePaymentMethodReport = async (sales: Sale[], totalAmount: nu
 
         <div class="summary-card">
           <div class="summary-label">Total Recaudado</div>
-          <div class="summary-value">$${totalAmount.toFixed(2)}</div>
+          <div class="summary-value">${formatUsd(totalAmount)}</div>
         </div>
 
         <div class="section-title">Transacciones</div>

@@ -14,6 +14,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useDemoStore } from '../store/demoStore';
 import { ExchangeRateModal } from './ExchangeRateModal';
+import { formatRate } from '../lib/money';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -199,10 +200,10 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             accessibilityRole="button"
-            accessibilityLabel={`Tasa BCV actual: ${rate.toFixed(2)} bolívares por dólar`}
+            accessibilityLabel={`Tasa BCV actual: ${formatRate(rate)} bolívares por dólar`}
           >
             <View style={styles.bcvIndicatorDot} />
-            <Text style={styles.bcvPillText}>BCV: {rate.toFixed(2)}</Text>
+            <Text style={styles.bcvPillText}>BCV: {formatRate(rate)}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

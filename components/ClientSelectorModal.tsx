@@ -29,6 +29,7 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 import { useClients, useCreateClient, ClientBalance } from '../hooks/useClients';
 import { PressableScale } from './PressableScale';
 import { useToast } from './Toast';
@@ -194,7 +195,7 @@ export function ClientSelectorModal({ visible, onClose, onSelectClient }: Client
       </View>
       {item.balance_due > 0 && (
         <View style={styles.debtBadge}>
-          <Text style={styles.debtText}>Deuda: ${item.balance_due.toFixed(2)}</Text>
+          <Text style={styles.debtText}>Deuda: {formatUsd(item.balance_due)}</Text>
         </View>
       )}
       <Icon name="chevron-right" size={16} color={tokens.colors.borderLight} />

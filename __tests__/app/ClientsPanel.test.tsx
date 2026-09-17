@@ -39,10 +39,10 @@ describe('ClientsPanel - Global Debt Calculations', () => {
     // Arrange: Return a mixed set of clients
     (useClientsHook.useClients as jest.Mock).mockReturnValue({
       data: [
-        { id: '1', name: 'John Doe', balance_due: 10.50 }, // Owes $10.50
+        { id: '1', name: 'John Doe', balance_due: 10.50 }, // Owes $10,50
         { id: '2', name: 'Jane Smith', balance_due: -5.00 }, // Overpaid, shouldn't reduce total debt
         { id: '3', name: 'Bob Jones', balance_due: 0.00 }, // Fully paid
-        { id: '4', name: 'Alice', balance_due: 20.00 }, // Owes $20.00
+        { id: '4', name: 'Alice', balance_due: 20.00 }, // Owes $20,00
       ],
       isLoading: false,
       error: null,
@@ -53,10 +53,10 @@ describe('ClientsPanel - Global Debt Calculations', () => {
 
     // Assert: Total should be 10.50 + 20.00 = 30.50
     expect(screen.getByText('Total por cobrar')).toBeOnTheScreen();
-    expect(screen.getByText('$30.50')).toBeOnTheScreen();
+    expect(screen.getByText('$30,50')).toBeOnTheScreen();
   });
 
-  it('shows $0.00 when no clients have active debt', async () => {
+  it('shows $0,00 when no clients have active debt', async () => {
     (useClientsHook.useClients as jest.Mock).mockReturnValue({
       data: [
         { id: '1', name: 'John Doe', balance_due: 0.00 }, 
@@ -69,6 +69,6 @@ describe('ClientsPanel - Global Debt Calculations', () => {
     await renderWithProviders(<ClientsPanel />);
 
     expect(screen.getByText('Total por cobrar')).toBeOnTheScreen();
-    expect(screen.getAllByText('$0.00')[0]).toBeOnTheScreen();
+    expect(screen.getAllByText('$0,00')[0]).toBeOnTheScreen();
   });
 });

@@ -14,6 +14,7 @@ import { Badge } from './Badge';
 import { formatBs } from '../hooks/useExchangeRate';
 import { showDialog } from '../lib/dialog';
 import { formatFolio } from '../lib/formatFolio';
+import { formatUsd, formatRate } from '../lib/money';
 
 interface SaleItem {
   id: string;
@@ -274,7 +275,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                 </View>
                 <View style={styles.itemMain}>
                   <Text style={styles.itemName} numberOfLines={1}>{item.product_name}</Text>
-                  <Text style={styles.itemMeta}>${item.unit_price.toFixed(2)} c/u</Text>
+                  <Text style={styles.itemMeta}>{formatUsd(item.unit_price)} c/u</Text>
                 </View>
                 {isEditing ? (
                   <View style={styles.qtyControls}>
@@ -295,7 +296,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                 ) : (
                   <Text style={[styles.itemMeta, { marginRight: scale(12) }]}>x{item.quantity}</Text>
                 )}
-                <Text style={styles.itemSubtotal}>${item.subtotal.toFixed(2)}</Text>
+                <Text style={styles.itemSubtotal}>{formatUsd(item.subtotal)}</Text>
               </View>
             ))}
 
@@ -321,7 +322,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
             <View style={styles.summaryCard}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+                <Text style={styles.totalValue}>{formatUsd(subtotal)}</Text>
               </View>
               
               <TouchableOpacity 
@@ -338,14 +339,14 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                   <Text style={styles.totalLabel}>IVA (16%)</Text>
                 </View>
                 <Text style={[styles.totalValue, ivaEnabled && { color: tokens.colors.mahogany }]}>
-                  ${tax.toFixed(2)}
+                  {formatUsd(tax)}
                 </Text>
               </TouchableOpacity>
 
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>Total</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>${total.toFixed(2)}</Text>
+                  <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>{formatUsd(total)}</Text>
                   {sale.total_amount_bs ? (
                     <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                       {formatBs(sale.total_amount_bs)}
@@ -356,7 +357,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
               {sale.exchange_rate ? (
                 <View style={styles.exchangeRateRow}>
                   <Text style={styles.exchangeRateLabel}>Tasa BCV:</Text>
-                  <Text style={styles.exchangeRateValue}>{Number(sale.exchange_rate).toFixed(2)} Bs/$</Text>
+                  <Text style={styles.exchangeRateValue}>{formatRate(sale.exchange_rate)} Bs/$</Text>
                 </View>
               ) : null}
             </View>

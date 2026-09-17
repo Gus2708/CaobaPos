@@ -8,6 +8,7 @@ import { generatePaymentMethodReport } from '../lib/pdfReportGenerator';
 import { useToast } from './Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { formatUsd } from '../lib/money';
 
 interface Sale {
   id: string;
@@ -113,7 +114,7 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
 
           <View style={styles.totalContainer}>
             <Text style={styles.totalLabel}>Total en {method ? methodLabels[method] || method : 'este método'}</Text>
-            <Text style={styles.totalValue}>${totalAmount.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>{formatUsd(totalAmount)}</Text>
           </View>
 
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
@@ -124,7 +125,7 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
                 <View key={item.id} style={styles.saleItem}>
                   <View style={styles.saleLeft}>
                     <Text style={[styles.saleAmount, item.isPayment && { color: tokens.colors.sage }]}>
-                      {item.isPayment ? '+' : ''}${Number(item.amount).toFixed(2)}
+                      {item.isPayment ? '+' : ''}{formatUsd(item.amount)}
                     </Text>
                     {item.isPayment && (
                       <Text style={styles.movementBadge}>Abono</Text>
