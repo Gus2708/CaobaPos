@@ -55,6 +55,14 @@ Defined in `lib/designTokens.ts` and documented in `docs/DESIGN_GUIDE.md`. Key r
 - **Loading states**: Use `SkeletonItem` component, never spinners or empty screens
 - **Borders over shadows**: Prefer subtle borders (`rgba(255,255,255,0.06)`) and linear gradients over shadows
 
+### Platform Safety
+
+The app ships to iOS, Android **and** as a PWA, so an API that works on one platform can do nothing at all on another. `__tests__/architecture/platformSafety.test.ts` enforces the first two rules below and fails with the offending `file:line`.
+
+- **Dialogs**: never import `Alert` from react-native. `Alert.alert` is an empty function in react-native-web (`class Alert { static alert() {} }`), so every confirmation was unreachable in the PWA. Use `showDialog(title, message, buttons)` from `lib/dialog.ts` — same signature as `Alert.alert`; it keeps the OS alert on native and renders `components/DialogHost.tsx` on web. `ToastAndroid` and `ActionSheetIOS` are banned for the same reason
+- **Overlays above modals**: react-native-web mounts every modal in its own `document.body` portal at z-index 9999, and gives every View its own stacking context, so an overlay rendered inside the app tree (toasts) is painted *under* an open modal. Wrap those overlays in `components/OverlayPortal.tsx` — a no-op on native, a portal on web
+- **Deletes**: Supabase answers a DELETE blocked by RLS with success and zero affected rows. Delete sales through `deleteSaleRowOrThrow()` in `lib/salesDeletion.ts` instead of trusting `error` alone
+
 ### Testing
 
 Jest with `jest-expo` preset. Setup in `jest.setup.js` mocks Supabase, Expo modules (fonts, image, gradient), vector icons, AsyncStorage, and safe-area-context. Tests live in `__tests__/` mirroring the app structure.
