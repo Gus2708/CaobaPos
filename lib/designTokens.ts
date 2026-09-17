@@ -65,6 +65,8 @@ export const tokens = {
 
     // Status — Sage (success)
     sage: '#6DB88A',
+    // Text on top of a solid sage surface: 8.3:1, where white is only 2.4:1.
+    onSage: '#140906',
     sageDim: 'rgba(109, 184, 138, 0.12)',
     sageGlow: 'rgba(109, 184, 138, 0.06)',
 

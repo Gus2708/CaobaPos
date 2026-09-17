@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { AppBlurView as BlurView } from './AppBlurView';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
@@ -11,6 +11,8 @@ import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
 import { BrandMark } from './BrandMark';
 import { useExchangeRate, formatBs } from '../hooks/useExchangeRate';
+import { useToast } from './Toast';
+import { formatFolio } from '../lib/formatFolio';
 
 interface SaleSummaryModalProps {
   visible: boolean;
@@ -40,6 +42,7 @@ export function SaleSummaryModal({
   onClose,
 }: SaleSummaryModalProps) {
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
   const { rate: currentRate, toBs } = useExchangeRate();
   const exchangeRate = propExchangeRate || currentRate;
   const totalAmountBs = propTotalAmountBs || toBs(total);
@@ -60,7 +63,7 @@ export function SaleSummaryModal({
 
       const receiptData: ReceiptData = {
         saleId,
-        date: `${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`,
+        date: `${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`,
         items: items.map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -78,7 +81,7 @@ export function SaleSummaryModal({
 
       await shareReceiptPDF(receiptData);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo generar el recibo PDF');
+      showToast('No se pudo generar el recibo PDF', 'error');
       console.error(error);
     } finally {
       setLoading(false);
@@ -101,19 +104,19 @@ export function SaleSummaryModal({
               style={{ position: 'absolute', right: scale(20), top: verticalScale(20), width: scale(28), height: scale(28), opacity: 0.5 }}
             />
             <View style={styles.iconCircle}>
-               <Icon name="check-circle" size={32} color="#FFFFFF" />
+               <Icon name="check-circle" size={32} color={tokens.colors.text} />
             </View>
-            <Text style={styles.headerTitle}>¡Venta Realizada!</Text>
-            <Text style={styles.receiptId}>Folio: {saleId.slice(0, 8).toUpperCase()}</Text>
+            <Text style={styles.headerTitle}>¡Venta completada!</Text>
+            <Text style={[styles.receiptId, styles.folioChip]}>Folio: {formatFolio(saleId)}</Text>
             {employeeName && (
-              <Text style={[styles.receiptId, { color: tokens.colors.mahogany, marginTop: verticalScale(4), fontWeight: '700' }]}>
+              <Text style={[styles.receiptId, styles.attendedBy]}>
                 Atendido por: {employeeName}
               </Text>
             )}
           </View>
 
           <View style={styles.content}>
-            <Text style={styles.sectionTitle}>Resumen de Venta</Text>
+            <Text style={styles.sectionTitle}>Resumen de venta</Text>
             
             <View style={styles.itemsList}>
               {items.map((item, index) => (
@@ -139,7 +142,7 @@ export function SaleSummaryModal({
                 </View>
               )}
               <View style={styles.grandTotalRow}>
-                <Text style={styles.grandTotalLabel}>TOTAL</Text>
+                <Text style={styles.grandTotalLabel}>Total</Text>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={styles.grandTotalValue}>${total.toFixed(2)}</Text>
                   <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
@@ -149,7 +152,7 @@ export function SaleSummaryModal({
               </View>
               {exchangeRate ? (
                 <View style={styles.exchangeRateRow}>
-                  <Text style={styles.exchangeRateLabel}>Tasa BCV:</Text>
+                  <Text style={styles.exchangeRateLabel}>Tasa BCV</Text>
                   <Text style={styles.exchangeRateValue}>{exchangeRate.toFixed(2)} Bs/$</Text>
                 </View>
               ) : null}
@@ -169,19 +172,27 @@ export function SaleSummaryModal({
               onPress={sharePDF}
               disabled={loading}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Compartir recibo"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={tokens.colors.onGold} />
               ) : (
                 <>
-                  <Icon name="file-pdf" size={22} color="#FFFFFF" />
-                  <Text style={styles.shareButtonText}>Compartir Recibo</Text>
+                  <Icon name="file-pdf" size={22} color={tokens.colors.onGold} />
+                  <Text style={styles.shareButtonText}>Compartir recibo</Text>
                 </>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeButtonText}>Finalizar y Volver</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Finalizar y volver"
+            >
+              <Text style={styles.closeButtonText}>Finalizar y volver</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -221,23 +232,31 @@ const styles = StyleSheet.create({
      justifyContent: 'center',
      alignItems: 'center',
      borderWidth: 2,
-     borderColor: '#FFFFFF',
+     borderColor: tokens.colors.onSage,
   },
   headerTitle: {
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(22),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onSage,
     letterSpacing: scale(-0.5),
   },
   receiptId: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
-    color: '#FFFFFF',
-    backgroundColor: tokens.colors.mahoganyDim,
+  },
+  folioChip: {
+    color: tokens.colors.textSecondary,
+    backgroundColor: tokens.colors.bg,
     paddingHorizontal: scale(12),
-    paddingVertical: verticalScale(2),
+    paddingVertical: verticalScale(4),
     borderRadius: tokens.radius.pill,
+    overflow: 'hidden',
+  },
+  attendedBy: {
+    color: tokens.colors.onSage,
+    fontWeight: '600',
+    marginTop: verticalScale(4),
   },
   content: {
     padding: scale(24),
@@ -273,8 +292,9 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
   },
   itemMeta: {
-    fontFamily: FontNames.parkinsans,
+    fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(12),
+    fontWeight: '700',
     color: tokens.colors.textMuted,
     marginTop: verticalScale(2),
   },
@@ -395,7 +415,7 @@ const styles = StyleSheet.create({
     fontFamily: FontNames.parkinsans,
     fontSize: moderateScale(16),
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: tokens.colors.onGold,
   },
   closeButton: {
     height: verticalScale(50),

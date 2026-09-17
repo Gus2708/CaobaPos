@@ -49,6 +49,12 @@ Rampa cálida, todos los pasos superan WCAG AA (4.5:1) sobre `bg` y sobre `surfa
 - **Coral (`#C96B6B`)**: Error, eliminación, stock agotado.
 - **Amber (`#CD9B46`)**: Advertencia, stock bajo.
 
+```typescript
+onSage: '#140906'          // Único color de texto válido sobre sage sólido
+```
+
+> ⚠️ Blanco sobre sage da **2.4:1**. Nunca usarlo para texto — sobre una superficie sage el texto va en `onSage`, que da **8.3:1**.
+
 ---
 
 ## 🔤 Tipografía
