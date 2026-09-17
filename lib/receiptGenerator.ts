@@ -1,6 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { LOGO_BASE64, ISOTIPO_BASE64, BRAND_COLORS } from './brandAssets';
+import { formatFolio } from './formatFolio';
 
 export interface ReceiptItem {
   name: string;
@@ -155,7 +156,7 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         
         <div class="receipt-info">
           <div>FECHA: ${escapeHtml(data.date)}</div>
-          <div>FOLIO: <span class="folio">${escapeHtml(data.saleId.slice(0, 8).toUpperCase())}</span></div>
+          <div>FOLIO: <span class="folio">${escapeHtml(formatFolio(data.saleId))}</span></div>
         </div>
         ${data.employeeName ? `<div class="employee-info">ATENDIDO POR: <strong style="color: ${TEXT_COLOR};">${escapeHtml(data.employeeName.toUpperCase())}</strong></div>` : ''}
         
