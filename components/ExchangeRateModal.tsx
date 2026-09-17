@@ -26,7 +26,7 @@ interface ExchangeRateModalProps {
 }
 
 export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) {
-  const { rate, rateData, isLoading } = useExchangeRate();
+  const { rate, rateData, isLoading, isFallbackRate: rateIsFallback } = useExchangeRate();
   const syncMutation = useSyncBcvRate();
   const manualMutation = useUpdateManualRate();
   const { showToast } = useToast();
@@ -109,7 +109,7 @@ export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) 
                     <Text style={styles.rateCardLabel}>TASA ACTIVA DEL DÍA</Text>
                     <View style={styles.sourceBadge}>
                       <Text style={styles.sourceBadgeText}>
-                        {rateData.source === 'manual' ? 'MANUAL' : 'BCV OFICIAL'}
+                        {rateIsFallback ? 'SIN CONFIRMAR' : rateData.source === 'manual' ? 'MANUAL' : 'BCV OFICIAL'}
                       </Text>
                     </View>
                   </View>
@@ -122,9 +122,11 @@ export function ExchangeRateModal({ visible, onClose }: ExchangeRateModalProps) 
                   </View>
 
                   <View style={styles.rateFooterRow}>
-                    <Icon name="clock" size={14} color={tokens.colors.textDim} />
-                    <Text style={styles.rateUpdatedText}>
-                      Actualizado: {formatDateTime(rateData.updated_at)}
+                    <Icon name="clock" size={14} color={rateIsFallback ? tokens.colors.coral : tokens.colors.textDim} />
+                    <Text style={[styles.rateUpdatedText, rateIsFallback && { color: tokens.colors.coral }]}>
+                      {rateIsFallback
+                        ? 'Sin confirmar con el BCV. Sincroniza o ajusta la tasa manual.'
+                        : `Actualizado: ${formatDateTime(rateData.updated_at)}`}
                     </Text>
                   </View>
                 </View>

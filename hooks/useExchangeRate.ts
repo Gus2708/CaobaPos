@@ -6,6 +6,7 @@ import {
   getCachedExchangeRate,
   saveCachedExchangeRate,
   DEFAULT_BCV_RATE,
+  FALLBACK_RATE_SOURCE,
   CachedExchangeRate,
 } from '../lib/offlineCache';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
@@ -31,6 +32,27 @@ export function usdToBs(amountUsd: number, rate: number): number {
 export function bsToUsd(amountBs: number, rate: number): number {
   if (!amountBs || !rate || rate === 0) return 0;
   return Number((amountBs / rate).toFixed(2));
+}
+
+/** The BCV rate syncs hourly, so a day without an update means something is wrong. */
+export const RATE_STALE_AFTER_MS = 1000 * 60 * 60 * 24;
+
+/** True when the rate on screen is the built-in fallback, never confirmed against the BCV. */
+export function isFallbackRate(rateData?: CachedExchangeRate | null): boolean {
+  return !rateData || rateData.source === FALLBACK_RATE_SOURCE;
+}
+
+/**
+ * True when the rate should not be trusted for pricing: the fallback, a reading older
+ * than a day, or a broken timestamp. Manual rates are set by the cashier and demo rates
+ * are sandbox data, so neither goes stale.
+ */
+export function isStaleRate(rateData?: CachedExchangeRate | null, now: number = Date.now()): boolean {
+  if (isFallbackRate(rateData) || !rateData) return true;
+  if (rateData.source === 'manual' || rateData.source === 'demo') return false;
+  const updatedAt = Date.parse(rateData.updated_at);
+  if (isNaN(updatedAt)) return true;
+  return now - updatedAt > RATE_STALE_AFTER_MS;
 }
 
 // --- Module-level singleton for Realtime subscription ---
@@ -162,12 +184,15 @@ export function useExchangeRate() {
     }
   }, [queryClient, isDemo]);
 
-  const activeRate = query.data?.rate || DEFAULT_BCV_RATE.rate;
+  const rateData = query.data || DEFAULT_BCV_RATE;
+  const activeRate = rateData.rate || DEFAULT_BCV_RATE.rate;
 
   return {
     ...query,
     rate: activeRate,
-    rateData: query.data || DEFAULT_BCV_RATE,
+    rateData,
+    isFallbackRate: isFallbackRate(rateData),
+    isRateUnconfirmed: !query.isLoading && !query.isPlaceholderData && isStaleRate(rateData),
     formatBs: (usdAmount: number) => formatBs(usdToBs(usdAmount, activeRate)),
     formatBsDirect: (bsAmount: number) => formatBs(bsAmount),
     toBs: (usdAmount: number) => usdToBs(usdAmount, activeRate),

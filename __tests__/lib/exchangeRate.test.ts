@@ -1,8 +1,9 @@
-import { formatBs, usdToBs, bsToUsd } from '../../hooks/useExchangeRate';
+import { formatBs, usdToBs, bsToUsd, isFallbackRate, isStaleRate } from '../../hooks/useExchangeRate';
 import {
   getCachedExchangeRate,
   saveCachedExchangeRate,
   DEFAULT_BCV_RATE,
+  FALLBACK_RATE_SOURCE,
 } from '../../lib/offlineCache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDemoStore } from '../../store/demoStore';
@@ -48,7 +49,8 @@ describe('Exchange Rate Utilities & Conversion', () => {
       const rateData = await getCachedExchangeRate();
       expect(rateData.rate).toBe(DEFAULT_BCV_RATE.rate);
       expect(rateData.currency).toBe('USD_VES');
-      expect(rateData.source).toBe('bcv');
+      expect(rateData.source).toBe(FALLBACK_RATE_SOURCE);
+      expect(isFallbackRate(rateData)).toBe(true);
     });
 
     it('saves and retrieves custom cached exchange rate', async () => {
@@ -87,5 +89,38 @@ describe('demo exchange rate follows the live BCV rate', () => {
     useDemoStore.getState().syncDemoExchangeRate(NaN);
     useDemoStore.getState().syncDemoExchangeRate(-5);
     expect(useDemoStore.getState().demoExchangeRate).toBe(before);
+  });
+});
+
+describe('rate confidence helpers', () => {
+  const now = Date.parse('2026-09-17T12:00:00.000Z');
+  const rateAt = (updatedAt: string, source = 'bcv') => ({
+    currency: 'USD_VES',
+    source,
+    rate: 842,
+    updated_at: updatedAt,
+  });
+
+  it('treats the built-in fallback as unconfirmed', () => {
+    expect(isFallbackRate(DEFAULT_BCV_RATE)).toBe(true);
+    expect(isStaleRate(DEFAULT_BCV_RATE, now)).toBe(true);
+  });
+
+  it('trusts a BCV rate synced within the last day', () => {
+    const fresh = rateAt(new Date(now - 1000 * 60 * 30).toISOString());
+    expect(isFallbackRate(fresh)).toBe(false);
+    expect(isStaleRate(fresh, now)).toBe(false);
+  });
+
+  it('flags a BCV rate older than a day', () => {
+    expect(isStaleRate(rateAt(new Date(now - 1000 * 60 * 60 * 30).toISOString()), now)).toBe(true);
+  });
+
+  it('keeps trusting a manual rate the cashier set', () => {
+    expect(isStaleRate(rateAt(new Date(now - 1000 * 60 * 60 * 72).toISOString(), 'manual'), now)).toBe(false);
+  });
+
+  it('flags a broken timestamp', () => {
+    expect(isStaleRate(rateAt('not-a-date'), now)).toBe(true);
   });
 });

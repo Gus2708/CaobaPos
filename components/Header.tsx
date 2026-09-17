@@ -91,7 +91,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const insets = useSafeAreaInsets();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
-  const { rate } = useExchangeRate();
+  const { rate, isRateUnconfirmed } = useExchangeRate();
   const menuAnim = useRef(new RNAnimated.Value(0)).current;
 
   const toggleAnim = useRef(new RNAnimated.Value(0)).current;
@@ -195,14 +195,14 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
 
           {/* BCV Exchange Rate Badge */}
           <TouchableOpacity
-            style={styles.bcvPill}
+            style={[styles.bcvPill, isRateUnconfirmed && styles.bcvPillUnconfirmed]}
             onPress={() => setIsRateModalOpen(true)}
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             accessibilityRole="button"
-            accessibilityLabel={`Tasa BCV actual: ${formatRate(rate)} bolívares por dólar`}
+            accessibilityLabel={`Tasa BCV actual: ${formatRate(rate)} bolívares por dólar${isRateUnconfirmed ? ", sin confirmar con el BCV" : ""}`}
           >
-            <View style={styles.bcvIndicatorDot} />
+            <View style={[styles.bcvIndicatorDot, isRateUnconfirmed && styles.bcvIndicatorDotUnconfirmed]} />
             <Text style={styles.bcvPillText}>BCV: {formatRate(rate)}</Text>
           </TouchableOpacity>
 
@@ -360,6 +360,12 @@ const styles = StyleSheet.create({
     height: scale(6),
     borderRadius: scale(3),
     backgroundColor: tokens.colors.sage,
+  },
+  bcvIndicatorDotUnconfirmed: {
+    backgroundColor: tokens.colors.coral,
+  },
+  bcvPillUnconfirmed: {
+    borderColor: tokens.colors.coral,
   },
   bcvPillText: {
     fontFamily: FontNames.jetBrainsMono,

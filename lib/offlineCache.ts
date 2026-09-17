@@ -163,11 +163,18 @@ export interface CachedExchangeRate {
   raw_payload?: any;
 }
 
+/**
+ * Source tag for the rate the app falls back to when the device never stored a
+ * real one. It is deliberately not 'bcv' so the UI can tell the cashier that the
+ * bolivar amounts on screen were never confirmed against the BCV.
+ */
+export const FALLBACK_RATE_SOURCE = 'fallback';
+
 export const DEFAULT_BCV_RATE: CachedExchangeRate = {
   currency: 'USD_VES',
-  source: 'bcv',
+  source: FALLBACK_RATE_SOURCE,
   rate: 777.4161,
-  updated_at: new Date().toISOString(),
+  updated_at: new Date(0).toISOString(),
 };
 
 export async function getCachedExchangeRate(): Promise<CachedExchangeRate> {
