@@ -1,4 +1,4 @@
-import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, Platform, StatusBar, Modal, ScrollView, Animated } from 'react-native';
 import { useDeviceSize } from '../hooks/useDeviceSize';
 import { BrandMark } from '../components/BrandMark';
 
@@ -19,10 +19,13 @@ import { Icon } from '../components/Icon';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { showDialog } from '../lib/dialog';
+import { deleteSaleRowOrThrow } from '../lib/salesDeletion';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { useAuth } from '../hooks/useAuth';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { formatFolio } from '../lib/formatFolio';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -356,38 +359,9 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           throw paymentsError;
         }
 
-        // 4. Delete the sale. Use .select() to detect when 0 rows were
-        // affected — Supabase returns success silently when RLS blocks a
-        // delete, so we cannot rely on `error` alone.
-        const { data: deleted, error: saleError } = await supabase
-          .from('sales')
-          .delete()
-          .eq('id', sale.id)
-          .select();
-
-        if (saleError) {
-          console.error('[Delete] Supabase error deleting sale:', saleError);
-          throw saleError;
-        }
-
-        if (!deleted || deleted.length === 0) {
-          // The delete returned success but no rows were removed. Almost
-          // always RLS missing a DELETE policy on sales/sale_items.
-          console.error('[Delete] DELETE affected 0 rows — likely RLS blocking. sale.id:', sale.id);
-          throw new Error('La base de datos rechazó el borrado (revisa RLS en sales)');
-        }
-
-        // Sanity-check: confirm the row is really gone before reporting success
-        const { data: stillThere } = await supabase
-          .from('sales')
-          .select('id')
-          .eq('id', sale.id)
-          .maybeSingle();
-
-        if (stillThere) {
-          console.error('[Delete] Sale still exists in DB after delete. sale.id:', sale.id);
-          throw new Error('La venta no se borró en la base de datos');
-        }
+        // 4. Delete the sale and prove the row is gone — Supabase reports success
+        // with 0 affected rows when RLS blocks a delete (see lib/salesDeletion).
+        await deleteSaleRowOrThrow(sale.id);
 
         return { success: true, stockWarn };
       } catch (error: any) {
@@ -576,9 +550,9 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       return;
     }
 
-    Alert.alert(
+    showDialog(
       'Eliminar Venta',
-      `¿Eliminar venta #${sale.id.slice(0, 8).toUpperCase()}? El stock será restaurado.`,
+      `¿Eliminar venta #${formatFolio(sale.id)}? El stock será restaurado.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: executeDelete },

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, Alert, StatusBar } from 'react-native';
+import { View, Modal, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, ScrollView, Platform, KeyboardAvoidingView, StatusBar } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,8 @@ import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
+import { showDialog } from '../lib/dialog';
+import { deleteSaleRowOrThrow } from '../lib/salesDeletion';
 import { useClientPayments, useClientCreditSales, useAddPayment, useDeletePayment, useDeleteClient, ClientBalance } from '../hooks/useClients';
 import { useToast } from './Toast';
 import { SaleDetailModal } from './SaleDetailModal';
@@ -74,19 +76,20 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
         }
 
         // 2. Clear payments linked to this sale
-        await supabase
+        const { error: paymentsError } = await supabase
           .from('client_payments')
           .delete()
           .eq('sale_id', sale.id);
 
-        // 3. Delete the sale itself (cascades to sale_items)
-        const { error: saleError } = await supabase
-          .from('sales')
-          .delete()
-          .eq('id', sale.id);
+        if (paymentsError) {
+          console.error('Error deleting payments:', paymentsError);
+          throw paymentsError;
+        }
 
-        if (saleError) throw saleError;
-        
+        // 3. Delete the sale itself (cascades to sale_items) and prove it is gone,
+        // the same way the history panel does (see lib/salesDeletion).
+        await deleteSaleRowOrThrow(sale.id);
+
         return { success: true };
       } catch (error: any) {
         console.error('Delete credit sale error:', error);
@@ -104,7 +107,8 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       setSelectedSale(null);
       showToast('Venta eliminada y stock restaurado', 'success');
     },
-    onError: () => showToast('No se pudo eliminar la venta', 'error'),
+    onError: (err: any) =>
+      showToast(err?.message ? `Error: ${err.message}` : 'No se pudo eliminar la venta', 'error'),
   });
 
   const updateSaleMutation = useMutation({
@@ -302,7 +306,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   };
 
   const handleSaldarSale = async (sale: any, balance: any) => {
-    Alert.alert(
+    showDialog(
       'Saldar Venta',
       '¿Con qué método de pago se realiza el abono?',
       [
@@ -338,7 +342,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   };
 
   const handleDeletePayment = (paymentId: string) => {
-    Alert.alert(
+    showDialog(
       'Eliminar Abono',
       '¿Estás seguro de que deseas eliminar este abono? Esto afectará el saldo del cliente.',
       [
@@ -360,14 +364,14 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   };
   const handleDeleteClient = () => {
     if (client.balance_due > 0) {
-      Alert.alert(
+      showDialog(
         'No se puede eliminar',
         'Este cliente tiene una deuda pendiente. Debes saldar la cuenta antes de eliminarlo.'
       );
       return;
     }
 
-    Alert.alert(
+    showDialog(
       'Eliminar Cliente',
       `¿Estás seguro de que deseas eliminar a "${client.name}"? Esta acción no se puede deshacer.`,
       [
