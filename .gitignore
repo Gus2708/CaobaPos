@@ -46,6 +46,8 @@ yarn-error.*
 # Agent & System folders (must be ignored for EAS Build symlink stability)
 .agents/
 .claude/
+.agent/
+.codex/
 .antigravity/
 .gemini/
 .trae/
