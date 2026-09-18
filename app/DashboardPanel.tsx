@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { useDeviceSize } from '../hooks/useDeviceSize';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
@@ -135,7 +136,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const { width } = useDeviceSize();
   const insets = useSafeAreaInsets();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const { today, weekAgo, monthAgo, defaultStart } = useMemo(() => {

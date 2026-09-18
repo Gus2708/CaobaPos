@@ -5,6 +5,7 @@ import { BrandMark } from '../components/BrandMark';
 import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { globalScrollY } from '../store/uiStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
@@ -135,7 +136,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   
   const { width } = useDeviceSize();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);

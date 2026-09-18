@@ -2,6 +2,7 @@ import { View, StyleSheet, RefreshControl, TextInput, TouchableOpacity, Modal, A
 import { useDeviceSize } from '../hooks/useDeviceSize';
 import { AppBlurView } from '../components/AppBlurView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { Text } from '../components/Text';
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -72,7 +73,7 @@ export function POSScreen() {
 
   const [showMobileCart, setShowMobileCart] = useState(false);
 
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const CAT_HEIGHT = verticalScale(44);
 

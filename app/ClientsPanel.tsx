@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Anima
 import { useDeviceSize } from '../hooks/useDeviceSize';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon } from '../components/Icon';
 import { FontNames } from '../lib/fontNames';
@@ -53,7 +54,7 @@ export default function ClientsPanel() {
   const [search, setSearch] = useState('');
   const { width } = useDeviceSize();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   const filteredClients = clients?.filter(c => 

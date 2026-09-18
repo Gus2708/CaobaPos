@@ -6,6 +6,7 @@ import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { Image } from 'expo-image';
 import { Text } from '../components/Text';
 import { CachedImage } from '../components/CachedImage';
@@ -358,7 +359,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   
   const { width } = useDeviceSize();
   const isMobile = width < 768;
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const hideOffset = TOTAL_NAV_HEIGHT;
 

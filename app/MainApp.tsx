@@ -1,6 +1,7 @@
 import { View, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { verticalScale } from '../lib/responsive';
 import { headerTranslateY, initScrollHideAnimation, resetScrollState, cleanupScrollListener } from '../store/uiStore';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -49,7 +50,7 @@ export default function MainApp() {
 
   const insets = useSafeAreaInsets();
 
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
   const CAT_HEIGHT = verticalScale(44);
   const scrollHideHeight = currentScreen === 'pos' ? TOTAL_NAV_HEIGHT + CAT_HEIGHT : TOTAL_NAV_HEIGHT;

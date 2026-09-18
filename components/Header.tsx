@@ -1,6 +1,7 @@
 import { View, StyleSheet, Platform, StatusBar, Image, TouchableOpacity, Modal, Animated as RNAnimated, Dimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderTopInset } from '../hooks/useHeaderInsets';
 import { Text } from './Text';
 import { useState, useRef, useEffect } from 'react';
 import { AppBlurView } from './AppBlurView';
@@ -89,6 +90,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const { role, signOut } = useAuth();
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const insets = useSafeAreaInsets();
+  const headerTopInset = useHeaderTopInset();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const { rate, isRateUnconfirmed } = useExchangeRate();
@@ -159,9 +161,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
     <View style={[
       styles.container, 
       { 
-        paddingTop: Platform.OS === 'android' 
-          ? Math.max(insets.top, StatusBar.currentHeight || 0)
-          : insets.top
+        paddingTop: headerTopInset
       }
     ]}>
       <View style={styles.content}>

@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale } from '../lib/responsive';
 import { ShimmerProvider, ShimmerRect, ShimmerBlock } from './Shimmer';
@@ -11,7 +12,7 @@ import { ShimmerProvider, ShimmerRect, ShimmerBlock } from './Shimmer';
  */
 export const DashboardSkeleton = memo(function DashboardSkeleton() {
   const insets = useSafeAreaInsets();
-  const HEADER_HEIGHT = verticalScale(50) + insets.top;
+  const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
   return (
