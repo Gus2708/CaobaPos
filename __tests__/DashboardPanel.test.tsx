@@ -80,10 +80,13 @@ describe('DashboardPanel Metrics', () => {
   it('calculates properly isolated metrics for Ganancia Hoy and Ganancia Total', async () => {
     await render(<DashboardPanel />, { wrapper });
 
-    // Wait until loading indicator is gone and main text appears
-    const ventashoy = await screen.findByText(/Ventas \(Hoy\)/);
-    expect(ventashoy).toBeOnTheScreen();
-    
+    // Wait until loading indicator is gone and the money summary hero appears
+    const heroLabel = await screen.findByText('Ganancia');
+    expect(heroLabel).toBeOnTheScreen();
+
+    // Hoy: only today's cash sale counts (1 venta, margin 50%)
+    expect(await screen.findByText('Margen 50,0% · 1 venta')).toBeOnTheScreen();
+
     // Profit Hoy: Should find $20,00 (could be formatted with spaces or different dots)
     const profitElements = await screen.findAllByText(/\$?\s*20[.,]00/);
     expect(profitElements.length).toBeGreaterThanOrEqual(1);
@@ -92,9 +95,9 @@ describe('DashboardPanel Metrics', () => {
     const btnMes = await screen.findByText('Mes');
     fireEvent.press(btnMes);
 
-    // Now it should show "Ventas (Este Mes)"
-    expect(await screen.findByText(/Ventas \(Este Mes\)/)).toBeOnTheScreen();
-    
+    // Now both mock sales are in range (2 ventas, margin still 50%)
+    expect(await screen.findByText('Margen 50,0% · 2 ventas')).toBeOnTheScreen();
+
     // Total profit for both mock products is $70,00
     const totalProfitElements = await screen.findAllByText(/\$?\s*70[.,]00/);
     expect(totalProfitElements.length).toBeGreaterThanOrEqual(1);

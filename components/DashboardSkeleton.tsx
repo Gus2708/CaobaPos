@@ -31,11 +31,8 @@ export const DashboardSkeleton = memo(function DashboardSkeleton() {
         >
           {/* Header Row */}
           <View style={styles.header}>
-            <View style={styles.headerTitleRow}>
-              <ShimmerRect width={scale(130)} height={verticalScale(28)} borderRadius={6} />
-              <ShimmerRect width={scale(52)} height={verticalScale(22)} borderRadius={tokens.radius.pill} />
-            </View>
-            <ShimmerRect width={scale(104)} height={verticalScale(34)} borderRadius={tokens.radius.pill} />
+            <ShimmerRect width={scale(130)} height={verticalScale(28)} borderRadius={6} />
+            <ShimmerRect width={scale(90)} height={verticalScale(18)} borderRadius={4} />
           </View>
 
           {/* Period Selector Tabs */}
@@ -46,108 +43,43 @@ export const DashboardSkeleton = memo(function DashboardSkeleton() {
             <ShimmerRect width={scale(72)} height={verticalScale(34)} borderRadius={tokens.radius.pill} />
           </View>
 
-          {/* 4 KPI Summary Cards (2x2) */}
-          <View style={styles.statsGrid}>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
+          {/* Money summary: hero + plain rows */}
+          <View style={styles.hero}>
+            <ShimmerRect width={scale(70)} height={verticalScale(12)} borderRadius={3} />
+            <ShimmerRect width={scale(150)} height={verticalScale(34)} borderRadius={6} />
+            <ShimmerRect width={scale(170)} height={verticalScale(12)} borderRadius={3} />
           </View>
-          <View style={styles.statsGrid}>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-          </View>
-
-          {/* Balance Financiero Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ShimmerRect width={scale(38)} height={scale(38)} borderRadius={scale(12)} />
-              <ShimmerRect width={scale(170)} height={verticalScale(18)} borderRadius={4} />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={styles.moneyRow}>
+              <ShimmerRect width={scale(120 + (i % 2) * 20)} height={verticalScale(14)} borderRadius={4} />
+              <ShimmerRect width={scale(70)} height={verticalScale(14)} borderRadius={4} />
             </View>
-
-            <ShimmerBlock style={styles.financialCard} borderRadius={tokens.styles.liquidCard.borderRadius}>
-              {/* Total Facturado */}
-              <View style={styles.financialRow}>
-                <ShimmerRect width={scale(130)} height={verticalScale(14)} borderRadius={4} />
-                <ShimmerRect width={scale(100)} height={verticalScale(22)} borderRadius={4} />
-              </View>
-
-              {/* 4 Financial Items */}
-              <View style={styles.financialRow}>
-                <ShimmerRect width={scale(120)} height={verticalScale(13)} borderRadius={4} />
-                <ShimmerRect width={scale(75)} height={verticalScale(16)} borderRadius={4} />
-              </View>
-              <View style={styles.financialRow}>
-                <ShimmerRect width={scale(145)} height={verticalScale(13)} borderRadius={4} />
-                <ShimmerRect width={scale(85)} height={verticalScale(16)} borderRadius={4} />
-              </View>
-              <View style={styles.financialRow}>
-                <ShimmerRect width={scale(130)} height={verticalScale(13)} borderRadius={4} />
-                <ShimmerRect width={scale(70)} height={verticalScale(16)} borderRadius={4} />
-              </View>
-              <View style={styles.financialRow}>
-                <ShimmerRect width={scale(110)} height={verticalScale(13)} borderRadius={4} />
-                <ShimmerRect width={scale(75)} height={verticalScale(16)} borderRadius={4} />
-              </View>
-
-              {/* Highlighted Profit Box */}
-              <View style={styles.profitBox}>
-                <ShimmerRect width={scale(140)} height={verticalScale(14)} borderRadius={4} />
-                <ShimmerRect width={scale(110)} height={verticalScale(22)} borderRadius={4} />
-              </View>
-            </ShimmerBlock>
-          </View>
+          ))}
 
           {/* Métodos de Pago Section */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ShimmerRect width={scale(38)} height={scale(38)} borderRadius={scale(12)} />
-              <ShimmerRect width={scale(150)} height={verticalScale(18)} borderRadius={4} />
-            </View>
-            <View style={styles.statsGrid}>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </View>
-            <View style={styles.statsGrid}>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </View>
-          </View>
-
-          {/* Top Productos Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ShimmerRect width={scale(38)} height={scale(38)} borderRadius={scale(12)} />
-              <ShimmerRect width={scale(130)} height={verticalScale(18)} borderRadius={4} />
-            </View>
+            <ShimmerRect width={scale(140)} height={verticalScale(16)} borderRadius={4} />
             <ShimmerBlock style={styles.listCard} borderRadius={tokens.styles.liquidCard.borderRadius}>
               {[1, 2, 3, 4].map((i) => (
-                <View key={i} style={styles.listItem}>
-                  <View style={styles.listItemLeft}>
-                    <ShimmerRect width={scale(26)} height={scale(26)} borderRadius={scale(13)} />
-                    <ShimmerRect width={scale(120 + (i % 2) * 30)} height={verticalScale(14)} borderRadius={4} />
-                  </View>
-                  <ShimmerRect width={scale(55)} height={verticalScale(20)} borderRadius={scale(10)} />
+                <View key={i} style={styles.paymentRow}>
+                  <ShimmerRect width={scale(90)} height={verticalScale(14)} borderRadius={4} />
+                  <ShimmerRect width={scale(40)} height={verticalScale(14)} borderRadius={4} />
                 </View>
               ))}
             </ShimmerBlock>
           </View>
 
-          {/* Ventas Recientes Section */}
+          {/* Top Productos Section */}
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ShimmerRect width={scale(38)} height={scale(38)} borderRadius={scale(12)} />
-              <ShimmerRect width={scale(150)} height={verticalScale(18)} borderRadius={4} />
-            </View>
+            <ShimmerRect width={scale(120)} height={verticalScale(16)} borderRadius={4} />
             <ShimmerBlock style={styles.listCard} borderRadius={tokens.styles.liquidCard.borderRadius}>
-              {[1, 2, 3].map((i) => (
-                <View key={i} style={styles.saleItem}>
-                  <View style={styles.saleLeft}>
-                    <ShimmerRect width={scale(70)} height={verticalScale(16)} borderRadius={4} />
-                    <ShimmerRect width={scale(60)} height={verticalScale(18)} borderRadius={tokens.radius.pill} />
+              {[1, 2, 3, 4].map((i) => (
+                <View key={i} style={styles.listItem}>
+                  <View style={styles.listItemLeft}>
+                    <ShimmerRect width={scale(16)} height={verticalScale(14)} borderRadius={3} />
+                    <ShimmerRect width={scale(120 + (i % 2) * 30)} height={verticalScale(14)} borderRadius={4} />
                   </View>
-                  <View style={styles.saleRight}>
-                    <ShimmerRect width={scale(75)} height={verticalScale(12)} borderRadius={4} />
-                    <ShimmerRect width={scale(45)} height={verticalScale(10)} borderRadius={4} />
-                  </View>
+                  <ShimmerRect width={scale(50)} height={verticalScale(14)} borderRadius={4} />
                 </View>
               ))}
             </ShimmerBlock>
@@ -157,20 +89,6 @@ export const DashboardSkeleton = memo(function DashboardSkeleton() {
     </ShimmerProvider>
   );
 });
-
-function StatCardSkeleton() {
-  return (
-    <ShimmerBlock style={styles.statCard} borderRadius={tokens.styles.liquidCard.borderRadius}>
-      <View style={styles.statContent}>
-        <ShimmerRect width={scale(44)} height={scale(44)} borderRadius={scale(22)} />
-        <View style={styles.statInfo}>
-          <ShimmerRect width="65%" height={verticalScale(10)} borderRadius={3} />
-          <ShimmerRect width="45%" height={verticalScale(18)} borderRadius={4} style={{ marginTop: verticalScale(4) }} />
-        </View>
-      </View>
-    </ShimmerBlock>
-  );
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -187,75 +105,40 @@ const styles = StyleSheet.create({
     marginBottom: verticalScale(20),
     gap: scale(8),
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: scale(8),
-    flex: 1,
-  },
   periodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(8),
     marginBottom: verticalScale(20),
   },
-  statsGrid: {
-    flexDirection: 'row',
-    marginBottom: verticalScale(12),
-    gap: scale(12),
-  },
-  statCard: {
-    flex: 1,
-    padding: scale(12),
-    minHeight: verticalScale(90),
-    justifyContent: 'center',
-  },
-  statContent: {
-    flexDirection: 'row',
+  hero: {
     alignItems: 'center',
-    gap: scale(8),
+    marginTop: verticalScale(12),
+    paddingVertical: verticalScale(20),
+    gap: verticalScale(8),
   },
-  statInfo: {
-    flex: 1,
-    gap: verticalScale(3),
-  },
-  section: {
-    marginTop: verticalScale(24),
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spacing.md,
-    marginBottom: tokens.spacing.lg,
-  },
-  financialCard: {
-    padding: scale(16),
-    gap: verticalScale(14),
-  },
-  financialRow: {
+  moneyRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: verticalScale(10),
+    paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.glass.border,
   },
-  profitBox: {
-    backgroundColor: tokens.colors.surface,
-    marginHorizontal: scale(-16),
-    marginBottom: verticalScale(-16),
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(16),
-    borderBottomLeftRadius: tokens.radius.xl,
-    borderBottomRightRadius: tokens.radius.xl,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colors.borderLight,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  section: {
+    marginTop: verticalScale(24),
+    gap: verticalScale(12),
   },
   listCard: {
     padding: tokens.spacing.lg,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: verticalScale(12),
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.glass.border,
   },
   listItem: {
     flexDirection: 'row',
@@ -270,20 +153,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: scale(10),
     flex: 1,
-  },
-  saleItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: verticalScale(12),
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.glass.border,
-  },
-  saleLeft: {
-    gap: verticalScale(4),
-  },
-  saleRight: {
-    alignItems: 'flex-end',
-    gap: verticalScale(4),
   },
 });
