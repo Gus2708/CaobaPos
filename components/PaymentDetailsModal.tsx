@@ -46,8 +46,8 @@ export function PaymentDetailsModal({ visible, onClose, method, periodLabel, sal
 
   const methodLabels: Record<string, string> = {
     cash: 'Efectivo',
-    card: 'Tarjeta',
-    transfer: 'Transferencia',
+    card: 'Tarjeta (Punto)',
+    transfer: 'Pago Móvil / Transferencia',
     credito: 'Crédito'
   };
 

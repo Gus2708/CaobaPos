@@ -102,6 +102,16 @@ describe('DashboardPanel Metrics', () => {
     const totalProfitElements = await screen.findAllByText(/\$?\s*70[.,]00/);
     expect(totalProfitElements.length).toBeGreaterThanOrEqual(1);
 
+    // Verify Banco (Punto y Pago Móvil) unified summary row is displayed
+    const bancoSummary = await screen.findByText('Banco (Punto y Pago Móvil)');
+    expect(bancoSummary).toBeOnTheScreen();
+
+    // Verify distinct Punto / Tarjeta and Pago Móvil / Transferencia are displayed in methods list
+    const puntoElements = await screen.findAllByText('Punto / Tarjeta');
+    expect(puntoElements.length).toBeGreaterThanOrEqual(1);
+    const pagoMovilElements = await screen.findAllByText(/Pago Móvil/);
+    expect(pagoMovilElements.length).toBeGreaterThanOrEqual(1);
+
     // Check modal interaction
     const btnCash = await screen.findByText('Efectivo');
     fireEvent.press(btnCash);

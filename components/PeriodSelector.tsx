@@ -1,10 +1,11 @@
-import React, { memo, useState, useCallback, useMemo, useEffect, useRef, createContext, useContext } from 'react';
+import React, { memo } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
 import { Icon } from './Icon';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 
 export type DashboardPeriod = 'dia' | 'semana' | 'mes' | 'personalizado';
 
@@ -21,29 +22,44 @@ const PERIODS: { id: DashboardPeriod; label: string; icon: string }[] = [
 ];
 
 function PeriodSelectorComponent({ selected, onSelect }: PeriodSelectorProps) {
+  const { rawWidth } = useDeviceSize();
+  const isMobile = rawWidth < 768;
+
   return (
     <View style={styles.container}>
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[styles.scrollContainer, isMobile && styles.scrollContainerMobile]}
       >
         {PERIODS.map((period) => (
           <TouchableOpacity
             key={period.id}
-            style={[styles.tab, selected === period.id && styles.tabActive]}
+            style={[
+              styles.tab,
+              isMobile && styles.tabMobile,
+              selected === period.id && styles.tabActive,
+            ]}
             onPress={() => onSelect(period.id)}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityState={{ selected: selected === period.id }}
           >
-            <View style={[styles.tabContent, selected === period.id && styles.tabContentActive]}>
+            <View style={[
+              styles.tabContent,
+              isMobile && styles.tabContentMobile,
+              selected === period.id && styles.tabContentActive,
+            ]}>
               <Icon 
                 name={period.icon} 
-                size={14} 
+                size={isMobile ? 12 : 14} 
                 color={selected === period.id ? tokens.colors.text : tokens.colors.textMuted}
               />
-              <Text style={[styles.tabText, selected === period.id && styles.tabTextActive]}>
+              <Text style={[
+                styles.tabText,
+                isMobile && styles.tabTextMobile,
+                selected === period.id && styles.tabTextActive,
+              ]}>
                 {period.label}
               </Text>
             </View>
@@ -67,6 +83,9 @@ const styles = StyleSheet.create({
     gap: scale(8),
     minHeight: verticalScale(45),
   },
+  scrollContainerMobile: {
+    gap: scale(5),
+  },
   tab: {
     position: 'relative',
     paddingHorizontal: scale(16),
@@ -78,6 +97,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
+  tabMobile: {
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(6),
+    minHeight: verticalScale(34),
+  },
   tabActive: {
     backgroundColor: 'rgba(205, 155, 70, 0.15)',
     borderColor: 'rgba(205, 155, 70, 0.3)',
@@ -88,6 +112,9 @@ const styles = StyleSheet.create({
     gap: scale(8),
     justifyContent: 'center',
   },
+  tabContentMobile: {
+    gap: scale(5),
+  },
   tabContentActive: {
     backgroundColor: 'transparent',
   },
@@ -97,6 +124,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: tokens.colors.textMuted,
     letterSpacing: scale(0.3),
+  },
+  tabTextMobile: {
+    fontSize: moderateScale(11.5),
+    letterSpacing: 0,
   },
   tabTextActive: {
     color: tokens.colors.text,

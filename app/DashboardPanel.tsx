@@ -5,6 +5,8 @@ import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { useDeviceSize } from '../hooks/useDeviceSize';
 import { Text } from '../components/Text';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from '../components/PressableScale';
 
 import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
@@ -62,9 +64,9 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [methodModalVisible, setMethodModalVisible] = useState(false);
   const [customModalVisible, setCustomModalVisible] = useState(false);
-  const { width } = useDeviceSize();
+  const { rawWidth } = useDeviceSize();
   const insets = useSafeAreaInsets();
-  const isMobile = width < 768;
+  const isMobile = rawWidth < 768;
   const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
 
@@ -243,7 +245,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     let rawRevenue = 0;
     let pendingCredit = 0;
     let cashFromSales = 0;
-    let electronicSales = 0;
+    let cardSales = 0;
+    let transferSales = 0;
 
     saleList.forEach(s => {
       const amt = Number(s.total_amount) || 0;
@@ -252,25 +255,32 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         pendingCredit += amt;
       } else if (s.payment_method === 'cash') {
         cashFromSales += amt;
-      } else if (s.payment_method === 'card' || s.payment_method === 'transfer') {
-        electronicSales += amt;
+      } else if (s.payment_method === 'card') {
+        cardSales += amt;
+      } else if (s.payment_method === 'transfer') {
+        transferSales += amt;
       }
     });
 
     let cashAbonos = 0;
-    let electronicAbonos = 0;
+    let cardAbonos = 0;
+    let transferAbonos = 0;
     paymentList.forEach(p => {
       const amt = Number(p.amount) || 0;
       if (p.payment_method === 'cash') {
         cashAbonos += amt;
-      } else {
-        electronicAbonos += amt;
+      } else if (p.payment_method === 'card') {
+        cardAbonos += amt;
+      } else if (p.payment_method === 'transfer') {
+        transferAbonos += amt;
       }
     });
 
-    const totalAbonos = cashAbonos + electronicAbonos;
+    const totalAbonos = cashAbonos + cardAbonos + transferAbonos;
     const receivedMoney = cashFromSales + cashAbonos;
-    const bsRevenue = electronicSales + electronicAbonos;
+    const cardRevenue = cardSales + cardAbonos;
+    const transferRevenue = transferSales + transferAbonos;
+    const bsRevenue = cardRevenue + transferRevenue;
     const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
 
     const saleMap = new Map(saleList.map(s => [s.id, s]));
@@ -295,6 +305,8 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       profit,
       pendingCredit,
       receivedMoney,
+      cardRevenue,
+      transferRevenue,
       bsRevenue,
       margin
     };
@@ -317,20 +329,31 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   };
 
   const paymentBreakdown = useMemo(() => {
-    const counts: Record<string, number> = { cash: 0, card: 0, transfer: 0, credito: 0 };
+    const data: Record<string, { count: number; total: number }> = {
+      cash: { count: 0, total: 0 },
+      card: { count: 0, total: 0 },
+      transfer: { count: 0, total: 0 },
+      credito: { count: 0, total: 0 },
+    };
     filteredSales.forEach(s => {
-      if (counts[s.payment_method] !== undefined) {
-        counts[s.payment_method]++;
+      if (data[s.payment_method]) {
+        data[s.payment_method].count++;
+        data[s.payment_method].total += Number(s.total_amount) || 0;
       }
     });
-    return counts;
-  }, [filteredSales]);
+    (allPayments ?? []).forEach(p => {
+      if (data[p.payment_method]) {
+        data[p.payment_method].total += Number(p.amount) || 0;
+      }
+    });
+    return data;
+  }, [filteredSales, allPayments]);
 
   const paymentMethods = [
-    { key: 'cash', label: 'Efectivo', count: paymentBreakdown.cash },
-    { key: 'card', label: 'Tarjeta', count: paymentBreakdown.card },
-    { key: 'transfer', label: 'Transferencia', count: paymentBreakdown.transfer },
-    { key: 'credito', label: 'Crédito', count: paymentBreakdown.credito },
+    { key: 'cash', label: 'Efectivo', count: paymentBreakdown.cash.count, total: paymentBreakdown.cash.total, icon: 'money-bill' },
+    { key: 'card', label: 'Punto / Tarjeta', count: paymentBreakdown.card.count, total: paymentBreakdown.card.total, icon: 'credit-card' },
+    { key: 'transfer', label: 'Pago Móvil / Transf.', count: paymentBreakdown.transfer.count, total: paymentBreakdown.transfer.total, icon: 'mobile-alt' },
+    { key: 'credito', label: 'Crédito', count: paymentBreakdown.credito.count, total: paymentBreakdown.credito.total, icon: 'user' },
   ];
 
   const lowStock = useMemo(
@@ -390,16 +413,15 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Dashboard</Text>
-          <TouchableOpacity
+          <PressableScale
             style={styles.downloadBtn}
             onPress={handleDownloadPDF}
-            activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Descargar reporte PDF del periodo actual"
           >
-            <Icon name="file-pdf" size={16} color={tokens.colors.mahogany} />
+            <Icon name="file-pdf" size={15} color={tokens.colors.gold} />
             <Text style={styles.downloadBtnText} numberOfLines={1}>Reporte PDF</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <PeriodSelector
@@ -413,112 +435,166 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
           }}
         />
 
-        <View style={styles.moneySummary}>
-          <View style={styles.hero}>
-            <Text style={styles.heroLabel}>Ganancia</Text>
-            <Text
-              style={[styles.heroValue, currentMetrics.profit < 0 && styles.heroValueLoss]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-            >
-              {formatUsd(currentMetrics.profit)}
-            </Text>
-            <Text style={styles.heroCaption}>
-              {`Margen ${currentMetrics.margin.toFixed(1).replace('.', ',')}% · ${filteredSales.length} ${filteredSales.length === 1 ? 'venta' : 'ventas'}`}
-            </Text>
-          </View>
+        <View style={[styles.gridContainer, !isMobile && styles.gridContainerTablet]}>
+          {/* Columna Izquierda / Resumen de Dinero */}
+          <View style={[styles.gridColumn, !isMobile && styles.gridColumnTablet]}>
+            <View style={styles.moneySummaryCard}>
+              <LinearGradient
+                colors={tokens.styles.liquidCard.reflectionColors}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.hero}>
+                <Text style={styles.heroLabel}>Ganancia</Text>
+                <Text
+                  style={[styles.heroValue, currentMetrics.profit < 0 && styles.heroValueLoss]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {formatUsd(currentMetrics.profit)}
+                </Text>
+                <Text style={styles.heroCaption}>
+                  {`Margen ${currentMetrics.margin.toFixed(1).replace('.', ',')}% · ${filteredSales.length} ${filteredSales.length === 1 ? 'venta' : 'ventas'}`}
+                </Text>
+              </View>
 
-          <View style={styles.moneyRow}>
-            <Text style={styles.moneyLabel} numberOfLines={1}>Vendido (con IVA)</Text>
-            <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.revenue)}</Text>
-          </View>
+              <View style={styles.moneyRow}>
+                <Text style={styles.moneyLabel} numberOfLines={1}>Vendido (con IVA)</Text>
+                <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.revenue)}</Text>
+              </View>
 
-          <View style={styles.moneyRow}>
-            <Text style={styles.moneyLabel} numberOfLines={1}>Efectivo en caja</Text>
-            <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.receivedMoney)}</Text>
-          </View>
+              <View style={styles.moneyRow}>
+                <View>
+                  <Text style={styles.moneyLabel} numberOfLines={1}>Efectivo en caja</Text>
+                  <Text style={styles.moneyCaption} numberOfLines={1}>Billetes en caja física</Text>
+                </View>
+                <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.receivedMoney)}</Text>
+              </View>
 
-          <View style={styles.moneyRow}>
-            <View>
-              <Text style={styles.moneyLabel} numberOfLines={1}>Cobrado por banco</Text>
-              <Text style={styles.moneyCaption} numberOfLines={1}>Tarjeta y transferencia</Text>
+              <View style={styles.moneyRow}>
+                <View>
+                  <Text style={styles.moneyLabel} numberOfLines={1}>Banco (Punto y Pago Móvil)</Text>
+                  <Text style={styles.moneyCaption} numberOfLines={1}>Punto, tarjeta, pago móvil y transf.</Text>
+                </View>
+                <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.bsRevenue)}</Text>
+              </View>
+
+              <View style={styles.moneyRow}>
+                <View>
+                  <Text style={styles.moneyLabel} numberOfLines={1}>Crédito pendiente</Text>
+                  <Text style={styles.moneyCaption} numberOfLines={1}>Por cobrar a clientes</Text>
+                </View>
+                <Text style={[styles.moneyValue, { color: tokens.colors.coral }]} numberOfLines={1}>
+                  {formatUsd(currentMetrics.pendingCredit)}
+                </Text>
+              </View>
+
+              <View style={[styles.moneyRow, { borderBottomWidth: 0 }]}>
+                <View>
+                  <Text style={styles.moneyLabel} numberOfLines={1}>Costos</Text>
+                  <Text style={styles.moneyCaption} numberOfLines={1}>Mercancía vendida</Text>
+                </View>
+                <Text style={[styles.moneyValue, { color: tokens.colors.textMuted }]} numberOfLines={1}>
+                  -{formatUsd(currentMetrics.cost)}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.moneyValue} numberOfLines={1}>{formatUsd(currentMetrics.bsRevenue)}</Text>
           </View>
 
-          <View style={styles.moneyRow}>
-            <Text style={styles.moneyLabel} numberOfLines={1}>Crédito pendiente</Text>
-            <Text style={[styles.moneyValue, { color: tokens.colors.coral }]} numberOfLines={1}>
-              {formatUsd(currentMetrics.pendingCredit)}
-            </Text>
-          </View>
+          {/* Columna Derecha / Métodos de Pago y Listas */}
+          <View style={[styles.gridColumn, !isMobile && styles.gridColumnTablet]}>
+            <View style={styles.sectionFirst}>
+              <Text style={styles.sectionTitle}>Métodos de pago</Text>
+              <View style={styles.sectionCard}>
+                <LinearGradient
+                  colors={tokens.styles.liquidCard.reflectionColors}
+                  style={StyleSheet.absoluteFill}
+                />
+                {paymentMethods.map((m, idx) => (
+                  <PressableScale
+                    key={m.key}
+                    style={[
+                      styles.paymentRow,
+                      idx === paymentMethods.length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                    onPress={() => { setSelectedMethod(m.key); setMethodModalVisible(true); }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver ventas con ${m.label}: ${formatUsd(m.total)}, ${m.count} ${m.count === 1 ? 'operación' : 'operaciones'}`}
+                  >
+                    <View style={styles.paymentLeft}>
+                      <View style={styles.paymentIconBadge}>
+                        <Icon name={m.icon} size={15} color={tokens.colors.gold} />
+                      </View>
+                      <View>
+                        <Text style={styles.paymentLabel}>{m.label}</Text>
+                        <Text style={styles.paymentSubtext}>
+                          {`${m.count} ${m.count === 1 ? 'operación' : 'operaciones'}`}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.paymentRight}>
+                      <Text style={styles.paymentTotal}>{formatUsd(m.total)}</Text>
+                      <Icon name="chevron-right" size={16} color={tokens.colors.textDim} />
+                    </View>
+                  </PressableScale>
+                ))}
+              </View>
+            </View>
 
-          <View style={styles.moneyRow}>
-            <Text style={styles.moneyLabel} numberOfLines={1}>Costos</Text>
-            <Text style={[styles.moneyValue, { color: tokens.colors.textMuted }]} numberOfLines={1}>
-              -{formatUsd(currentMetrics.cost)}
-            </Text>
-          </View>
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Top productos</Text>
+              <View style={styles.sectionCard}>
+                <LinearGradient
+                  colors={tokens.styles.liquidCard.reflectionColors}
+                  style={StyleSheet.absoluteFill}
+                />
+                {topProducts.length === 0 ? (
+                  <Text style={styles.empty}>Sin datos</Text>
+                ) : (
+                  topProducts.map((p, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.listItem,
+                        i === topProducts.length - 1 && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <Text style={styles.rankText}>{i + 1}</Text>
+                        <Text style={styles.listText} numberOfLines={1}>{p.name}</Text>
+                      </View>
+                      <Text style={styles.listValue}>{p.qty} uds</Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Métodos de pago</Text>
-          <View style={styles.sectionCard}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-            {paymentMethods.map((m) => (
-              <TouchableOpacity
-                key={m.key}
-                style={styles.paymentRow}
-                onPress={() => { setSelectedMethod(m.key); setMethodModalVisible(true); }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Ver ventas con ${m.label}: ${m.count}`}
-              >
-                <Text style={styles.paymentLabel}>{m.label}</Text>
-                <View style={styles.paymentRight}>
-                  <Text style={styles.paymentCount}>{m.count}</Text>
-                  <Icon name="chevron-right" size={18} color={tokens.colors.textDim} />
+            {lowStock.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock bajo</Text>
+                <View style={styles.sectionCard}>
+                  <LinearGradient
+                    colors={tokens.styles.liquidCard.reflectionColors}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  {lowStock.map((p, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.listItem,
+                        i === lowStock.length - 1 && { borderBottomWidth: 0 }
+                      ]}
+                    >
+                      <Text style={[styles.listText, { color: tokens.colors.coral }]} numberOfLines={1}>{p.name}</Text>
+                      <Text style={[styles.listValue, { color: tokens.colors.coral }]}>{p.stock_quantity} uds</Text>
+                    </View>
+                  ))}
                 </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Top productos</Text>
-          <View style={styles.sectionCard}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-            {topProducts.length === 0 ? (
-              <Text style={styles.empty}>Sin datos</Text>
-            ) : (
-              topProducts.map((p, i) => (
-                <View key={i} style={styles.listItem}>
-                  <View style={styles.listItemLeft}>
-                    <Text style={styles.rankText}>{i + 1}</Text>
-                    <Text style={styles.listText}>{p.name}</Text>
-                  </View>
-                  <Text style={styles.listValue}>{p.qty} uds</Text>
-                </View>
-              ))
+              </View>
             )}
           </View>
         </View>
-
-        {lowStock.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: tokens.colors.coral }]}>Stock bajo</Text>
-            <View style={styles.sectionCard}>
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: tokens.colors.surface }]} />
-              {lowStock.map((p, i) => (
-                <View key={i} style={styles.listItem}>
-                  <Text style={[styles.listText, { color: tokens.colors.coral }]}>{p.name}</Text>
-                  <Text style={[styles.listValue, { color: tokens.colors.coral }]}>{p.stock_quantity} uds</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
         <PaymentDetailsModal
           visible={methodModalVisible}
@@ -572,22 +648,53 @@ const styles = StyleSheet.create({
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
-    paddingVertical: verticalScale(6),
+    gap: scale(8),
+    paddingVertical: verticalScale(8),
+    paddingHorizontal: scale(14),
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderAccent,
+    backgroundColor: tokens.colors.surface,
+    minHeight: scale(40),
     flexShrink: 0,
   },
   downloadBtnText: {
     fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.sm,
     fontWeight: '700',
-    color: tokens.colors.mahogany,
+    color: tokens.colors.gold,
   },
-  moneySummary: {
-    marginTop: verticalScale(12),
+  gridContainer: {
+    marginTop: verticalScale(16),
+    gap: verticalScale(16),
+  },
+  gridContainerTablet: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: scale(20),
+  },
+  gridColumn: {
+    width: '100%',
+    gap: verticalScale(16),
+  },
+  gridColumnTablet: {
+    flex: 1,
+    width: 'auto',
+  },
+  moneySummaryCard: {
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.styles.liquidCard.borderRadius,
+    padding: tokens.spacing.lg,
+    borderWidth: tokens.styles.liquidCard.borderWidth,
+    borderColor: tokens.styles.liquidCard.borderColor,
+    overflow: 'hidden',
   },
   hero: {
     alignItems: 'center',
-    paddingVertical: verticalScale(20),
+    paddingVertical: verticalScale(16),
+    marginBottom: verticalScale(8),
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.colors.borderLight,
     gap: verticalScale(6),
   },
   heroLabel: {
@@ -604,7 +711,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: tokens.colors.sage,
   },
-  // A losing period must not read as green.
   heroValueLoss: {
     color: tokens.colors.coral,
   },
@@ -620,19 +726,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: verticalScale(12),
     borderBottomWidth: 1,
-    borderBottomColor: tokens.colors.border,
+    borderBottomColor: tokens.colors.borderLight,
     gap: scale(8),
   },
   moneyLabel: {
     fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.base,
     fontWeight: '600',
-    color: tokens.colors.textMuted,
+    color: tokens.colors.text,
   },
   moneyCaption: {
     fontFamily: FontNames.parkinsans,
-    fontSize: tokens.typography.sm,
-    fontWeight: '600',
+    fontSize: tokens.typography.xs,
+    fontWeight: '500',
     color: tokens.colors.textDim,
     marginTop: verticalScale(2),
   },
@@ -643,18 +749,21 @@ const styles = StyleSheet.create({
     color: tokens.colors.text,
     textAlign: 'right',
   },
+  sectionFirst: {
+    marginTop: 0,
+  },
   section: {
-    marginTop: verticalScale(24),
+    marginTop: verticalScale(8),
   },
   sectionTitle: {
     fontFamily: FontNames.parkinsans,
     fontSize: tokens.typography.lg,
     color: tokens.colors.text,
     fontWeight: '800',
-    marginBottom: tokens.spacing.lg,
+    marginBottom: tokens.spacing.md,
   },
   sectionCard: {
-    backgroundColor: tokens.styles.liquidCard.backgroundColor,
+    backgroundColor: tokens.colors.surface,
     borderRadius: tokens.styles.liquidCard.borderRadius,
     padding: tokens.spacing.lg,
     borderWidth: tokens.styles.liquidCard.borderWidth,
@@ -665,11 +774,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: scale(44),
-    paddingVertical: verticalScale(8),
+    minHeight: scale(52),
+    paddingVertical: verticalScale(10),
+    paddingHorizontal: scale(2),
     borderBottomWidth: 1,
     borderBottomColor: tokens.colors.borderLight,
     gap: scale(8),
+  },
+  paymentLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(12),
+    flex: 1,
+  },
+  paymentIconBadge: {
+    width: scale(34),
+    height: scale(34),
+    borderRadius: tokens.radius.chip,
+    backgroundColor: tokens.colors.goldDim,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paymentLabel: {
     fontFamily: FontNames.parkinsans,
@@ -677,16 +801,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: tokens.colors.text,
   },
+  paymentSubtext: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: tokens.typography.xs,
+    fontWeight: '500',
+    color: tokens.colors.textDim,
+    marginTop: verticalScale(1),
+  },
   paymentRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(6),
+    gap: scale(8),
   },
-  paymentCount: {
+  paymentTotal: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: tokens.typography.base,
-    fontWeight: '800',
-    color: tokens.colors.textMuted,
+    fontWeight: '700',
+    color: tokens.colors.text,
+    textAlign: 'right',
   },
   listItem: {
     flexDirection: 'row',

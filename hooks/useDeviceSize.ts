@@ -22,7 +22,7 @@ export function useDeviceSize() {
   const isWeb = Platform.OS === 'web';
   const width = calculateDeviceWidth(winWidth, Platform.OS);
   const height = winHeight;
-  const isMobile = width < 768;
+  const isMobile = winWidth < 768;
 
   return {
     width,

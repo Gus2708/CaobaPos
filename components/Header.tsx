@@ -14,6 +14,7 @@ import { PressableScale } from './PressableScale';
 import { useAuth } from '../hooks/useAuth';
 import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useDemoStore } from '../store/demoStore';
+import { useDeviceSize } from '../hooks/useDeviceSize';
 import { ExchangeRateModal } from './ExchangeRateModal';
 import { formatRate } from '../lib/money';
 
@@ -91,6 +92,9 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   const isDemoMode = useDemoStore((s) => s.isDemoMode);
   const insets = useSafeAreaInsets();
   const headerTopInset = useHeaderTopInset();
+  const { rawWidth } = useDeviceSize();
+  const isMobile = rawWidth < 768;
+  const isSmallPhone = rawWidth < 380;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const { rate, isRateUnconfirmed } = useExchangeRate();
@@ -160,6 +164,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
   return (
     <View style={[
       styles.container, 
+      isMobile && styles.containerMobile,
       { 
         paddingTop: headerTopInset
       }
@@ -169,7 +174,11 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         <View style={styles.logoSection}>
           <Image
             source={require('../assets/caoba-logo.png')}
-            style={styles.brandLogo}
+            style={[
+              styles.brandLogo,
+              isMobile && styles.brandLogoMobile,
+              isSmallPhone && styles.brandLogoSmallPhone,
+            ]}
             resizeMode="contain"
             accessible
             accessibilityRole="image"
@@ -178,10 +187,17 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
         </View>
 
         {/* Action Section */}
-        <View style={styles.actionSection}>
+        <View style={[
+          styles.actionSection,
+          isMobile && styles.actionSectionMobile,
+          isSmallPhone && styles.actionSectionSmallPhone,
+        ]}>
           {isDemoMode && (
             <TouchableOpacity
-              style={styles.demoPill}
+              style={[
+                styles.demoPill,
+                isMobile && styles.demoPillMobile,
+              ]}
               onPress={handleSignOut}
               activeOpacity={0.75}
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
@@ -189,13 +205,17 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
               accessibilityLabel="Modo Demo activo. Tocar para salir."
             >
               <View style={styles.demoIndicatorDot} />
-              <Text style={styles.demoPillText}>DEMO</Text>
+              <Text style={[styles.demoPillText, isMobile && styles.demoPillTextMobile]}>DEMO</Text>
             </TouchableOpacity>
           )}
 
           {/* BCV Exchange Rate Badge */}
           <TouchableOpacity
-            style={[styles.bcvPill, isRateUnconfirmed && styles.bcvPillUnconfirmed]}
+            style={[
+              styles.bcvPill,
+              isMobile && styles.bcvPillMobile,
+              isRateUnconfirmed && styles.bcvPillUnconfirmed,
+            ]}
             onPress={() => setIsRateModalOpen(true)}
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
@@ -203,7 +223,7 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
             accessibilityLabel={`Tasa BCV actual: ${formatRate(rate)} bolívares por dólar${isRateUnconfirmed ? ", sin confirmar con el BCV" : ""}`}
           >
             <View style={[styles.bcvIndicatorDot, isRateUnconfirmed && styles.bcvIndicatorDotUnconfirmed]} />
-            <Text style={styles.bcvPillText}>BCV: {formatRate(rate)}</Text>
+            <Text style={[styles.bcvPillText, isMobile && styles.bcvPillTextMobile]}>BCV: {formatRate(rate)}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -300,6 +320,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingHorizontal: scale(20),
   },
+  containerMobile: {
+    paddingHorizontal: scale(14),
+  },
   content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -315,10 +338,24 @@ const styles = StyleSheet.create({
     height: verticalScale(48),
     marginLeft: 0,
   },
+  brandLogoMobile: {
+    width: scale(96),
+    height: verticalScale(36),
+  },
+  brandLogoSmallPhone: {
+    width: scale(84),
+    height: verticalScale(32),
+  },
   actionSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(10),
+  },
+  actionSectionMobile: {
+    gap: scale(7),
+  },
+  actionSectionSmallPhone: {
+    gap: scale(5),
   },
   demoPill: {
     flexDirection: 'row',
@@ -330,6 +367,11 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(5),
     borderRadius: tokens.radius.pill,
     gap: scale(5),
+  },
+  demoPillMobile: {
+    paddingHorizontal: scale(6.5),
+    paddingVertical: verticalScale(3.5),
+    gap: scale(4),
   },
   demoIndicatorDot: {
     width: scale(6),
@@ -344,6 +386,9 @@ const styles = StyleSheet.create({
     color: tokens.colors.gold,
     letterSpacing: 0.5,
   },
+  demoPillTextMobile: {
+    fontSize: moderateScale(9),
+  },
   bcvPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,6 +399,11 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(5),
     borderRadius: tokens.radius.pill,
     gap: scale(6),
+  },
+  bcvPillMobile: {
+    paddingHorizontal: scale(8),
+    paddingVertical: verticalScale(3.5),
+    gap: scale(4.5),
   },
   bcvIndicatorDot: {
     width: scale(6),
@@ -372,6 +422,9 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(11),
     fontWeight: '700',
     color: tokens.colors.amberGold,
+  },
+  bcvPillTextMobile: {
+    fontSize: moderateScale(10.5),
   },
   toggleContainer: {
     width: scale(36),

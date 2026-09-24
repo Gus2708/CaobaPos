@@ -17,12 +17,14 @@ interface Metrics {
   profit: number;
   pendingCredit?: number;
   receivedMoney?: number;
+  cardRevenue?: number;
+  transferRevenue?: number;
 }
 
 const methodLabels: Record<string, string> = {
   cash: 'Efectivo',
-  card: 'Tarjeta',
-  transfer: 'Transferencia',
+  card: 'Tarjeta (Punto)',
+  transfer: 'Pago Móvil / Transf.',
   credito: 'Crédito'
 };
 
@@ -111,19 +113,25 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
             <div class="summary-value">${formatUsd(metrics.revenue)}</div>
           </div>
           <div class="summary-card">
-            <div class="summary-label">Dinero en Caja</div>
+            <div class="summary-label">Efectivo en Caja</div>
             <div class="summary-value" style="color: ${BRAND_COLORS.info};">${formatUsd(metrics.receivedMoney || 0)}</div>
           </div>
           <div class="summary-card">
             <div class="summary-label">Ganancia Est.</div>
             <div class="summary-value profit-value">${formatUsd(metrics.profit)}</div>
           </div>
-          ${metrics.pendingCredit ? `
-          <div class="summary-card" style="grid-column: span 3; background-color: #FFF9F2; border-color: #FFEBD6;">
-            <div class="summary-label" style="color: #CD9B46;">Crédito Pendiente por Cobrar</div>
-            <div class="summary-value credit-value">${formatUsd(metrics.pendingCredit)}</div>
+          <div class="summary-card">
+            <div class="summary-label">Banco (Punto / Pago Móvil)</div>
+            <div class="summary-value" style="color: ${BRAND_COLORS.primary};">${formatUsd(metrics.bsRevenue || 0)}</div>
           </div>
-          ` : ''}
+          <div class="summary-card">
+            <div class="summary-label">Costos Mercancía</div>
+            <div class="summary-value" style="color: ${MUTED_COLOR};">-${formatUsd(metrics.cost || 0)}</div>
+          </div>
+          <div class="summary-card" style="background-color: ${metrics.pendingCredit ? '#FFF9F2' : BACKGROUND_COLOR}; border-color: ${metrics.pendingCredit ? '#FFEBD6' : BORDER_COLOR};">
+            <div class="summary-label" style="color: ${metrics.pendingCredit ? '#CD9B46' : MUTED_COLOR};">Crédito Pendiente</div>
+            <div class="summary-value credit-value">${formatUsd(metrics.pendingCredit || 0)}</div>
+          </div>
         </div>
 
         <div class="section-title">Detalle de Ventas</div>
