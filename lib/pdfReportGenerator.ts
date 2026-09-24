@@ -19,6 +19,7 @@ interface Metrics {
   receivedMoney?: number;
   cardRevenue?: number;
   transferRevenue?: number;
+  bsRevenue?: number;
 }
 
 const methodLabels: Record<string, string> = {
