@@ -1,4 +1,5 @@
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Text } from './components/Text';
 import { DialogHost } from './components/DialogHost';
@@ -17,6 +18,19 @@ import { tokens } from './lib/designTokens';
 import { registerQueryClientForSync } from './lib/syncEngine';
 import { initNetworkStatus, onReconnect } from './lib/networkStatus';
 import { processSyncQueue } from './lib/syncEngine';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  sendDefaultPii: true,
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+  replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  integrations: [
+    Sentry.mobileReplayIntegration(),
+  ],
+  environment: __DEV__ ? 'development' : 'production',
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,7 +56,7 @@ onReconnect(() => {
   processSyncQueue();
 });
 
-export default function App() {
+function App() {
   if (!isSupabaseConfigured) {
     return (
       <View style={styles.errorContainer}>
@@ -121,3 +135,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
+export default Sentry.wrap(App);

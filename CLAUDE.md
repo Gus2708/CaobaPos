@@ -18,9 +18,14 @@ CaobaPOS is a point-of-sale application for a small business built with React Na
 
 ## Environment Setup
 
-Copy `.env.example` to `.env` and fill in `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`. The app shows an error screen if these are missing. For EAS builds, env vars are configured per profile in `eas.json`.
+Copy `.env.example` to `.env` and fill in `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, and `EXPO_PUBLIC_SENTRY_DSN`. The app shows an error screen if Supabase credentials are missing. For EAS builds, env vars are configured per profile in `eas.json`.
 
 ## Architecture
+
+### Observability & Error Monitoring
+
+- **Sentry** (`@sentry/react-native`): Configured in `metro.config.js` via `getSentryExpoConfig`, initialized and wrapped in `App.tsx` (`Sentry.init` + `Sentry.wrap`), and registered as a config plugin in `app.json` (`@sentry/react-native/expo`). Provides real-time crash reporting, performance tracing, and session replays across Android, iOS, and Web.
+
 
 ### Entry Point & Navigation
 

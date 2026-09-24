@@ -31,6 +31,9 @@ La app utiliza un patrón de **Conmutación Manual de Pantallas/Pestañas** gest
 * **TanStack Query (`hooks/`):** Maneja toda la sincronización asíncrona de datos con Supabase, almacenamiento en caché de consultas, actualizaciones optimistas de la interfaz e invalidación de caché.
 * **Tiempo Real (`hooks/useRealtimeSync.ts`):** Escucha cambios de replicación en PostgreSQL desde Supabase para actualizaciones instantáneas de menú y stock en todos los dispositivos.
 
+### Observabilidad y Monitoreo
+* **Sentry (`@sentry/react-native`):** Monitoreo en tiempo real de excepciones, crashes nativos (Android/iOS), métricas de rendimiento y reproducción de sesiones (Session Replay) conectado a la organización `gusdev-y5`.
+
 ### Sistema de Escalado Adaptativo
 Diseñado con enfoque Tablet-First, todos los márgenes, paddings y tamaños de fuente se calculan dinámicamente utilizando **`lib/responsive.ts`**:
 * `scale()`: Escala el ancho dinámicamente.

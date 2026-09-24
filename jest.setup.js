@@ -171,3 +171,16 @@ jest.mock('react-native-reanimated', () => {
 // Global mocks
 jest.mock('react-native/Libraries/Animated/animations/TimingAnimation');
 
+// Mock Sentry
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: jest.fn((component) => component),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  mobileReplayIntegration: jest.fn(),
+  setUser: jest.fn(),
+  setTag: jest.fn(),
+  setExtra: jest.fn(),
+  addBreadcrumb: jest.fn(),
+}));
+

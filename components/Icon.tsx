@@ -60,6 +60,7 @@ const iconMap: Record<string, { lib: 'fontawesome' | 'evil'; iconName: string }>
   'exchange-alt': { lib: 'fontawesome', iconName: 'exchange-alt' },
   'exclamation-circle': { lib: 'fontawesome', iconName: 'exclamation-circle' },
   'check-circle': { lib: 'fontawesome', iconName: 'check-circle' },
+  'star': { lib: 'fontawesome', iconName: 'star' },
   'info-circle': { lib: 'fontawesome', iconName: 'info-circle' },
   'loader': { lib: 'fontawesome', iconName: 'spinner' },
   'cog': { lib: 'fontawesome', iconName: 'cog' },

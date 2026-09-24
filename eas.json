@@ -15,7 +15,8 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://tyruvbavwbirlwsydfjj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://4b8b5f205d6cda6d7eed085ae0882bd3@o4512139495735296.ingest.us.sentry.io/4512139989090304"
       }
     },
     "simulator": {
@@ -24,7 +25,8 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://tyruvbavwbirlwsydfjj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://4b8b5f205d6cda6d7eed085ae0882bd3@o4512139495735296.ingest.us.sentry.io/4512139989090304"
       }
     },
     "production": {
@@ -33,7 +35,8 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://tyruvbavwbirlwsydfjj.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_jKe8oGTh8Hps-2WYN5xhkw_rP8JkwUd",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://4b8b5f205d6cda6d7eed085ae0882bd3@o4512139495735296.ingest.us.sentry.io/4512139989090304"
       }
     }
   },
