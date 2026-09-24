@@ -1,8 +1,39 @@
-# Caoba POS - Aplicación Móvil y Web
+<div align="center">
 
-[English](README.md) · [Español](README.es.md)
+  <img src="https://github.com/user-attachments/assets/3f9e2a55-e9e6-4858-a101-8b42575fe68e" alt="Caoba POS Icon" width="96" height="96" style="border-radius: 20%;" />
 
-Este directorio contiene la aplicación principal del Punto de Venta (POS), desarrollada con **React Native** y **Expo (SDK 54)**. Está altamente optimizada para pantallas de tablets (modo horizontal) y cuenta con una interfaz moderna y premium de tipo **Dark Glassmorphic**.
+  # Caoba POS
+
+  <p align="center">
+    [English](README.md) · [Español](README.es.md)
+  </p>
+
+  <p align="center">
+    <strong>Sistema punto de venta (POS) y analítica en tiempo real optimizado para tablets y web.</strong><br>
+    Diseñado con interfaz Glassmorphic Dark, renderizado a 60 FPS y sincronización reactiva con Supabase.
+  </p>
+
+  <p align="center">
+    <img src="https://img.shields.io/badge/Expo-SDK_54-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo SDK 54" />
+    <img src="https://img.shields.io/badge/React_Native-0.81-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React Native" />
+    <img src="https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+    <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Zustand-State_Manager-black?style=for-the-badge" alt="Zustand" />
+    <img src="https://img.shields.io/badge/Sentry-Monitoring-362D59?style=for-the-badge&logo=sentry&logoColor=white" alt="Sentry" />
+  </p>
+
+  <br />
+
+  <img src="https://github.com/user-attachments/assets/7ec0c305-bb6f-4235-b339-82491628c99c" alt="Caoba POS Tablet Interface" width="850" style="border-radius: 10px;" />
+
+  <p align="center">
+    <em>Arquitectura tablet-first optimizada para orientación horizontal (landscape) con soporte responsivo para móviles.</em>
+  </p>
+
+</div>
+
+---
+
 
 ## 📱 Módulos de la Aplicación
 
