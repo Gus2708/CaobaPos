@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './Text';
 import { FontNames } from '../lib/fontNames';
@@ -118,57 +118,96 @@ export function CustomDateRangeModal({
     return (
       <View style={styles.selectorContainer}>
         <View style={styles.wheel}>
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('day', 1)}>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('day', 1)}
+            accessibilityLabel="Aumentar día"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-up" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
-          <TextInput
-            style={styles.digit}
-            value={date.day.toString().padStart(2, '0')}
-            onChangeText={(v) => handleTextUpdate('day', v)}
-            keyboardType="number-pad"
-            maxLength={2}
-            selectTextOnFocus
-          />
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('day', -1)}>
+          <View style={styles.digitSlot}>
+            <TextInput
+              style={styles.digit}
+              value={date.day.toString().padStart(2, '0')}
+              onChangeText={(v) => handleTextUpdate('day', v)}
+              keyboardType="number-pad"
+              maxLength={2}
+              selectTextOnFocus
+              accessibilityLabel="Día"
+            />
+          </View>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('day', -1)}
+            accessibilityLabel="Disminuir día"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-down" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
           <Text style={styles.label}>Día</Text>
         </View>
 
         <View style={styles.wheel}>
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('month', 1)}>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('month', 1)}
+            accessibilityLabel="Aumentar mes"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-up" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
-          <View style={styles.monthInputContainer}>
-            <TextInput
-              style={styles.digit}
-              value={(date.month + 1).toString().padStart(2, '0')}
-              onChangeText={(v) => handleTextUpdate('month', v)}
-              keyboardType="number-pad"
-              maxLength={2}
-              selectTextOnFocus
-            />
-            <Text style={styles.monthLabelOverlay}>{months[date.month]}</Text>
+          <View style={styles.digitSlot}>
+            <View style={styles.monthInputContainer}>
+              <TextInput
+                style={styles.digit}
+                value={(date.month + 1).toString().padStart(2, '0')}
+                onChangeText={(v) => handleTextUpdate('month', v)}
+                keyboardType="number-pad"
+                maxLength={2}
+                selectTextOnFocus
+                accessibilityLabel="Mes"
+              />
+              <Text style={styles.monthLabelOverlay}>{months[date.month]}</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('month', -1)}>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('month', -1)}
+            accessibilityLabel="Disminuir mes"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-down" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
           <Text style={styles.label}>Mes</Text>
         </View>
 
         <View style={styles.wheel}>
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('year', 1)}>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('year', 1)}
+            accessibilityLabel="Aumentar año"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-up" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
-          <TextInput
-              style={styles.digit}
+          <View style={styles.digitSlot}>
+            <TextInput
+              style={[styles.digit, styles.yearDigit]}
               value={date.year.toString()}
               onChangeText={(v) => handleTextUpdate('year', v)}
               keyboardType="number-pad"
               maxLength={4}
               selectTextOnFocus
+              accessibilityLabel="Año"
             />
-          <TouchableOpacity style={styles.arrow} onPress={() => handleAdjust('year', -1)}>
+          </View>
+          <TouchableOpacity 
+            style={styles.arrow} 
+            onPress={() => handleAdjust('year', -1)}
+            accessibilityLabel="Disminuir año"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Icon name="chevron-down" size={18} color={tokens.colors.mahogany} />
           </TouchableOpacity>
           <Text style={styles.label}>Año</Text>
@@ -196,7 +235,7 @@ export function CustomDateRangeModal({
               <Text style={styles.title}>Rango de Fechas</Text>
               <Text style={styles.subtitle}>Selecciona el periodo personalizado</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Cerrar">
               <Icon name="times" size={24} color={tokens.colors.textSecondary} />
             </TouchableOpacity>
           </View>
@@ -253,6 +292,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
+    maxWidth: scale(380),
     backgroundColor: tokens.colors.surface,
     borderRadius: tokens.radius.modal,
     borderWidth: 1,
@@ -332,14 +372,19 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     marginBottom: verticalScale(32),
+    alignItems: 'center',
+    width: '100%',
   },
   selectorContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    width: '100%',
   },
   wheel: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: verticalScale(8),
   },
   arrow: {
@@ -352,25 +397,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colors.border,
   },
+  digitSlot: {
+    height: verticalScale(48),
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
   digit: {
     fontFamily: FontNames.jetBrainsMono,
     fontSize: moderateScale(22),
     fontWeight: '800',
     color: tokens.colors.text,
-    minWidth: scale(60),
+    width: scale(64),
     textAlign: 'center',
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderRadius: tokens.radius.sm,
     paddingVertical: verticalScale(4),
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' as any } : {}),
+  },
+  yearDigit: {
+    width: scale(80),
   },
   monthInputContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   monthLabelOverlay: {
+    position: 'absolute',
+    bottom: verticalScale(-6),
     fontSize: moderateScale(10),
-    fontWeight: '600',
+    fontWeight: '700',
     color: tokens.colors.mahogany,
-    marginTop: verticalScale(-4),
     backgroundColor: tokens.colors.mahoganyDim,
     paddingHorizontal: scale(6),
     borderRadius: scale(4),
