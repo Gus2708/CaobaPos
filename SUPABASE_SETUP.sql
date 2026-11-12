@@ -110,9 +110,10 @@ SELECT
   c.name,
   c.phone,
   c.created_at,
-  COALESCE(s.total_debt, 0) AS total_debt,
+  true AS is_active,
+  COALESCE(s.total_debt, 0) AS total_credit_sales,
   COALESCE(p.total_paid, 0) AS total_paid,
-  GREATEST(COALESCE(s.total_debt, 0) - COALESCE(p.total_paid, 0), 0) AS current_balance
+  GREATEST(COALESCE(s.total_debt, 0) - COALESCE(p.total_paid, 0), 0) AS balance_due
 FROM clients c
 LEFT JOIN (
   SELECT client_id, SUM(total_amount) AS total_debt
