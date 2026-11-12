@@ -649,6 +649,7 @@ export const InventoryPanel = memo(function InventoryPanel({
             barcode: productPayload.barcode || undefined,
             category: productPayload.category || '',
             categories: newProduct.categories,
+            created_at: new Date().toISOString(),
           } as Product,
           ...cached,
         ]);

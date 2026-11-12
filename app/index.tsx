@@ -27,6 +27,7 @@ import { TAX_RATE } from '../lib/constants';
 import { FlashList } from '@shopify/flash-list';
 import { SkeletonItem } from '../components/SkeletonItem';
 import { Badge } from '../components/Badge';
+import { BarcodeScannerModal } from '../components/BarcodeScannerModal';
 import { validateStockAddition } from '../lib/stockUtils';
 import { formatUsd } from '../lib/money';
 
@@ -71,6 +72,7 @@ export function POSScreen() {
   }, [width, rawWidth, isMobile]);
 
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [isScannerModalVisible, setIsScannerModalVisible] = useState(false);
 
   const HEADER_HEIGHT = useHeaderHeight();
   const TOTAL_NAV_HEIGHT = HEADER_HEIGHT;
@@ -165,11 +167,13 @@ export function POSScreen() {
     setDisplayBarcodeBuffer('');
   }, [addItem, showToast, checkLowStock, barcodeMap]);
 
-  // Focus barcode input on mount
+  // Focus barcode input on mount (desktop web only so mobile/tablet keyboards don't steal focus)
   useEffect(() => {
-    const timer = setTimeout(() => barcodeInputRef.current?.focus(), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (Platform.OS === 'web' && !isMobile) {
+      const timer = setTimeout(() => barcodeInputRef.current?.focus(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   // Cleanup buffer timeout on unmount
   useEffect(() => {
@@ -181,14 +185,14 @@ export function POSScreen() {
   }, []);
 
   const handleBarcodeBlur = useCallback(() => {
-    if (!searchQuery && items.length > 0) {
+    if (Platform.OS === 'web' && !isMobile && !searchQuery && items.length > 0) {
       setTimeout(() => {
         if (!isSearchFocusedRef.current) {
           barcodeInputRef.current?.focus();
         }
       }, 500);
     }
-  }, [searchQuery, items.length]);
+  }, [isMobile, searchQuery, items.length]);
 
   const handleProductPress = useCallback((product: Product) => {
     if (checkLowStock(product)) {
@@ -302,7 +306,7 @@ export function POSScreen() {
                   }}
                   onBlur={() => {
                     isSearchFocusedRef.current = false;
-                    if (items.length > 0) {
+                    if (Platform.OS === 'web' && !isMobile && items.length > 0) {
                       setTimeout(() => {
                         if (!isSearchFocusedRef.current) {
                           barcodeInputRef.current?.focus();
@@ -314,6 +318,15 @@ export function POSScreen() {
                 {searchQuery.length > 0 && (
                   <Badge variant="mahogany">{filteredProducts.length}</Badge>
                 )}
+                <PressableScale
+                  style={styles.scannerBtn}
+                  onPress={() => setIsScannerModalVisible(true)}
+                  scaleTo={0.92}
+                  accessibilityRole="button"
+                  accessibilityLabel="Escanear código de barras"
+                >
+                  <Icon name="barcode" size={20} color={tokens.colors.gold} />
+                </PressableScale>
               </TouchableOpacity>
             </View>
           </View>
@@ -423,6 +436,12 @@ export function POSScreen() {
       ) : (
         <View style={styles.rightPanel}><CheckoutPanel /></View>
       )}
+
+      <BarcodeScannerModal
+        visible={isScannerModalVisible}
+        onClose={() => setIsScannerModalVisible(false)}
+        onDetected={processBarcode}
+      />
     </View>
   );
 }
@@ -500,6 +519,16 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontWeight: '800',
     color: tokens.colors.mahogany,
+  },
+  scannerBtn: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    backgroundColor: tokens.colors.mahoganyDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: tokens.colors.mahogany,
   },
   productsContainer: {
     flex: 1,

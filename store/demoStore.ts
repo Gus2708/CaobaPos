@@ -8,7 +8,9 @@ export interface DemoSale {
   total_amount: number;
   exchange_rate?: number;
   total_amount_bs?: number;
-  payment_method: 'cash' | 'card' | 'transfer' | 'credito';
+  payment_method: 'cash' | 'card' | 'transfer' | 'credito' | 'mixto';
+  payment_details?: Record<string, number>;
+  discount_amount?: number;
   client_id?: string | null;
   status: string;
   iva_enabled?: boolean;
@@ -379,13 +381,16 @@ export interface DemoState {
 
   simulateCreateSale: (payload: {
     totalAmount: number;
-    paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
+    paymentMethod: 'cash' | 'card' | 'transfer' | 'credito' | 'mixto';
+    paymentDetails?: Record<string, number>;
+    discountAmount?: number;
     items: Array<{
       product_id: string;
       product_name: string;
       quantity: number;
       unit_price: number;
       subtotal: number;
+      notes?: string;
     }>;
     clientId?: string;
     ivaEnabled?: boolean;

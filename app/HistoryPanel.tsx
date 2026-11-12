@@ -48,6 +48,8 @@ interface SaleItem {
 interface Sale {
   id: string;
   total_amount: number;
+  exchange_rate?: number;
+  total_amount_bs?: number;
   payment_method: string;
   created_at: string;
   iva_enabled?: boolean;

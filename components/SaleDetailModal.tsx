@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Product } from '../store/cartStore';
 import { Icon } from './Icon';
-import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
+import { shareReceiptPDF, printReceipt, ReceiptData } from '../lib/receiptGenerator';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
 import { Badge } from './Badge';
@@ -69,6 +69,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editedItems, setEditedItems] = useState<SaleItem[]>([]);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  const [printingReceipt, setPrintingReceipt] = useState(false);
   const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? false);
   
   const { data: productsData } = useQuery<Product[]>({
@@ -156,33 +157,43 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   const { subtotal, tax, total } = calculateTotals();
 
 
+  const buildReceiptData = (): ReceiptData => ({
+    saleId: sale.id,
+    date: formatDate(sale.created_at),
+    items: editedItems.map(item => ({
+      name: item.product_name,
+      quantity: item.quantity,
+      price: item.unit_price,
+      subtotal: item.subtotal,
+    })),
+    subtotal,
+    tax,
+    total,
+    paymentMethod: sale.payment_method,
+    exchangeRate: sale.exchange_rate,
+    totalAmountBs: sale.total_amount_bs,
+    employeeName: sale.employee_name ?? undefined,
+  });
+
   const sharePDF = async () => {
     try {
       setLoadingPdf(true);
-      
-      const receiptData: ReceiptData = {
-        saleId: sale.id,
-        date: formatDate(sale.created_at),
-        items: editedItems.map(item => ({
-          name: item.product_name,
-          quantity: item.quantity,
-          price: item.unit_price,
-          subtotal: item.subtotal,
-        })),
-        subtotal,
-        tax,
-        total,
-        paymentMethod: sale.payment_method,
-        exchangeRate: sale.exchange_rate,
-        totalAmountBs: sale.total_amount_bs,
-        employeeName: sale.employee_name ?? undefined,
-      };
-
-      await shareReceiptPDF(receiptData);
+      await shareReceiptPDF(buildReceiptData());
     } catch (error) {
       showDialog('Error', 'No se pudo generar el PDF');
     } finally {
       setLoadingPdf(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      setPrintingReceipt(true);
+      await printReceipt(buildReceiptData());
+    } catch (error) {
+      showDialog('Error', 'No se pudo imprimir el recibo');
+    } finally {
+      setPrintingReceipt(false);
     }
   };
 
@@ -367,16 +378,28 @@ export const SaleDetailModal = memo(function SaleDetailModal({
 
           <View style={styles.actions}>
             {!hideAmounts && (
-              <TouchableOpacity style={styles.pdfBtn} onPress={sharePDF} disabled={loadingPdf} activeOpacity={0.8}>
-                {loadingPdf ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Icon name="file-pdf" size={22} color="#FFFFFF" />
-                    <Text style={styles.btnText}>Descargar PDF</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: scale(10) }}>
+                <TouchableOpacity style={[styles.pdfBtn, { flex: 1 }]} onPress={handlePrint} disabled={printingReceipt} activeOpacity={0.8}>
+                  {printingReceipt ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Icon name="print" size={18} color="#FFFFFF" />
+                      <Text style={styles.btnText}>Imprimir</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.pdfBtn, { flex: 1 }]} onPress={sharePDF} disabled={loadingPdf} activeOpacity={0.8}>
+                  {loadingPdf ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Icon name="file-pdf" size={18} color="#FFFFFF" />
+                      <Text style={styles.btnText}>Descargar PDF</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
 
             {!readOnly && (

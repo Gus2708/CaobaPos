@@ -167,3 +167,32 @@ describe('Derived selectors export sanity', () => {
     expect(typeof useCartItemCount).toBe('function');
   });
 });
+
+describe('Cart store - discounts and item notes', () => {
+  beforeEach(() => {
+    act(() => useCartStore.getState().clearCart());
+  });
+
+  it('stores item notes via updateItemNote and resets discountPercent on clearCart', () => {
+    act(() => {
+      useCartStore.getState().addItem(MOCK_PRODUCT_1);
+      useCartStore.getState().updateItemNote('p1', 'Sin hielo');
+      useCartStore.getState().setDiscountPercent(10);
+    });
+
+    expect(useCartStore.getState().items[0].note).toBe('Sin hielo');
+    expect(useCartStore.getState().discountPercent).toBe(10);
+
+    act(() => useCartStore.getState().clearCart());
+    expect(useCartStore.getState().discountPercent).toBe(0);
+    expect(useCartStore.getState().items).toHaveLength(0);
+  });
+
+  it('clamps discountPercent between 0 and 100', () => {
+    act(() => useCartStore.getState().setDiscountPercent(150));
+    expect(useCartStore.getState().discountPercent).toBe(100);
+
+    act(() => useCartStore.getState().setDiscountPercent(-20));
+    expect(useCartStore.getState().discountPercent).toBe(0);
+  });
+});

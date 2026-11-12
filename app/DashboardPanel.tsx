@@ -30,6 +30,8 @@ interface Sale {
   id: string;
   total_amount: number;
   payment_method: string;
+  payment_details?: Record<string, number> | null;
+  discount_amount?: number;
   created_at: string;
   iva_enabled?: boolean;
   tax_amount?: number;
@@ -279,7 +281,11 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         pendingCredit += amt;
       } else {
         paidTaxAmount += taxAmt;
-        if (s.payment_method === 'cash') {
+        if (s.payment_method === 'mixto' && s.payment_details) {
+          cashFromSales += Number(s.payment_details.cash) || 0;
+          cardSales += Number(s.payment_details.card) || 0;
+          transferSales += Number(s.payment_details.transfer) || 0;
+        } else if (s.payment_method === 'cash') {
           cashFromSales += amt;
         } else if (s.payment_method === 'card') {
           cardSales += amt;

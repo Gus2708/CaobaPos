@@ -17,13 +17,17 @@ export interface Product {
 
 export interface CartItem extends Product {
   quantity: number;
+  note?: string;
 }
 
 interface CartStore {
   items: CartItem[];
+  discountPercent: number;
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updateItemNote: (productId: string, note: string) => void;
+  setDiscountPercent: (percent: number) => void;
   clearCart: () => void;
 }
 
@@ -31,6 +35,12 @@ interface CartStore {
 export const useCartTotal = () => useCartStore((state) =>
   state.items.reduce((total, item) => total + item.price * item.quantity, 0)
 );
+
+export const useCartDiscountAmount = () => useCartStore((state) => {
+  const sub = state.items.reduce((total, item) => total + item.price * item.quantity, 0);
+  const pct = Math.max(0, Math.min(100, state.discountPercent || 0));
+  return parseFloat(((sub * pct) / 100).toFixed(2));
+});
 
 export const useCartItemCount = () => useCartStore((state) =>
   state.items.reduce((count, item) => count + item.quantity, 0)
@@ -48,6 +58,7 @@ interface SettingsStore {
 
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
+  discountPercent: 0,
   
   addItem: (product: Product) => {
     set((state) => {
@@ -82,8 +93,21 @@ export const useCartStore = create<CartStore>((set, get) => ({
       ),
     }));
   },
+
+  updateItemNote: (productId: string, note: string) => {
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === productId ? { ...item, note } : item
+      ),
+    }));
+  },
+
+  setDiscountPercent: (percent: number) => {
+    const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+    set({ discountPercent: clamped });
+  },
   
-  clearCart: () => set({ items: [] }),
+  clearCart: () => set({ items: [], discountPercent: 0 }),
 }));
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];
