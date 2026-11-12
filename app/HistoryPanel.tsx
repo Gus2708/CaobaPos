@@ -94,9 +94,9 @@ const SaleCard = React.memo(function SaleCard({
       style={styles.saleCard} 
       onPress={onView} 
       activeOpacity={0.7}
-      onLongPress={onDelete}
+      onLongPress={hideAmounts ? undefined : onDelete}
       accessibilityRole="button"
-      accessibilityLabel={`Venta del ${formatDate(item.created_at)}${item.employee_name ? ` por ${item.employee_name}` : ''}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
+      accessibilityLabel={`Venta del ${formatDate(item.created_at)}${item.employee_name ? ` por ${item.employee_name}` : ''}. Pulsa para ver detalles${hideAmounts ? '.' : ', mantén pulsado para eliminar.'}`}
     >
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
@@ -545,6 +545,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   });
 
   const handleDelete = useCallback((sale: Sale, skipConfirm = false) => {
+    if (role !== 'admin') return;
     const executeDelete = () => deleteMutation.mutate(sale);
 
     if (skipConfirm) {
@@ -560,7 +561,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         { text: 'Eliminar', style: 'destructive', onPress: executeDelete },
       ]
     );
-  }, [deleteMutation]);
+  }, [deleteMutation, role]);
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
@@ -774,6 +775,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           }
           isDeleting={deleteMutation.isPending}
           isUpdating={updateSaleMutation.isPending}
+          readOnly={role !== 'admin'}
+          hideAmounts={hideAmounts}
         />
       )}
 

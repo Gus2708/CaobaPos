@@ -38,7 +38,7 @@ export default function MainApp() {
       case 'dashboard':
         return <DashboardPanel />;
       case 'inventory':
-        return <InventoryPanel readOnly={false} />;
+        return <InventoryPanel readOnly={role !== 'admin'} />;
       case 'history':
         return <HistoryPanel />;
       case 'clients':

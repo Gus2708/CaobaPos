@@ -17,6 +17,7 @@ import { SaleDetailModal } from './SaleDetailModal';
 import { supabase } from '../lib/supabase';
 import { BrandMark } from './BrandMark';
 import { formatUsd, formatAmountInput, parseAmount } from '../lib/money';
+import { useAuth } from '../hooks/useAuth';
 
 interface ClientDetailsModalProps {
   visible: boolean;
@@ -25,6 +26,8 @@ interface ClientDetailsModalProps {
 }
 
 export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visible, client, onClose }: ClientDetailsModalProps) {
+  const { role } = useAuth();
+  const isAdmin = role === 'admin';
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'history' | 'payment'>('history');
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -343,6 +346,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   };
 
   const handleDeletePayment = (paymentId: string) => {
+    if (!isAdmin) return;
     showDialog(
       'Eliminar Abono',
       '¿Estás seguro de que deseas eliminar este abono? Esto afectará el saldo del cliente.',
@@ -364,6 +368,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
     );
   };
   const handleDeleteClient = () => {
+    if (!isAdmin) return;
     if (client.balance_due > 0) {
       showDialog(
         'No se puede eliminar',
@@ -479,13 +484,16 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
 
               <View style={styles.buttonGroup}>
                 {isPayment ? (
-                  <TouchableOpacity 
-                    onPress={() => handleDeletePayment(item.id)} 
-                    style={styles.actionBtnSmall}
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="trash" size={14} color={tokens.colors.coral} />
-                  </TouchableOpacity>
+                  isAdmin ? (
+                    <TouchableOpacity 
+                      testID="delete-payment-btn"
+                      onPress={() => handleDeletePayment(item.id)} 
+                      style={styles.actionBtnSmall}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="trash" size={14} color={tokens.colors.coral} />
+                    </TouchableOpacity>
+                  ) : null
                 ) : (
                   <>
                     {!isPaid && (
@@ -555,13 +563,16 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
               </View>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity 
-                onPress={handleDeleteClient} 
-                style={styles.deleteClientButton}
-                activeOpacity={0.7}
-              >
-                 <Icon name="trash" size={20} color={tokens.colors.coral} />
-              </TouchableOpacity>
+              {isAdmin && (
+                <TouchableOpacity 
+                  testID="delete-client-btn"
+                  onPress={handleDeleteClient} 
+                  style={styles.deleteClientButton}
+                  activeOpacity={0.7}
+                >
+                   <Icon name="trash" size={20} color={tokens.colors.coral} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
                 <Icon name="close" size={24} color={tokens.colors.textDim} />
               </TouchableOpacity>
@@ -727,7 +738,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
           }
           isDeleting={deleteSaleMutation.isPending}
           isUpdating={updateSaleMutation.isPending}
-          readOnly={false}
+          readOnly={!isAdmin}
         />
       )}
 

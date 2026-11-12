@@ -41,7 +41,10 @@ const sale = {
   ],
 };
 
-const renderSaleDetail = async (onDelete: jest.Mock) => {
+const renderSaleDetail = async (
+  onDelete: jest.Mock,
+  extraProps: { readOnly?: boolean; hideAmounts?: boolean } = {}
+) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   return render(
@@ -54,6 +57,7 @@ const renderSaleDetail = async (onDelete: jest.Mock) => {
         onUpdate={jest.fn()}
         isDeleting={false}
         isUpdating={false}
+        {...extraProps}
       />
       <DialogHost />
     </>,
@@ -127,5 +131,15 @@ describe('SaleDetailModal delete flow', () => {
 
     expect(onDelete).toHaveBeenCalledTimes(1);
     alertSpy.mockRestore();
+  });
+
+  it('hides edit/delete actions and masks monetary amounts when readOnly and hideAmounts are true (empleado role)', async () => {
+    const onDelete = jest.fn();
+    await renderSaleDetail(onDelete, { readOnly: true, hideAmounts: true });
+
+    expect(screen.queryByText('Eliminar')).toBeNull();
+    expect(screen.queryByText('Editar')).toBeNull();
+    expect(screen.queryByText('$1,00')).toBeNull();
+    expect(screen.getAllByText('$ ———').length).toBeGreaterThanOrEqual(2);
   });
 });
