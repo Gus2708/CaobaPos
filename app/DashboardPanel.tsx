@@ -23,6 +23,8 @@ import { formatUsd } from '../lib/money';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { globalScrollY } from '../store/uiStore';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { getIsOnline } from '../lib/networkStatus';
+import { getCachedSales } from '../lib/offlineCache';
 
 interface Sale {
   id: string;
@@ -116,6 +118,17 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         }
         return list;
       }
+      if (!getIsOnline()) {
+        const cached = await getCachedSales();
+        let list = [...cached];
+        if (period === 'personalizado') {
+          if (dateRange.start) list = list.filter(s => s.created_at >= dateRange.start!);
+          if (dateRange.end) list = list.filter(s => s.created_at <= dateRange.end!);
+        } else if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        return list;
+      }
       let query = supabase.from('sales').select('*');
       if (period === 'personalizado') {
         query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
@@ -124,7 +137,15 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const cached = await getCachedSales();
+      const pendingOffline = cached.filter((s) => {
+        if (!String(s.id || '').startsWith('offline-')) return false;
+        if (dateRange.start && s.created_at < dateRange.start) return false;
+        if (period === 'personalizado' && dateRange.end && s.created_at > dateRange.end) return false;
+        return true;
+      });
+      return pendingOffline.length > 0 ? [...pendingOffline, ...rows] : rows;
     },
   });
 

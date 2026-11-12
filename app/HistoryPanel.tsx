@@ -28,6 +28,9 @@ import { useAuth } from '../hooks/useAuth';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
 import { formatFolio } from '../lib/formatFolio';
 import { formatUsd } from '../lib/money';
+import { getIsOnline } from '../lib/networkStatus';
+import { enqueueOfflineItem } from '../lib/offlineQueue';
+import { getCachedSales, removeOfflineSale, updateOfflineSale } from '../lib/offlineCache';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -229,6 +232,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return list.slice(startIdx, startIdx + PAGE_SIZE);
       }
 
+      if (!getIsOnline()) {
+        const cached = await getCachedSales();
+        let list = [...cached];
+        if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        if (dateRange.end) {
+          list = list.filter(s => s.created_at <= dateRange.end!);
+        }
+        if (selectedMethod) {
+          list = list.filter(s => s.payment_method === selectedMethod);
+        }
+        const startIdx = (pageParam as number) * PAGE_SIZE;
+        return list.slice(startIdx, startIdx + PAGE_SIZE);
+      }
+
       let query = supabase.from('sales').select('*');
 
       if (dateRange.start) {
@@ -246,7 +265,21 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      if (pageParam === 0) {
+        const cached = await getCachedSales();
+        const pendingOffline = cached.filter((s) => {
+          if (!String(s.id || '').startsWith('offline-')) return false;
+          if (dateRange.start && s.created_at < dateRange.start) return false;
+          if (dateRange.end && s.created_at > dateRange.end) return false;
+          if (selectedMethod && s.payment_method !== selectedMethod) return false;
+          return true;
+        });
+        if (pendingOffline.length > 0) {
+          return [...pendingOffline, ...rows];
+        }
+      }
+      return rows;
     },
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
@@ -310,6 +343,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return { stockWarn: false };
       }
 
+      if (!getIsOnline() || sale.id.startsWith('offline-')) {
+        if (!sale.id.startsWith('offline-')) {
+          await enqueueOfflineItem('DELETE_SALE', { saleId: sale.id });
+        }
+        await removeOfflineSale(sale.id);
+        return { stockWarn: false };
+      }
+
       try {
         return await deleteSaleWithStockRestore(sale.id);
       } catch (error: any) {
@@ -370,6 +411,26 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           newTotal,
           ivaEnabled,
           taxAmount,
+        });
+        return;
+      }
+
+      if (!getIsOnline() || saleId.startsWith('offline-')) {
+        if (!saleId.startsWith('offline-')) {
+          await enqueueOfflineItem('EDIT_SALE', {
+            saleId,
+            items,
+            newTotal,
+            ivaEnabled,
+            taxAmount,
+            exchangeRate: selectedSale?.exchange_rate,
+          });
+        }
+        await updateOfflineSale(saleId, {
+          total_amount: newTotal,
+          iva_enabled: ivaEnabled,
+          tax_amount: taxAmount,
+          sale_items: items,
         });
         return;
       }
@@ -441,6 +502,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         const fullSale = state.demoSales.find((s) => s.id === sale.id) || sale;
         const items = state.demoSaleItems.filter((i) => i.sale_id === sale.id);
         setSelectedSale({ ...fullSale, sale_items: items });
+        setShowDetail(true);
+        return;
+      }
+
+      if (!getIsOnline() || sale.id.startsWith('offline-')) {
+        const cached = await getCachedSales();
+        const found = cached.find((s) => s.id === sale.id) || sale;
+        setSelectedSale({ ...found, sale_items: found.sale_items || sale.sale_items || [] });
         setShowDetail(true);
         return;
       }

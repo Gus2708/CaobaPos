@@ -394,6 +394,15 @@ async function processOfflineSale(payload: {
     created_by: payload.createdBy || null,
     employee_name: payload.employeeName || null,
     created_by_email: payload.createdByEmail || null,
+    sale_items: payload.items.map((it, idx) => ({
+      id: `${offlineSaleId}-item-${idx}`,
+      sale_id: offlineSaleId,
+      product_id: it.product_id,
+      product_name: it.product_name,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      subtotal: it.subtotal,
+    })),
     is_offline: true,
   };
   await addOfflineSale(offlineSale);
