@@ -21,13 +21,10 @@ export interface CartItem extends Product {
 
 interface CartStore {
   items: CartItem[];
-  lastScannedBarcode: string | null;
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  setLastScannedBarcode: (barcode: string | null) => void;
-  clearLastScannedBarcode: () => void;
 }
 
 // ── Pure derived selectors (memoized via Zustand equality check) ──
@@ -51,7 +48,6 @@ interface SettingsStore {
 
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
-  lastScannedBarcode: null,
   
   addItem: (product: Product) => {
     set((state) => {
@@ -87,15 +83,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }));
   },
   
-  clearCart: () => set({ items: [], lastScannedBarcode: null }),
-  
-  setLastScannedBarcode: (barcode: string | null) => {
-    set({ lastScannedBarcode: barcode });
-  },
-  
-  clearLastScannedBarcode: () => {
-    set({ lastScannedBarcode: null });
-  },
+  clearCart: () => set({ items: [] }),
 }));
 
 const DEFAULT_CATEGORIES = ['helados', 'cafe', 'snacks', 'bebidas'];

@@ -21,7 +21,7 @@ import { processSyncQueue } from './lib/syncEngine';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  sendDefaultPii: true,
+  sendDefaultPii: false,
   tracesSampleRate: 1.0,
   profilesSampleRate: 1.0,
   replaysOnErrorSampleRate: 1.0,

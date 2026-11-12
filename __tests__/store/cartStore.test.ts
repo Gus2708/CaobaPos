@@ -41,7 +41,7 @@ function getCartItemCount(): number {
 
 describe('Cart store - total calculation', () => {
   beforeEach(() => {
-    act(() => useCartStore.setState({ items: [], lastScannedBarcode: null }));
+    act(() => useCartStore.setState({ items: [] }));
   });
 
   it('returns 0 when cart is empty', () => {
@@ -98,7 +98,7 @@ describe('Cart store - total calculation', () => {
 
 describe('Cart store - item count calculation', () => {
   beforeEach(() => {
-    act(() => useCartStore.setState({ items: [], lastScannedBarcode: null }));
+    act(() => useCartStore.setState({ items: [] }));
   });
 
   it('returns 0 when cart is empty', () => {
