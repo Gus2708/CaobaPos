@@ -147,6 +147,8 @@ export function useCreateSale() {
     mutationFn: async ({
       totalAmount,
       paymentMethod,
+      paymentDetails,
+      discountAmount,
       items,
       clientId,
       ivaEnabled,
@@ -158,7 +160,9 @@ export function useCreateSale() {
       createdByEmail,
     }: {
       totalAmount: number;
-      paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
+      paymentMethod: 'cash' | 'card' | 'transfer' | 'credito' | 'mixto';
+      paymentDetails?: Record<string, number>;
+      discountAmount?: number;
       items: Array<{
         product_id: string;
         product_name: string;
@@ -223,6 +227,8 @@ export function useCreateSale() {
         return await processOfflineSale({
           totalAmount,
           paymentMethod,
+          paymentDetails,
+          discountAmount,
           items,
           clientId,
           ivaEnabled,
@@ -259,21 +265,29 @@ export function useCreateSale() {
 
         // 2. Insert sale
         const status = paymentMethod === 'credito' ? 'pending_payment' : 'paid';
+        const baseSalePayload: Record<string, any> = {
+          total_amount: totalAmount,
+          exchange_rate: exchangeRate || 1.0,
+          total_amount_bs: totalAmountBs || totalAmount,
+          payment_method: paymentMethod,
+          client_id: clientId || null,
+          status,
+          iva_enabled: ivaEnabled || false,
+          tax_amount: taxAmount || 0,
+          created_by: resolvedCreatedBy || null,
+          employee_name: resolvedEmployeeName || null,
+          created_by_email: resolvedCreatedByEmail || null,
+        };
+        if (paymentDetails) {
+          baseSalePayload.payment_details = paymentDetails;
+        }
+        if (discountAmount) {
+          baseSalePayload.discount_amount = discountAmount;
+        }
+
         const { data: sale, error: saleError } = await supabase
           .from('sales')
-          .insert({
-            total_amount: totalAmount,
-            exchange_rate: exchangeRate || 1.0,
-            total_amount_bs: totalAmountBs || totalAmount,
-            payment_method: paymentMethod,
-            client_id: clientId || null,
-            status,
-            iva_enabled: ivaEnabled || false,
-            tax_amount: taxAmount || 0,
-            created_by: resolvedCreatedBy || null,
-            employee_name: resolvedEmployeeName || null,
-            created_by_email: resolvedCreatedByEmail || null,
-          })
+          .insert(baseSalePayload)
           .select()
           .single();
 
@@ -318,6 +332,8 @@ export function useCreateSale() {
           return await processOfflineSale({
             totalAmount,
             paymentMethod,
+            paymentDetails,
+            discountAmount,
             items,
             clientId,
             ivaEnabled,
@@ -350,7 +366,9 @@ export function useCreateSale() {
 
 async function processOfflineSale(payload: {
   totalAmount: number;
-  paymentMethod: 'cash' | 'card' | 'transfer' | 'credito';
+  paymentMethod: 'cash' | 'card' | 'transfer' | 'credito' | 'mixto';
+  paymentDetails?: Record<string, number>;
+  discountAmount?: number;
   items: Array<{
     product_id: string;
     product_name: string;
@@ -387,6 +405,8 @@ async function processOfflineSale(payload: {
     exchange_rate: payload.exchangeRate || 1.0,
     total_amount_bs: payload.totalAmountBs || payload.totalAmount,
     payment_method: payload.paymentMethod,
+    payment_details: payload.paymentDetails || null,
+    discount_amount: payload.discountAmount || 0,
     client_id: payload.clientId || null,
     status,
     iva_enabled: payload.ivaEnabled || false,
@@ -394,6 +414,15 @@ async function processOfflineSale(payload: {
     created_by: payload.createdBy || null,
     employee_name: payload.employeeName || null,
     created_by_email: payload.createdByEmail || null,
+    sale_items: payload.items.map((it, idx) => ({
+      id: `${offlineSaleId}-item-${idx}`,
+      sale_id: offlineSaleId,
+      product_id: it.product_id,
+      product_name: it.product_name,
+      quantity: it.quantity,
+      unit_price: it.unit_price,
+      subtotal: it.subtotal,
+    })),
     is_offline: true,
   };
   await addOfflineSale(offlineSale);

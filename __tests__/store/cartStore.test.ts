@@ -41,7 +41,7 @@ function getCartItemCount(): number {
 
 describe('Cart store - total calculation', () => {
   beforeEach(() => {
-    act(() => useCartStore.setState({ items: [], lastScannedBarcode: null }));
+    act(() => useCartStore.setState({ items: [] }));
   });
 
   it('returns 0 when cart is empty', () => {
@@ -98,7 +98,7 @@ describe('Cart store - total calculation', () => {
 
 describe('Cart store - item count calculation', () => {
   beforeEach(() => {
-    act(() => useCartStore.setState({ items: [], lastScannedBarcode: null }));
+    act(() => useCartStore.setState({ items: [] }));
   });
 
   it('returns 0 when cart is empty', () => {
@@ -165,5 +165,34 @@ describe('Derived selectors export sanity', () => {
   it('useCartTotal and useCartItemCount are functions', () => {
     expect(typeof useCartTotal).toBe('function');
     expect(typeof useCartItemCount).toBe('function');
+  });
+});
+
+describe('Cart store - discounts and item notes', () => {
+  beforeEach(() => {
+    act(() => useCartStore.getState().clearCart());
+  });
+
+  it('stores item notes via updateItemNote and resets discountPercent on clearCart', () => {
+    act(() => {
+      useCartStore.getState().addItem(MOCK_PRODUCT_1);
+      useCartStore.getState().updateItemNote('p1', 'Sin hielo');
+      useCartStore.getState().setDiscountPercent(10);
+    });
+
+    expect(useCartStore.getState().items[0].note).toBe('Sin hielo');
+    expect(useCartStore.getState().discountPercent).toBe(10);
+
+    act(() => useCartStore.getState().clearCart());
+    expect(useCartStore.getState().discountPercent).toBe(0);
+    expect(useCartStore.getState().items).toHaveLength(0);
+  });
+
+  it('clamps discountPercent between 0 and 100', () => {
+    act(() => useCartStore.getState().setDiscountPercent(150));
+    expect(useCartStore.getState().discountPercent).toBe(100);
+
+    act(() => useCartStore.getState().setDiscountPercent(-20));
+    expect(useCartStore.getState().discountPercent).toBe(0);
   });
 });

@@ -158,7 +158,8 @@ jest.mock('../../app/DashboardPanel', () => {
 jest.mock('../../app/InventoryPanel', () => {
   const React = require('react');
   const { View } = require('react-native');
-  const C = () => React.createElement(View, { testID: 'screen-inventory' });
+  const C = ({ readOnly }: { readOnly?: boolean }) =>
+    React.createElement(View, { testID: 'screen-inventory', accessibilityHint: readOnly ? 'readonly' : 'editable' });
   C.displayName = 'InventoryPanel';
   return { InventoryPanel: C };
 });
@@ -203,9 +204,11 @@ jest.mock('../../hooks/useRealtimeSync', () => ({
   useRealtimeSync: jest.fn(),
 }));
 
+let mockRole: 'admin' | 'empleado' = 'admin';
+
 jest.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({
-    role: 'admin',
+    role: mockRole,
     signOut: jest.fn(),
   }),
 }));
@@ -213,6 +216,11 @@ jest.mock('../../hooks/useAuth', () => ({
 jest.mock('../../components/Toast', () => {
   const React = require('react');
   return { ToastProvider: ({ children }: any) => React.createElement(React.Fragment, null, children) };
+});
+
+jest.mock('../../components/OfflineBanner', () => {
+  const React = require('react');
+  return { OfflineBanner: () => null };
 });
 
 jest.mock('../../store/uiStore', () => ({
@@ -227,6 +235,10 @@ import { render, fireEvent } from '@testing-library/react-native';
 import MainApp from '../../app/MainApp';
 
 describe('MainApp', () => {
+  beforeEach(() => {
+    mockRole = 'admin';
+  });
+
   it('renders POS by default', async () => {
     const { findByTestId } = await render(<MainApp />);
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
@@ -236,7 +248,7 @@ describe('MainApp', () => {
     const { findByTestId, getByTestId, queryByTestId } = await render(<MainApp />);
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-pos'));
+    await fireEvent.press(getByTestId('nav-pos'));
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
     expect(queryByTestId('screen-dashboard')).toBeNull();
   });
@@ -245,7 +257,7 @@ describe('MainApp', () => {
     const { findByTestId, getByTestId } = await render(<MainApp />);
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-dashboard'));
+    await fireEvent.press(getByTestId('nav-dashboard'));
     expect(await findByTestId('screen-dashboard')).toBeOnTheScreen();
   });
 
@@ -253,19 +265,19 @@ describe('MainApp', () => {
     const { findByTestId, getByTestId } = await render(<MainApp />);
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-dashboard'));
+    await fireEvent.press(getByTestId('nav-dashboard'));
     expect(await findByTestId('screen-dashboard')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-inventory'));
+    await fireEvent.press(getByTestId('nav-inventory'));
     expect(await findByTestId('screen-inventory')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-history'));
+    await fireEvent.press(getByTestId('nav-history'));
     expect(await findByTestId('screen-history')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-clients'));
+    await fireEvent.press(getByTestId('nav-clients'));
     expect(await findByTestId('screen-clients')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-pos'));
+    await fireEvent.press(getByTestId('nav-pos'));
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
   });
 
@@ -273,11 +285,24 @@ describe('MainApp', () => {
     const { findByTestId, getByTestId } = await render(<MainApp />);
     expect(await findByTestId('screen-pos')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-dashboard'));
+    await fireEvent.press(getByTestId('nav-dashboard'));
     expect(await findByTestId('screen-dashboard')).toBeOnTheScreen();
 
-    fireEvent.press(getByTestId('nav-inventory'));
-    fireEvent.press(getByTestId('nav-clients'));
+    await fireEvent.press(getByTestId('nav-inventory'));
+    await fireEvent.press(getByTestId('nav-clients'));
     expect(await findByTestId('screen-clients')).toBeOnTheScreen();
+  });
+
+  it('passes readOnly=true to InventoryPanel and blocks Dashboard when role is empleado', async () => {
+    mockRole = 'empleado';
+    const { findByTestId, getByTestId, queryByTestId } = await render(<MainApp />);
+    expect(await findByTestId('screen-pos')).toBeOnTheScreen();
+
+    await fireEvent.press(getByTestId('nav-dashboard'));
+    expect(queryByTestId('screen-dashboard')).toBeNull();
+
+    await fireEvent.press(getByTestId('nav-inventory'));
+    const inv = await findByTestId('screen-inventory');
+    expect(inv.props.accessibilityHint).toBe('readonly');
   });
 });

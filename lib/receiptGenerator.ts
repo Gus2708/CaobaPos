@@ -9,6 +9,7 @@ export interface ReceiptItem {
   quantity: number;
   price: number;
   subtotal: number;
+  note?: string;
 }
 
 export interface ReceiptData {
@@ -16,9 +17,11 @@ export interface ReceiptData {
   date: string;
   items: ReceiptItem[];
   subtotal: number;
+  discountAmount?: number;
   tax: number;
   total: number;
   paymentMethod: string;
+  paymentDetails?: Record<string, number>;
   exchangeRate?: number;
   totalAmountBs?: number;
   employeeName?: string;
@@ -30,6 +33,7 @@ const getPaymentLabel = (method: string) => {
     card: 'Tarjeta',
     transfer: 'Transferencia',
     credito: 'Crédito',
+    mixto: 'Pago Mixto',
   };
   return labels[method] || method;
 };
@@ -61,6 +65,7 @@ export const generateReceiptHTML = (data: ReceiptData) => {
         <td class="item-name">
           <div class="name">${escapeHtml(item.name)}</div>
           <div class="details">${formatUsd(item.price)} x ${item.quantity}</div>
+          ${item.note ? `<div class="details" style="font-style: italic;">Nota: ${escapeHtml(item.note)}</div>` : ''}
         </td>
         <td class="item-total">${formatUsd(item.subtotal)}</td>
       </tr>
@@ -170,6 +175,12 @@ export const generateReceiptHTML = (data: ReceiptData) => {
             <span class="summary-label">Subtotal</span>
             <span class="summary-value">${formatUsd(data.subtotal)}</span>
           </div>
+          ${data.discountAmount && data.discountAmount > 0 ? `
+          <div class="summary-row">
+            <span class="summary-label">Descuento</span>
+            <span class="summary-value">-${formatUsd(data.discountAmount)}</span>
+          </div>
+          ` : ''}
           ${data.tax > 0 ? `
           <div class="summary-row">
             <span class="summary-label">IVA (16%)</span>
@@ -215,6 +226,16 @@ export const shareReceiptPDF = async (data: ReceiptData) => {
     return uri;
   } catch (error) {
     console.error('Error sharing PDF:', error);
+    throw error;
+  }
+};
+
+export const printReceipt = async (data: ReceiptData) => {
+  try {
+    const html = generateReceiptHTML(data);
+    await Print.printAsync({ html });
+  } catch (error) {
+    console.error('Error printing receipt:', error);
     throw error;
   }
 };

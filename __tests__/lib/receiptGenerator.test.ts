@@ -1,4 +1,10 @@
-import { escapeHtml, generateReceiptHTML, ReceiptData } from '../../lib/receiptGenerator';
+import * as Print from 'expo-print';
+import { escapeHtml, generateReceiptHTML, printReceipt, ReceiptData } from '../../lib/receiptGenerator';
+
+jest.mock('expo-print', () => ({
+  printToFileAsync: jest.fn().mockResolvedValue({ uri: 'file:///mock.pdf' }),
+  printAsync: jest.fn().mockResolvedValue(undefined),
+}));
 
 describe('Receipt Generator Security & XSS Sanitization (TDD)', () => {
   describe('escapeHtml utility', () => {
@@ -52,6 +58,29 @@ describe('Receipt Generator Security & XSS Sanitization (TDD)', () => {
       // Verify they are safely HTML entity-encoded
       expect(html).toContain('&lt;script&gt;alert(&quot;pwned&quot;)&lt;/script&gt;');
       expect(html).toContain('&lt;img src=x onerror=steal()&gt;');
+    });
+
+    it('renders item notes and discount rows safely and prints directly via Print.printAsync', async () => {
+      const dataWithExtras: ReceiptData = {
+        ...maliciousData,
+        discountAmount: 1.0,
+        items: [
+          {
+            name: 'Café Latte',
+            price: 3.0,
+            quantity: 1,
+            subtotal: 3.0,
+            note: 'Sin azúcar <script>bad()</script>',
+          },
+        ],
+      };
+
+      const html = generateReceiptHTML(dataWithExtras);
+      expect(html).toContain('Sin azúcar &lt;script&gt;bad()&lt;/script&gt;');
+      expect(html).toContain('Descuento');
+
+      await printReceipt(dataWithExtras);
+      expect(Print.printAsync).toHaveBeenCalledWith({ html });
     });
   });
 });

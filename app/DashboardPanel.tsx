@@ -23,11 +23,15 @@ import { formatUsd } from '../lib/money';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { globalScrollY } from '../store/uiStore';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { getIsOnline } from '../lib/networkStatus';
+import { getCachedSales } from '../lib/offlineCache';
 
 interface Sale {
   id: string;
   total_amount: number;
   payment_method: string;
+  payment_details?: Record<string, number> | null;
+  discount_amount?: number;
   created_at: string;
   iva_enabled?: boolean;
   tax_amount?: number;
@@ -116,6 +120,17 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         }
         return list;
       }
+      if (!getIsOnline()) {
+        const cached = await getCachedSales();
+        let list = [...cached];
+        if (period === 'personalizado') {
+          if (dateRange.start) list = list.filter(s => s.created_at >= dateRange.start!);
+          if (dateRange.end) list = list.filter(s => s.created_at <= dateRange.end!);
+        } else if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        return list;
+      }
       let query = supabase.from('sales').select('*');
       if (period === 'personalizado') {
         query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
@@ -124,7 +139,15 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       }
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      const cached = await getCachedSales();
+      const pendingOffline = cached.filter((s) => {
+        if (!String(s.id || '').startsWith('offline-')) return false;
+        if (dateRange.start && s.created_at < dateRange.start) return false;
+        if (period === 'personalizado' && dateRange.end && s.created_at > dateRange.end) return false;
+        return true;
+      });
+      return pendingOffline.length > 0 ? [...pendingOffline, ...rows] : rows;
     },
   });
 
@@ -143,28 +166,29 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         const currentSaleIds = new Set(inRange.map(s => s.id));
         return state.demoSaleItems.filter(i => currentSaleIds.has(i.sale_id));
       }
-      // PostgREST does not support dot-notation filters on joined tables via .gte().
-      // Instead fetch sale_ids from the already-loaded sales and query items by those IDs.
-      // This avoids a broken cross-table filter that silently returns all rows.
-      let salesQuery = supabase.from('sales').select('id');
-      if (period === 'personalizado') {
-        salesQuery = salesQuery.gte('created_at', dateRange.start!).lte('created_at', dateRange.end!);
-      } else if (dateRange.start) {
-        salesQuery = salesQuery.gte('created_at', dateRange.start);
-      }
-      const { data: salesData, error: salesError } = await salesQuery;
-      if (salesError) throw salesError;
-
-      const saleIds = (salesData ?? []).map(s => s.id);
+      // Reuse the already-loaded `sales` IDs instead of re-querying `sales` a second time,
+      // and chunk `.in('sale_id', chunk)` into slices of 150 UUIDs to avoid HTTP 414 URI Too Long.
+      const saleIds = (sales ?? []).map(s => s.id);
       if (saleIds.length === 0) return [];
 
-      const { data, error } = await supabase
-        .from('sale_items')
-        .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
-        .in('sale_id', saleIds);
+      const CHUNK_SIZE = 150;
+      const chunks: string[][] = [];
+      for (let i = 0; i < saleIds.length; i += CHUNK_SIZE) {
+        chunks.push(saleIds.slice(i, i + CHUNK_SIZE));
+      }
 
-      if (error) throw error;
-      return data ?? [];
+      const results = await Promise.all(
+        chunks.map(async (chunk) => {
+          const { data, error } = await supabase
+            .from('sale_items')
+            .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
+            .in('sale_id', chunk);
+          if (error) throw error;
+          return data ?? [];
+        })
+      );
+
+      return results.flat();
     },
     enabled: !!sales, // wait until the sales query has resolved
   });
@@ -243,6 +267,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     const items = saleItems ?? [];
 
     let rawRevenue = 0;
+    let paidTaxAmount = 0;
     let pendingCredit = 0;
     let cashFromSales = 0;
     let cardSales = 0;
@@ -250,15 +275,23 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
 
     saleList.forEach(s => {
       const amt = Number(s.total_amount) || 0;
+      const taxAmt = Number(s.tax_amount) || 0;
       rawRevenue += amt;
       if (s.payment_method === 'credito') {
         pendingCredit += amt;
-      } else if (s.payment_method === 'cash') {
-        cashFromSales += amt;
-      } else if (s.payment_method === 'card') {
-        cardSales += amt;
-      } else if (s.payment_method === 'transfer') {
-        transferSales += amt;
+      } else {
+        paidTaxAmount += taxAmt;
+        if (s.payment_method === 'mixto' && s.payment_details) {
+          cashFromSales += Number(s.payment_details.cash) || 0;
+          cardSales += Number(s.payment_details.card) || 0;
+          transferSales += Number(s.payment_details.transfer) || 0;
+        } else if (s.payment_method === 'cash') {
+          cashFromSales += amt;
+        } else if (s.payment_method === 'card') {
+          cardSales += amt;
+        } else if (s.payment_method === 'transfer') {
+          transferSales += amt;
+        }
       }
     });
 
@@ -296,7 +329,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       }
     });
 
-    const profit = (rawRevenue - pendingCredit - costOfPaidSales) + totalAbonos;
+    const profit = (rawRevenue - paidTaxAmount - pendingCredit - costOfPaidSales) + totalAbonos;
     const margin = effectiveRevenue > 0 ? (profit / effectiveRevenue) * 100 : 0;
 
     return {

@@ -3,10 +3,24 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 import { ClientDetailsModal } from '../../components/ClientDetailsModal';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+let mockRole: 'admin' | 'empleado' = 'admin';
+
+jest.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    role: mockRole,
+  }),
+}));
+
 // Mock the Supabase module globally
 jest.mock('../../lib/supabase', () => ({
   supabase: {
-    from: jest.fn(),
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        })),
+      })),
+    })),
   },
 }));
 
@@ -125,7 +139,7 @@ describe('ClientDetailsModal - Payment Validation', () => {
     );
 
     // Switch to "Abonar" tab
-    fireEvent.press(screen.getByText('Abonar'));
+    await fireEvent.press(screen.getByText('Abonar'));
 
     // Wait for the tab content to render
     const submitBtn = await screen.findByRole('button', { name: 'Registrar Abono' });
@@ -136,17 +150,43 @@ describe('ClientDetailsModal - Payment Validation', () => {
 
     // Enter amount
     const amountInput = screen.getByPlaceholderText('0.00');
-    fireEvent.changeText(amountInput, '5.00');
+    await fireEvent.changeText(amountInput, '5.00');
     
     // Still disabled because no method selected
     expect(submitBtn).toBeDisabled();
 
     // Select method
-    fireEvent.press(screen.getByRole('button', { name: 'Efectivo' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Efectivo' }));
 
     // Now it should be enabled
     await waitFor(() => {
       expect(submitBtn).not.toBeDisabled();
     });
+  });
+
+  it('hides delete client button when role is empleado and shows it when role is admin', async () => {
+    const mockClient = {
+      id: 'abc-123',
+      name: 'Gustavo',
+      phone: null,
+      created_at: new Date().toISOString(),
+      total_credit_sales: 10.00,
+      total_paid: 0,
+      balance_due: 10.00,
+      is_active: true,
+    };
+
+    mockRole = 'empleado';
+    const { unmount } = await renderWithProviders(
+      <ClientDetailsModal visible={true} client={mockClient} onClose={jest.fn()} />
+    );
+    expect(screen.queryByTestId('delete-client-btn')).toBeNull();
+    unmount();
+
+    mockRole = 'admin';
+    await renderWithProviders(
+      <ClientDetailsModal visible={true} client={mockClient} onClose={jest.fn()} />
+    );
+    expect(screen.getByTestId('delete-client-btn')).toBeOnTheScreen();
   });
 });

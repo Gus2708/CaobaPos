@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { FontNames } from '../lib/fontNames';
 import { Product } from '../store/cartStore';
 import { Icon } from './Icon';
-import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
+import { shareReceiptPDF, printReceipt, ReceiptData } from '../lib/receiptGenerator';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { tokens } from '../lib/designTokens';
 import { Badge } from './Badge';
@@ -52,6 +52,7 @@ interface SaleDetailModalProps {
   isDeleting: boolean;
   isUpdating: boolean;
   readOnly?: boolean;
+  hideAmounts?: boolean;
 }
 
 export const SaleDetailModal = memo(function SaleDetailModal({
@@ -63,11 +64,13 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   isDeleting,
   isUpdating,
   readOnly = false,
+  hideAmounts = false,
 }: SaleDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItems, setEditedItems] = useState<SaleItem[]>([]);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? true);
+  const [printingReceipt, setPrintingReceipt] = useState(false);
+  const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? false);
   
   const { data: productsData } = useQuery<Product[]>({
     queryKey: ['sale-detail-all-products'],
@@ -85,7 +88,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
     if (sale.sale_items) {
       setEditedItems([...sale.sale_items]);
     }
-    setIvaEnabled(sale.iva_enabled ?? true);
+    setIvaEnabled(sale.iva_enabled ?? false);
   }, [sale]);
 
   const formatDate = (dateString: string) => {
@@ -154,33 +157,43 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   const { subtotal, tax, total } = calculateTotals();
 
 
+  const buildReceiptData = (): ReceiptData => ({
+    saleId: sale.id,
+    date: formatDate(sale.created_at),
+    items: editedItems.map(item => ({
+      name: item.product_name,
+      quantity: item.quantity,
+      price: item.unit_price,
+      subtotal: item.subtotal,
+    })),
+    subtotal,
+    tax,
+    total,
+    paymentMethod: sale.payment_method,
+    exchangeRate: sale.exchange_rate,
+    totalAmountBs: sale.total_amount_bs,
+    employeeName: sale.employee_name ?? undefined,
+  });
+
   const sharePDF = async () => {
     try {
       setLoadingPdf(true);
-      
-      const receiptData: ReceiptData = {
-        saleId: sale.id,
-        date: formatDate(sale.created_at),
-        items: editedItems.map(item => ({
-          name: item.product_name,
-          quantity: item.quantity,
-          price: item.unit_price,
-          subtotal: item.subtotal,
-        })),
-        subtotal,
-        tax,
-        total,
-        paymentMethod: sale.payment_method,
-        exchangeRate: sale.exchange_rate,
-        totalAmountBs: sale.total_amount_bs,
-        employeeName: sale.employee_name ?? undefined,
-      };
-
-      await shareReceiptPDF(receiptData);
+      await shareReceiptPDF(buildReceiptData());
     } catch (error) {
       showDialog('Error', 'No se pudo generar el PDF');
     } finally {
       setLoadingPdf(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      setPrintingReceipt(true);
+      await printReceipt(buildReceiptData());
+    } catch (error) {
+      showDialog('Error', 'No se pudo imprimir el recibo');
+    } finally {
+      setPrintingReceipt(false);
     }
   };
 
@@ -275,7 +288,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                 </View>
                 <View style={styles.itemMain}>
                   <Text style={styles.itemName} numberOfLines={1}>{item.product_name}</Text>
-                  <Text style={styles.itemMeta}>{formatUsd(item.unit_price)} c/u</Text>
+                  <Text style={styles.itemMeta}>{hideAmounts ? '$ ———' : `${formatUsd(item.unit_price)} c/u`}</Text>
                 </View>
                 {isEditing ? (
                   <View style={styles.qtyControls}>
@@ -296,7 +309,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                 ) : (
                   <Text style={[styles.itemMeta, { marginRight: scale(12) }]}>x{item.quantity}</Text>
                 )}
-                <Text style={styles.itemSubtotal}>{formatUsd(item.subtotal)}</Text>
+                <Text style={styles.itemSubtotal}>{hideAmounts ? '$ ———' : formatUsd(item.subtotal)}</Text>
               </View>
             ))}
 
@@ -322,7 +335,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
             <View style={styles.summaryCard}>
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>{formatUsd(subtotal)}</Text>
+                <Text style={styles.totalValue}>{hideAmounts ? '$ ———' : formatUsd(subtotal)}</Text>
               </View>
               
               <TouchableOpacity 
@@ -339,15 +352,15 @@ export const SaleDetailModal = memo(function SaleDetailModal({
                   <Text style={styles.totalLabel}>IVA (16%)</Text>
                 </View>
                 <Text style={[styles.totalValue, ivaEnabled && { color: tokens.colors.mahogany }]}>
-                  {formatUsd(tax)}
+                  {hideAmounts ? '$ ———' : formatUsd(tax)}
                 </Text>
               </TouchableOpacity>
 
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>Total</Text>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>{formatUsd(total)}</Text>
-                  {sale.total_amount_bs ? (
+                  <Text style={styles.grandTotalValue} numberOfLines={1} adjustsFontSizeToFit>{hideAmounts ? '$ ———' : formatUsd(total)}</Text>
+                  {sale.total_amount_bs && !hideAmounts ? (
                     <Text style={styles.grandTotalValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                       {formatBs(sale.total_amount_bs)}
                     </Text>
@@ -364,16 +377,30 @@ export const SaleDetailModal = memo(function SaleDetailModal({
           </ScrollView>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.pdfBtn} onPress={sharePDF} disabled={loadingPdf} activeOpacity={0.8}>
-              {loadingPdf ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Icon name="file-pdf" size={22} color="#FFFFFF" />
-                  <Text style={styles.btnText}>Descargar PDF</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {!hideAmounts && (
+              <View style={{ flexDirection: 'row', gap: scale(10) }}>
+                <TouchableOpacity style={[styles.pdfBtn, { flex: 1 }]} onPress={handlePrint} disabled={printingReceipt} activeOpacity={0.8}>
+                  {printingReceipt ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Icon name="print" size={18} color="#FFFFFF" />
+                      <Text style={styles.btnText}>Imprimir</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.pdfBtn, { flex: 1 }]} onPress={sharePDF} disabled={loadingPdf} activeOpacity={0.8}>
+                  {loadingPdf ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Icon name="file-pdf" size={18} color="#FFFFFF" />
+                      <Text style={styles.btnText}>Descargar PDF</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {!readOnly && (
               <View style={styles.actionRow}>

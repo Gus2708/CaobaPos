@@ -27,6 +27,9 @@ import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
 import { BrandMark } from '../components/BrandMark';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
+import { getIsOnline } from '../lib/networkStatus';
+import { enqueueOfflineItem } from '../lib/offlineQueue';
+import { getCachedProducts, saveCachedProducts } from '../lib/offlineCache';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -399,6 +402,13 @@ export const InventoryPanel = memo(function InventoryPanel({
         return list.slice(startIdx, startIdx + PAGE_SIZE);
       }
 
+      if (!getIsOnline()) {
+        const cached = await getCachedProducts();
+        const active = cached.filter((p) => p.is_active !== false);
+        const startIdx = (pageParam as number) * PAGE_SIZE;
+        return active.slice(startIdx, startIdx + PAGE_SIZE);
+      }
+
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -448,6 +458,25 @@ export const InventoryPanel = memo(function InventoryPanel({
           categories: item.categories,
           barcode: item.barcode || undefined,
         });
+        return;
+      }
+
+      if (!getIsOnline()) {
+        const updates: Record<string, any> = {
+          name: item.name,
+          price: parseFloat(item.price) || 0,
+          cost: parseFloat(item.cost) || 0,
+          stock_quantity: parseInt(item.stock) || 0,
+          category: item.categories[0] || null,
+        };
+        if (item.barcode) updates.barcode = item.barcode;
+        await enqueueOfflineItem('UPDATE_PRODUCT', { id: item.id, updates });
+        const cached = await getCachedProducts();
+        await saveCachedProducts(
+          cached.map((p) =>
+            p.id === item.id ? { ...p, ...updates, categories: item.categories } : p
+          )
+        );
         return;
       }
 
@@ -566,6 +595,12 @@ export const InventoryPanel = memo(function InventoryPanel({
         useDemoStore.getState().simulateDeleteProduct(id);
         return;
       }
+      if (!getIsOnline()) {
+        await enqueueOfflineItem('DELETE_PRODUCT', { id });
+        const cached = await getCachedProducts();
+        await saveCachedProducts(cached.filter((p) => p.id !== id));
+        return;
+      }
       // 1. Soft delete (Archive)
       const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id);
       if (error) throw error;
@@ -589,6 +624,35 @@ export const InventoryPanel = memo(function InventoryPanel({
           is_active: true,
           categories: newProduct.categories,
         });
+        return;
+      }
+
+      if (!getIsOnline()) {
+        const productPayload = {
+          name: newProduct.name,
+          price: parseFloat(newProduct.price) || 0,
+          cost: parseFloat(newProduct.cost) || 0,
+          stock_quantity: parseInt(newProduct.stock) || 0,
+          barcode: newProduct.barcode || null,
+          is_active: true,
+          category: newProduct.categories[0]?.toLowerCase() || null,
+        };
+        await enqueueOfflineItem('CREATE_PRODUCT', {
+          product: productPayload,
+          categories: newProduct.categories,
+        });
+        const cached = await getCachedProducts();
+        await saveCachedProducts([
+          {
+            id: `offline-prod-${Date.now()}`,
+            ...productPayload,
+            barcode: productPayload.barcode || undefined,
+            category: productPayload.category || '',
+            categories: newProduct.categories,
+            created_at: new Date().toISOString(),
+          } as Product,
+          ...cached,
+        ]);
         return;
       }
 

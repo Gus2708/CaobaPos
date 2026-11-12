@@ -65,6 +65,9 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/.claude/"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/.claude/"
     ]
   }
 }

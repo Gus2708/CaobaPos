@@ -21,13 +21,16 @@ import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { showDialog } from '../lib/dialog';
-import { deleteSaleRowOrThrow } from '../lib/salesDeletion';
+import { deleteSaleWithStockRestore, updateSaleWithStockAdjustment } from '../lib/saleMutations';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { useAuth } from '../hooks/useAuth';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
 import { formatFolio } from '../lib/formatFolio';
 import { formatUsd } from '../lib/money';
+import { getIsOnline } from '../lib/networkStatus';
+import { enqueueOfflineItem } from '../lib/offlineQueue';
+import { getCachedSales, removeOfflineSale, updateOfflineSale } from '../lib/offlineCache';
 
 // Create animated component at module level to avoid remount on every render
 const AnimatedFlashList = Animated.createAnimatedComponent(FlashList) as any;
@@ -45,6 +48,8 @@ interface SaleItem {
 interface Sale {
   id: string;
   total_amount: number;
+  exchange_rate?: number;
+  total_amount_bs?: number;
   payment_method: string;
   created_at: string;
   iva_enabled?: boolean;
@@ -94,9 +99,9 @@ const SaleCard = React.memo(function SaleCard({
       style={styles.saleCard} 
       onPress={onView} 
       activeOpacity={0.7}
-      onLongPress={onDelete}
+      onLongPress={hideAmounts ? undefined : onDelete}
       accessibilityRole="button"
-      accessibilityLabel={`Venta del ${formatDate(item.created_at)}${item.employee_name ? ` por ${item.employee_name}` : ''}. Pulsa para ver detalles, mantén pulsado para eliminar.`}
+      accessibilityLabel={`Venta del ${formatDate(item.created_at)}${item.employee_name ? ` por ${item.employee_name}` : ''}. Pulsa para ver detalles${hideAmounts ? '.' : ', mantén pulsado para eliminar.'}`}
     >
       <View style={styles.saleContent}>
         <View style={[styles.methodIconCircle, { backgroundColor: tokens.colors.mahoganyDim }]}>
@@ -229,6 +234,22 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return list.slice(startIdx, startIdx + PAGE_SIZE);
       }
 
+      if (!getIsOnline()) {
+        const cached = await getCachedSales();
+        let list = [...cached];
+        if (dateRange.start) {
+          list = list.filter(s => s.created_at >= dateRange.start!);
+        }
+        if (dateRange.end) {
+          list = list.filter(s => s.created_at <= dateRange.end!);
+        }
+        if (selectedMethod) {
+          list = list.filter(s => s.payment_method === selectedMethod);
+        }
+        const startIdx = (pageParam as number) * PAGE_SIZE;
+        return list.slice(startIdx, startIdx + PAGE_SIZE);
+      }
+
       let query = supabase.from('sales').select('*');
 
       if (dateRange.start) {
@@ -246,7 +267,21 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
-      return data ?? [];
+      const rows = data ?? [];
+      if (pageParam === 0) {
+        const cached = await getCachedSales();
+        const pendingOffline = cached.filter((s) => {
+          if (!String(s.id || '').startsWith('offline-')) return false;
+          if (dateRange.start && s.created_at < dateRange.start) return false;
+          if (dateRange.end && s.created_at > dateRange.end) return false;
+          if (selectedMethod && s.payment_method !== selectedMethod) return false;
+          return true;
+        });
+        if (pendingOffline.length > 0) {
+          return [...pendingOffline, ...rows];
+        }
+      }
+      return rows;
     },
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
@@ -300,6 +335,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       if (error) throw error;
       return data?.reduce((acc, sale) => acc + (sale.total_amount || 0), 0) ?? 0;
     },
+    enabled: !hideAmounts,
   });
 
   const deleteMutation = useMutation({
@@ -309,63 +345,16 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return { stockWarn: false };
       }
 
+      if (!getIsOnline() || sale.id.startsWith('offline-')) {
+        if (!sale.id.startsWith('offline-')) {
+          await enqueueOfflineItem('DELETE_SALE', { saleId: sale.id });
+        }
+        await removeOfflineSale(sale.id);
+        return { stockWarn: false };
+      }
+
       try {
-        // 1. Get items to restore stock (best-effort — failures here must not block the delete)
-        const { data: items, error: itemsError } = await supabase
-          .from('sale_items')
-          .select('product_id, quantity')
-          .eq('sale_id', sale.id);
-
-        if (itemsError) {
-          console.warn('[Delete] Could not fetch sale items, skipping stock restore:', itemsError.message);
-        }
-
-        // 2. Restore stock — try RPC, fall back to direct UPDATE, never block deletion
-        let stockWarn = false;
-        if (items && items.length > 0) {
-          for (const item of items) {
-            const { error: rpcError } = await supabase.rpc('increment_stock', {
-              p_product_id: item.product_id,
-              p_quantity: item.quantity,
-            });
-            if (rpcError) {
-              const { data: prod } = await supabase
-                .from('products')
-                .select('stock_quantity')
-                .eq('id', item.product_id)
-                .single();
-              if (prod) {
-                const { error: updErr } = await supabase
-                  .from('products')
-                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                  .eq('id', item.product_id);
-                if (updErr) {
-                  console.warn('[Delete] Stock restore failed (rpc + update):', updErr.message);
-                  stockWarn = true;
-                }
-              } else {
-                stockWarn = true;
-              }
-            }
-          }
-        }
-
-        // 3. Delete linked payments (explicit until cascade is applied)
-        const { error: paymentsError } = await supabase
-          .from('client_payments')
-          .delete()
-          .eq('sale_id', sale.id);
-
-        if (paymentsError) {
-          console.error('Error deleting payments:', paymentsError);
-          throw paymentsError;
-        }
-
-        // 4. Delete the sale and prove the row is gone — Supabase reports success
-        // with 0 affected rows when RLS blocks a delete (see lib/salesDeletion).
-        await deleteSaleRowOrThrow(sale.id);
-
-        return { success: true, stockWarn };
+        return await deleteSaleWithStockRestore(sale.id);
       } catch (error: any) {
         console.error('Delete mutation error:', error);
         throw error;
@@ -428,89 +417,34 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return;
       }
 
-      const { data: oldItems, error: fetchError } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity')
-        .eq('sale_id', saleId);
-      
-      if (fetchError) throw fetchError;
-
-      if (oldItems) {
-        for (const item of oldItems) {
-          const { error: restoreError } = await supabase.rpc('increment_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
+      if (!getIsOnline() || saleId.startsWith('offline-')) {
+        if (!saleId.startsWith('offline-')) {
+          await enqueueOfflineItem('EDIT_SALE', {
+            saleId,
+            items,
+            newTotal,
+            ivaEnabled,
+            taxAmount,
+            exchangeRate: selectedSale?.exchange_rate,
           });
-          if (restoreError) {
-            // Fallback: direct UPDATE if RPC is missing/unavailable
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock_quantity')
-              .eq('id', item.product_id)
-              .single();
-            if (prod) {
-              await supabase
-                .from('products')
-                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                .eq('id', item.product_id);
-            } else {
-              console.warn('[Update] Stock restore failed:', restoreError.message);
-            }
-          }
         }
-      }
-
-      const { error: deleteError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', saleId);
-      if (deleteError) throw deleteError;
-
-      const productIds = items.map(i => i.product_id);
-      const { data: dbProducts, error: stockCheckError } = await supabase
-        .from('products')
-        .select('id, name, stock_quantity')
-        .in('id', productIds);
-
-      if (stockCheckError) throw stockCheckError;
-
-      for (const item of items) {
-        const dbProduct = dbProducts?.find(p => p.id === item.product_id);
-        if (dbProduct && dbProduct.stock_quantity < item.quantity) {
-          throw new Error(`Stock insuficiente para ${dbProduct.name}. Disponible: ${dbProduct.stock_quantity}`);
-        }
-      }
-
-      // Batch-insert the updated sale items in a single call
-      const { error: insertError } = await supabase.from('sale_items').insert(
-        items.map(item => ({
-          sale_id: saleId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal,
-        }))
-      );
-      if (insertError) throw insertError;
-
-      for (const item of items) {
-        const { error: decrementError } = await supabase.rpc('decrement_stock', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity,
-        });
-        if (decrementError) throw new Error(`Error decrementando stock: ${decrementError.message}`);
-      }
-
-      const { error: updateError } = await supabase
-        .from('sales')
-        .update({ 
+        await updateOfflineSale(saleId, {
           total_amount: newTotal,
           iva_enabled: ivaEnabled,
-          tax_amount: taxAmount
-        })
-        .eq('id', saleId);
-      if (updateError) throw updateError;
+          tax_amount: taxAmount,
+          sale_items: items,
+        });
+        return;
+      }
+
+      await updateSaleWithStockAdjustment({
+        saleId,
+        items,
+        newTotal,
+        ivaEnabled,
+        taxAmount,
+        exchangeRate: selectedSale?.exchange_rate,
+      });
     },
     onSuccess: async (_, variables) => {
       // Invalidate cached items for this sale so re-opening shows updated data
@@ -545,6 +479,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
   });
 
   const handleDelete = useCallback((sale: Sale, skipConfirm = false) => {
+    if (role !== 'admin') return;
     const executeDelete = () => deleteMutation.mutate(sale);
 
     if (skipConfirm) {
@@ -560,7 +495,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         { text: 'Eliminar', style: 'destructive', onPress: executeDelete },
       ]
     );
-  }, [deleteMutation]);
+  }, [deleteMutation, role]);
 
   const handleView = useCallback(async (sale: Sale) => {
     try {
@@ -569,6 +504,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         const fullSale = state.demoSales.find((s) => s.id === sale.id) || sale;
         const items = state.demoSaleItems.filter((i) => i.sale_id === sale.id);
         setSelectedSale({ ...fullSale, sale_items: items });
+        setShowDetail(true);
+        return;
+      }
+
+      if (!getIsOnline() || sale.id.startsWith('offline-')) {
+        const cached = await getCachedSales();
+        const found = cached.find((s) => s.id === sale.id) || sale;
+        setSelectedSale({ ...found, sale_items: found.sale_items || sale.sale_items || [] });
         setShowDetail(true);
         return;
       }
@@ -774,6 +717,8 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
           }
           isDeleting={deleteMutation.isPending}
           isUpdating={updateSaleMutation.isPending}
+          readOnly={role !== 'admin'}
+          hideAmounts={hideAmounts}
         />
       )}
 

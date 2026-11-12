@@ -1,10 +1,10 @@
-import { View, StyleSheet, Platform, KeyboardAvoidingView, StatusBar, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Platform, KeyboardAvoidingView, StatusBar, ActivityIndicator, TextInput } from 'react-native';
 import { PressableScale } from './PressableScale';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from './Text';
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useCartStore, CartItem, useSettingsStore, useCartTotal } from '../store/cartStore';
+import React, { useState, useCallback, useRef } from 'react';
+import { useCartStore, CartItem, useSettingsStore, useCartTotal, useCartDiscountAmount } from '../store/cartStore';
 import { useCreateSale } from '../hooks/useProducts';
 import { CartItemRow } from './CartItem';
 import { PriceDisplay } from './PriceDisplay';
@@ -29,15 +29,20 @@ const PAYMENT_METHODS = [
   { key: 'card', label: 'Tarjeta', icon: 'credit-card' },
   { key: 'transfer', label: 'Transferencia', icon: 'mobile-alt' },
   { key: 'credito', label: 'Crédito', icon: 'user' },
+  { key: 'mixto', label: 'Pago Mixto', icon: 'money-bill' },
 ] as const;
+
+const DISCOUNT_PRESETS = [0, 5, 10, 15] as const;
 
 interface SaleResult {
   id: string;
   items: CartItem[];
   subtotal: number;
+  discountAmount?: number;
   tax: number;
   total: number;
   paymentMethod: string;
+  paymentDetails?: Record<string, number>;
   exchangeRate?: number;
   totalAmountBs?: number;
   employeeName?: string;
@@ -55,11 +60,16 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
   const clearCart = useCartStore((state) => state.clearCart);
+  const discountPercent = useCartStore((state) => state.discountPercent);
+  const setDiscountPercent = useCartStore((state) => state.setDiscountPercent);
   const ivaEnabled = useSettingsStore((state) => state.ivaEnabled);
   const toggleIva = useSettingsStore((state) => state.toggleIva);
   
   const { rate, formatBs, toBs } = useExchangeRate();
   const [selectedPayment, setSelectedPayment] = useState<typeof PAYMENT_METHODS[number]['key'] | null>(null);
+  const [mixCash, setMixCash] = useState('');
+  const [mixCard, setMixCard] = useState('');
+  const [mixTransfer, setMixTransfer] = useState('');
   const [completedSale, setCompletedSale] = useState<SaleResult | null>(null);
   const [isCalculatorVisible, setIsCalculatorVisible] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientBalance | null>(null);
@@ -70,14 +80,19 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
   const isSubmittingRef = useRef(false);
   
   const subtotal = useCartTotal();
+  const discountAmount = useCartDiscountAmount();
+  const discountedSubtotal = React.useMemo(
+    () => Math.max(0, parseFloat((subtotal - discountAmount).toFixed(2))),
+    [subtotal, discountAmount]
+  );
 
   const tax = React.useMemo(() => {
-    return ivaEnabled ? parseFloat((subtotal * TAX_RATE).toFixed(2)) : 0;
-  }, [subtotal, ivaEnabled]);
+    return ivaEnabled ? parseFloat((discountedSubtotal * TAX_RATE).toFixed(2)) : 0;
+  }, [discountedSubtotal, ivaEnabled]);
 
   const total = React.useMemo(() => {
-    return parseFloat((subtotal + tax).toFixed(2));
-  }, [subtotal, tax]);
+    return parseFloat((discountedSubtotal + tax).toFixed(2));
+  }, [discountedSubtotal, tax]);
 
   const insets = useSafeAreaInsets();
 
@@ -117,13 +132,22 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
         quantity: item.quantity,
         unit_price: item.price,
         subtotal: item.price * item.quantity,
+        notes: item.note,
       }));
 
       const totalBsVal = toBs(total);
 
-      await createSale.mutateAsync({
+      const paymentDetailsObj = selectedPayment === 'mixto' ? {
+        cash: parseFloat(mixCash) || 0,
+        card: parseFloat(mixCard) || 0,
+        transfer: parseFloat(mixTransfer) || 0,
+      } : undefined;
+
+      const createdSale = await createSale.mutateAsync({
         totalAmount: total,
         paymentMethod: selectedPayment!,
+        paymentDetails: paymentDetailsObj,
+        discountAmount,
         items: saleItems,
         clientId: selectedClient?.id,
         ivaEnabled,
@@ -136,12 +160,14 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       });
 
       setCompletedSale({
-        id: `temp-${Date.now()}`,
+        id: createdSale?.id || `temp-${Date.now()}`,
         items: [...items],
         subtotal,
+        discountAmount,
         tax,
         total,
         paymentMethod: selectedPayment!,
+        paymentDetails: paymentDetailsObj,
         exchangeRate: rate,
         totalAmountBs: totalBsVal,
         employeeName: currentEmployeeName,
@@ -149,6 +175,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
 
       clearCart();
       setSelectedPayment(null);
+      setMixCash('');
+      setMixCard('');
+      setMixTransfer('');
       setSelectedClient(null);
       setIsCalculatorVisible(false);
       showToast('Venta completada con éxito', 'success');
@@ -160,7 +189,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     } finally {
       isSubmittingRef.current = false;
     }
-  }, [items, total, selectedPayment, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast, rate, toBs, user, currentEmployeeName]);
+  }, [items, total, selectedPayment, mixCash, mixCard, mixTransfer, discountAmount, selectedClient, ivaEnabled, createSale, subtotal, tax, clearCart, showToast, rate, toBs, user, currentEmployeeName]);
 
   const handleCheckout = useCallback(async () => {
     if (isSubmittingRef.current || createSale.isPending) return;
@@ -178,12 +207,20 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       return;
     }
 
+    if (selectedPayment === 'mixto') {
+      const sumMix = (parseFloat(mixCash) || 0) + (parseFloat(mixCard) || 0) + (parseFloat(mixTransfer) || 0);
+      if (Math.abs(sumMix - total) > 0.05) {
+        showToast(`El pago mixto (${formatUsd(sumMix)}) debe igualar el total (${formatUsd(total)})`, 'warning');
+        return;
+      }
+    }
+
     if (selectedPayment === 'cash') {
       setIsCalculatorVisible(true);
     } else {
       await confirmSale();
     }
-  }, [selectedPayment, items, selectedClient, confirmSale, showToast, createSale.isPending]);
+  }, [selectedPayment, items, selectedClient, mixCash, mixCard, mixTransfer, total, confirmSale, showToast, createSale.isPending]);
 
   const handleCloseModal = useCallback(() => {
     setCompletedSale(null);
@@ -265,6 +302,36 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
               <Text style={styles.summaryValueBs} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatBs(subtotal)}</Text>
             </View>
           </View>
+
+          <View style={styles.discountRow}>
+            <Text style={styles.summaryLabel}>Descuento</Text>
+            <View style={styles.discountPills}>
+              {DISCOUNT_PRESETS.map((pct) => {
+                const isSelected = discountPercent === pct;
+                return (
+                  <PressableScale
+                    key={pct}
+                    style={[styles.discountPill, isSelected && styles.discountPillActive]}
+                    onPress={() => setDiscountPercent(pct)}
+                    scaleTo={0.94}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Descuento ${pct}%`}
+                  >
+                    <Text style={[styles.discountPillText, isSelected && styles.discountPillTextActive]}>
+                      {pct}%
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+
+          {discountAmount > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: tokens.colors.sage }]}>Ahorro ({discountPercent}%)</Text>
+              <Text style={[styles.summaryValue, { color: tokens.colors.sage }]}>-{formatUsd(discountAmount)}</Text>
+            </View>
+          )}
 
           <PressableScale
             style={styles.ivaRow}
@@ -364,6 +431,70 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 );
               })}
             </View>
+            <View style={styles.paymentRow}>
+              {PAYMENT_METHODS.slice(4).map((method) => {
+                const isActive = selectedPayment === method.key;
+                return (
+                  <PressableScale
+                    key={method.key}
+                    containerStyle={{ flex: 1 }}
+                    style={[styles.paymentChip, isActive && styles.paymentChipActive]}
+                    onPress={() => setSelectedPayment(method.key)}
+                    scaleTo={0.96}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                    accessibilityLabel={method.label}
+                  >
+                    <Icon
+                      name={method.icon}
+                      size={18}
+                      color={isActive ? tokens.colors.mahogany : tokens.colors.textMuted}
+                    />
+                    <Text weight="medium" style={[styles.paymentChipText, isActive && styles.paymentChipTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                      {method.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+
+        {selectedPayment === 'mixto' && (
+          <View style={styles.mixtoBox}>
+            <View style={styles.mixtoRow}>
+              <Text style={styles.mixtoLabel}>Efectivo ($)</Text>
+              <TextInput
+                style={styles.mixtoInput}
+                placeholder="0.00"
+                placeholderTextColor={tokens.colors.textDim}
+                keyboardType="decimal-pad"
+                value={mixCash}
+                onChangeText={setMixCash}
+              />
+            </View>
+            <View style={styles.mixtoRow}>
+              <Text style={styles.mixtoLabel}>Tarjeta ($)</Text>
+              <TextInput
+                style={styles.mixtoInput}
+                placeholder="0.00"
+                placeholderTextColor={tokens.colors.textDim}
+                keyboardType="decimal-pad"
+                value={mixCard}
+                onChangeText={setMixCard}
+              />
+            </View>
+            <View style={styles.mixtoRow}>
+              <Text style={styles.mixtoLabel}>Transf. ($)</Text>
+              <TextInput
+                style={styles.mixtoInput}
+                placeholder="0.00"
+                placeholderTextColor={tokens.colors.textDim}
+                keyboardType="decimal-pad"
+                value={mixTransfer}
+                onChangeText={setMixTransfer}
+              />
+            </View>
+          </View>
+        )}
 
         {selectedPayment === 'credito' && (
           <View style={styles.clientSelectionBox}>
@@ -424,7 +555,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
           total={completedSale.total}
           tax={completedSale.tax}
           subtotal={completedSale.subtotal}
+          discountAmount={completedSale.discountAmount}
           paymentMethod={completedSale.paymentMethod}
+          paymentDetails={completedSale.paymentDetails}
           exchangeRate={completedSale.exchangeRate}
           totalAmountBs={completedSale.totalAmountBs}
           employeeName={completedSale.employeeName}
@@ -789,5 +922,69 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontWeight: '700',
     color: tokens.colors.text,
+  },
+  discountRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(6),
+  },
+  discountPills: {
+    flexDirection: 'row',
+    gap: scale(6),
+  },
+  discountPill: {
+    paddingHorizontal: scale(10),
+    paddingVertical: verticalScale(4),
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+  },
+  discountPillActive: {
+    backgroundColor: tokens.colors.mahoganyDim,
+    borderColor: tokens.colors.mahogany,
+  },
+  discountPillText: {
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: tokens.colors.textDim,
+  },
+  discountPillTextActive: {
+    color: tokens.colors.mahogany,
+  },
+  mixtoBox: {
+    marginTop: verticalScale(10),
+    backgroundColor: tokens.colors.glass.light,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    padding: scale(12),
+    gap: verticalScale(8),
+  },
+  mixtoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mixtoLabel: {
+    fontFamily: FontNames.parkinsans,
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+    color: tokens.colors.textDim,
+  },
+  mixtoInput: {
+    width: scale(96),
+    height: verticalScale(34),
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.colors.borderLight,
+    backgroundColor: tokens.colors.surface,
+    paddingHorizontal: scale(10),
+    color: tokens.colors.text,
+    fontFamily: FontNames.jetBrainsMono,
+    fontSize: moderateScale(13),
+    textAlign: 'right',
   },
 });

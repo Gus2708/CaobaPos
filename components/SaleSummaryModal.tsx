@@ -8,7 +8,7 @@ import { CartItem } from '../store/cartStore';
 import { Icon } from './Icon';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
-import { shareReceiptPDF, ReceiptData } from '../lib/receiptGenerator';
+import { shareReceiptPDF, printReceipt, ReceiptData } from '../lib/receiptGenerator';
 import { BrandMark } from './BrandMark';
 import { useExchangeRate, formatBs } from '../hooks/useExchangeRate';
 import { useToast } from './Toast';
@@ -22,7 +22,9 @@ interface SaleSummaryModalProps {
   total: number;
   tax: number;
   subtotal: number;
+  discountAmount?: number;
   paymentMethod: string;
+  paymentDetails?: Record<string, number>;
   exchangeRate?: number;
   totalAmountBs?: number;
   employeeName?: string;
@@ -36,13 +38,16 @@ export function SaleSummaryModal({
   total,
   tax,
   subtotal,
+  discountAmount = 0,
   paymentMethod,
+  paymentDetails,
   exchangeRate: propExchangeRate,
   totalAmountBs: propTotalAmountBs,
   employeeName,
   onClose,
 }: SaleSummaryModalProps) {
   const [loading, setLoading] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const { showToast } = useToast();
   const { rate: currentRate, toBs } = useExchangeRate();
   const exchangeRate = propExchangeRate || currentRate;
@@ -54,38 +59,53 @@ export function SaleSummaryModal({
       case 'card': return 'Tarjeta';
       case 'transfer': return 'Transferencia';
       case 'credito': return 'Crédito';
+      case 'mixto': return 'Pago Mixto';
       default: return method;
     }
   };
 
+  const buildReceiptData = (): ReceiptData => ({
+    saleId,
+    date: `${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`,
+    items: items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.price * item.quantity,
+      note: item.note,
+    })),
+    subtotal,
+    discountAmount,
+    tax,
+    total,
+    paymentMethod: getPaymentLabel(paymentMethod),
+    paymentDetails,
+    exchangeRate,
+    totalAmountBs,
+    employeeName,
+  });
+
   const sharePDF = async () => {
     try {
       setLoading(true);
-
-      const receiptData: ReceiptData = {
-        saleId,
-        date: `${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`,
-        items: items.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-          subtotal: item.price * item.quantity,
-        })),
-        subtotal,
-        tax,
-        total,
-        paymentMethod: getPaymentLabel(paymentMethod),
-        exchangeRate,
-        totalAmountBs,
-        employeeName,
-      };
-
-      await shareReceiptPDF(receiptData);
+      await shareReceiptPDF(buildReceiptData());
     } catch (error) {
       showToast('No se pudo generar el recibo PDF', 'error');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    try {
+      setPrinting(true);
+      await printReceipt(buildReceiptData());
+    } catch (error) {
+      showToast('No se pudo imprimir el recibo', 'error');
+      console.error(error);
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -136,6 +156,12 @@ export function SaleSummaryModal({
                 <Text style={styles.totalLabel}>Subtotal</Text>
                 <Text style={styles.totalValue}>{formatUsd(subtotal)}</Text>
               </View>
+              {discountAmount > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Descuento</Text>
+                  <Text style={styles.totalValue}>-{formatUsd(discountAmount)}</Text>
+                </View>
+              )}
               {tax > 0 && (
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel}>IVA (16%)</Text>
@@ -168,24 +194,44 @@ export function SaleSummaryModal({
           </View>
 
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.shareButton}
-              onPress={sharePDF}
-              disabled={loading}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Compartir recibo"
-              accessibilityState={{ disabled: loading, busy: loading }}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={tokens.colors.gold} />
-              ) : (
-                <>
-                  <Icon name="file-pdf" size={22} color={tokens.colors.gold} />
-                  <Text style={styles.shareButtonText}>Compartir recibo</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: scale(10), marginBottom: verticalScale(12) }}>
+              <TouchableOpacity
+                style={[styles.shareButton, { flex: 1, marginBottom: 0 }]}
+                onPress={handlePrint}
+                disabled={printing}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Imprimir ticket"
+              >
+                {printing ? (
+                  <ActivityIndicator size="small" color={tokens.colors.gold} />
+                ) : (
+                  <>
+                    <Icon name="print" size={18} color={tokens.colors.gold} />
+                    <Text style={styles.shareButtonText}>Imprimir</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.shareButton, { flex: 1, marginBottom: 0 }]}
+                onPress={sharePDF}
+                disabled={loading}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Compartir recibo"
+                accessibilityState={{ disabled: loading, busy: loading }}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={tokens.colors.gold} />
+                ) : (
+                  <>
+                    <Icon name="file-pdf" size={18} color={tokens.colors.gold} />
+                    <Text style={styles.shareButtonText}>Compartir</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.closeButton}

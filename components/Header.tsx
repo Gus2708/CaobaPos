@@ -216,7 +216,10 @@ export function Header({ currentScreen, onNavigate }: HeaderProps) {
               isMobile && styles.bcvPillMobile,
               isRateUnconfirmed && styles.bcvPillUnconfirmed,
             ]}
-            onPress={() => setIsRateModalOpen(true)}
+            onPress={() => {
+              if (role === 'admin') setIsRateModalOpen(true);
+            }}
+            disabled={role !== 'admin'}
             activeOpacity={0.75}
             hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             accessibilityRole="button"

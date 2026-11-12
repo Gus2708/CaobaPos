@@ -35,7 +35,17 @@ const MUTED_COLOR = BRAND_COLORS.muted;
 const BORDER_COLOR = BRAND_COLORS.border;
 const BACKGROUND_COLOR = BRAND_COLORS.background;
 
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const generateReport = async (sales: Sale[], metrics: Metrics, title: string) => {
+  const safeTitle = escapeHtml(title);
   const today = new Date().toLocaleDateString('es-MX', {
     weekday: 'long',
     year: 'numeric',
@@ -47,7 +57,7 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
     <tr class="item-row">
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${index + 1}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${new Date(sale.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
-      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${methodLabels[sale.payment_method] || sale.payment_method}</td>
+      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${escapeHtml(methodLabels[sale.payment_method] || sale.payment_method)}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">${formatUsd(sale.total_amount)}</td>
     </tr>
   `).join('');
@@ -103,7 +113,7 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
         <div class="header">
           <div class="header-left">
             <img src="${LOGO_BASE64}" class="logo" />
-            <h1 class="report-title">${title}</h1>
+            <h1 class="report-title">${safeTitle}</h1>
             <div class="report-date">${today}</div>
           </div>
         </div>
@@ -173,6 +183,8 @@ export const generateReport = async (sales: Sale[], metrics: Metrics, title: str
 };
 
 export const generatePaymentMethodReport = async (sales: Sale[], totalAmount: number, methodName: string, periodLabel: string) => {
+  const safeMethodName = escapeHtml(methodName);
+  const safePeriodLabel = escapeHtml(periodLabel);
   const today = new Date().toLocaleDateString('es-MX', {
     weekday: 'long',
     year: 'numeric',
@@ -184,7 +196,7 @@ export const generatePaymentMethodReport = async (sales: Sale[], totalAmount: nu
     <tr class="item-row">
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${index + 1}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${new Date(sale.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })} ${new Date(sale.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
-      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${methodLabels[sale.payment_method] || sale.payment_method}</td>
+      <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; font-size: 13px;">${escapeHtml(methodLabels[sale.payment_method] || sale.payment_method)}</td>
       <td style="padding: 12px 10px; border-bottom: 1px solid ${BORDER_COLOR}; text-align: right; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 13px;">${formatUsd(sale.total_amount)}</td>
     </tr>
   `).join('');
@@ -236,8 +248,8 @@ export const generatePaymentMethodReport = async (sales: Sale[], totalAmount: nu
         <div class="header">
           <div class="header-left">
             <img src="${LOGO_BASE64}" class="logo" />
-            <h1 class="report-title">Reporte de Ventas: ${methodName}</h1>
-            <div class="report-date">${periodLabel} • ${today}</div>
+            <h1 class="report-title">Reporte de Ventas: ${safeMethodName}</h1>
+            <div class="report-date">${safePeriodLabel} • ${today}</div>
           </div>
         </div>
 

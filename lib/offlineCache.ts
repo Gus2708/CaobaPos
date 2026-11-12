@@ -153,6 +153,18 @@ export async function addOfflineSale(sale: any): Promise<void> {
   await saveCachedSales(updated);
 }
 
+export async function removeOfflineSale(saleId: string): Promise<void> {
+  const sales = await getCachedSales();
+  const updated = sales.filter((s) => s.id !== saleId);
+  await saveCachedSales(updated);
+}
+
+export async function updateOfflineSale(saleId: string, updates: Record<string, any>): Promise<void> {
+  const sales = await getCachedSales();
+  const updated = sales.map((s) => (s.id === saleId ? { ...s, ...updates } : s));
+  await saveCachedSales(updated);
+}
+
 // --- EXCHANGE RATE (BCV) ---
 export interface CachedExchangeRate {
   id?: string;
