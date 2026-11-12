@@ -142,4 +142,26 @@ describe('SaleDetailModal delete flow', () => {
     expect(screen.queryByText('$1,00')).toBeNull();
     expect(screen.getAllByText('$ ———').length).toBeGreaterThanOrEqual(2);
   });
+
+  it('defaults iva_enabled to false when sale.iva_enabled is undefined', async () => {
+    const onDelete = jest.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const saleWithoutIvaFlag = { ...sale, iva_enabled: undefined };
+
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <SaleDetailModal
+          visible
+          sale={saleWithoutIvaFlag}
+          onClose={jest.fn()}
+          onDelete={onDelete}
+          onUpdate={jest.fn()}
+          isDeleting={false}
+          isUpdating={false}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(screen.getByText('Sin IVA')).toBeOnTheScreen();
+  });
 });

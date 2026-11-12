@@ -122,4 +122,50 @@ describe('DashboardPanel Metrics', () => {
     const cashElements = await screen.findAllByText(/\$?\s*40[.,]00/);
     expect(cashElements.length).toBeGreaterThanOrEqual(1);
   }, 20000);
+
+  it('excludes collected IVA (tax_amount) from net profit calculation', async () => {
+    const taxedSale = {
+      id: 's-tax',
+      total_amount: 116, // 100 subtotal + 16 IVA
+      tax_amount: 16,
+      iva_enabled: true,
+      payment_method: 'cash',
+      created_at: TODAY_STR,
+    };
+    const taxedItem = {
+      sale_id: 's-tax',
+      product_id: 'p1',
+      quantity: 2,
+      unit_price: 50,
+      unit_cost: 30, // total cost = 60
+      subtotal: 100,
+    };
+
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      let filteredData: any[] = [];
+      if (table === 'sales') filteredData = [taxedSale];
+      else if (table === 'sale_items') filteredData = [taxedItem];
+      else if (table === 'products') filteredData = [...MOCK_PRODUCTS];
+
+      const mockChain: any = {
+        select: jest.fn().mockReturnThis(),
+        gte: jest.fn().mockReturnThis(),
+        lte: jest.fn().mockReturnThis(),
+        in: jest.fn().mockReturnThis(),
+        order: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockReturnThis(),
+        then: jest.fn((cb) => Promise.resolve(cb({ data: filteredData, error: null }))),
+      };
+      return mockChain;
+    });
+
+    await render(<DashboardPanel />, { wrapper });
+    await screen.findByText('Ganancia');
+
+    // Net profit = 116 (total) - 16 (IVA) - 60 (cost) = $40,00 (NOT $56,00)
+    const profitElements = await screen.findAllByText(/\$?\s*40[.,]00/);
+    expect(profitElements.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/\$?\s*56[.,]00/)).toBeNull();
+  });
 });

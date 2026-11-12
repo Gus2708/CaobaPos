@@ -10,7 +10,7 @@ import { tokens } from '../lib/designTokens';
 import { FontNames } from '../lib/fontNames';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { showDialog } from '../lib/dialog';
-import { deleteSaleRowOrThrow } from '../lib/salesDeletion';
+import { deleteSaleWithStockRestore, updateSaleWithStockAdjustment } from '../lib/saleMutations';
 import { useClientPayments, useClientCreditSales, useAddPayment, useDeletePayment, useDeleteClient, ClientBalance } from '../hooks/useClients';
 import { useToast } from './Toast';
 import { SaleDetailModal } from './SaleDetailModal';
@@ -46,55 +46,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
   const deleteSaleMutation = useMutation({
     mutationFn: async (sale: any) => {
       try {
-        // 1. Revert stock using RPC
-        const { data: items, error: itemsError } = await supabase
-          .from('sale_items')
-          .select('product_id, quantity')
-          .eq('sale_id', sale.id);
-
-        if (itemsError) throw itemsError;
-
-        if (items && items.length > 0) {
-          for (const item of items) {
-            const { error: rpcError } = await supabase.rpc('increment_stock', {
-              p_product_id: item.product_id,
-              p_quantity: item.quantity,
-            });
-            if (rpcError) {
-              // Fallback: direct UPDATE if RPC is missing — never block the deletion
-              const { data: prod } = await supabase
-                .from('products')
-                .select('stock_quantity')
-                .eq('id', item.product_id)
-                .single();
-              if (prod) {
-                await supabase
-                  .from('products')
-                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                  .eq('id', item.product_id);
-              } else {
-                console.warn('[Delete credit sale] Stock restore failed:', rpcError.message);
-              }
-            }
-          }
-        }
-
-        // 2. Clear payments linked to this sale
-        const { error: paymentsError } = await supabase
-          .from('client_payments')
-          .delete()
-          .eq('sale_id', sale.id);
-
-        if (paymentsError) {
-          console.error('Error deleting payments:', paymentsError);
-          throw paymentsError;
-        }
-
-        // 3. Delete the sale itself (cascades to sale_items) and prove it is gone,
-        // the same way the history panel does (see lib/salesDeletion).
-        await deleteSaleRowOrThrow(sale.id);
-
-        return { success: true };
+        return await deleteSaleWithStockRestore(sale.id);
       } catch (error: any) {
         console.error('Delete credit sale error:', error);
         throw error;
@@ -123,72 +75,14 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       ivaEnabled: boolean;
       taxAmount: number;
     }) => {
-      // 1. Recover old items to revert their stock
-      const { data: oldItems, error: fetchError } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity')
-        .eq('sale_id', saleId);
-      
-      if (fetchError) throw fetchError;
-
-      // 2. Revert old stock — try RPC, fall back to direct UPDATE if it doesn't exist
-      if (oldItems) {
-        for (const item of oldItems) {
-          const { error: rpcError } = await supabase.rpc('increment_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-          });
-          if (rpcError) {
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock_quantity')
-              .eq('id', item.product_id)
-              .single();
-            if (prod) {
-              await supabase
-                .from('products')
-                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                .eq('id', item.product_id);
-            }
-          }
-        }
-      }
-
-      // 3. Delete old items
-      const { error: deleteError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', saleId);
-      if (deleteError) throw deleteError;
-
-      // 4. Insert new items and decrement stock
-      for (const item of items) {
-        const { error: insertError } = await supabase.from('sale_items').insert({
-          sale_id: saleId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal,
-        });
-        if (insertError) throw insertError;
-
-        await supabase.rpc('decrement_stock', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity,
-        });
-      }
-
-      // 5. Update sale total and IVA fields
-      const { error: updateError } = await supabase
-        .from('sales')
-        .update({ 
-          total_amount: newTotal,
-          iva_enabled: ivaEnabled,
-          tax_amount: taxAmount
-        })
-        .eq('id', saleId);
-      if (updateError) throw updateError;
+      await updateSaleWithStockAdjustment({
+        saleId,
+        items,
+        newTotal,
+        ivaEnabled,
+        taxAmount,
+        exchangeRate: selectedSale?.exchange_rate,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });

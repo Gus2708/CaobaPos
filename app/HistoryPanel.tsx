@@ -21,7 +21,7 @@ import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
 import { showDialog } from '../lib/dialog';
-import { deleteSaleRowOrThrow } from '../lib/salesDeletion';
+import { deleteSaleWithStockRestore, updateSaleWithStockAdjustment } from '../lib/saleMutations';
 import { DashboardPeriod } from '../components/PeriodSelector';
 import { CustomDateRangeModal } from '../components/CustomDateRangeModal';
 import { useAuth } from '../hooks/useAuth';
@@ -300,6 +300,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       if (error) throw error;
       return data?.reduce((acc, sale) => acc + (sale.total_amount || 0), 0) ?? 0;
     },
+    enabled: !hideAmounts,
   });
 
   const deleteMutation = useMutation({
@@ -310,62 +311,7 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
       }
 
       try {
-        // 1. Get items to restore stock (best-effort — failures here must not block the delete)
-        const { data: items, error: itemsError } = await supabase
-          .from('sale_items')
-          .select('product_id, quantity')
-          .eq('sale_id', sale.id);
-
-        if (itemsError) {
-          console.warn('[Delete] Could not fetch sale items, skipping stock restore:', itemsError.message);
-        }
-
-        // 2. Restore stock — try RPC, fall back to direct UPDATE, never block deletion
-        let stockWarn = false;
-        if (items && items.length > 0) {
-          for (const item of items) {
-            const { error: rpcError } = await supabase.rpc('increment_stock', {
-              p_product_id: item.product_id,
-              p_quantity: item.quantity,
-            });
-            if (rpcError) {
-              const { data: prod } = await supabase
-                .from('products')
-                .select('stock_quantity')
-                .eq('id', item.product_id)
-                .single();
-              if (prod) {
-                const { error: updErr } = await supabase
-                  .from('products')
-                  .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                  .eq('id', item.product_id);
-                if (updErr) {
-                  console.warn('[Delete] Stock restore failed (rpc + update):', updErr.message);
-                  stockWarn = true;
-                }
-              } else {
-                stockWarn = true;
-              }
-            }
-          }
-        }
-
-        // 3. Delete linked payments (explicit until cascade is applied)
-        const { error: paymentsError } = await supabase
-          .from('client_payments')
-          .delete()
-          .eq('sale_id', sale.id);
-
-        if (paymentsError) {
-          console.error('Error deleting payments:', paymentsError);
-          throw paymentsError;
-        }
-
-        // 4. Delete the sale and prove the row is gone — Supabase reports success
-        // with 0 affected rows when RLS blocks a delete (see lib/salesDeletion).
-        await deleteSaleRowOrThrow(sale.id);
-
-        return { success: true, stockWarn };
+        return await deleteSaleWithStockRestore(sale.id);
       } catch (error: any) {
         console.error('Delete mutation error:', error);
         throw error;
@@ -428,89 +374,14 @@ export const HistoryPanel = React.memo(function HistoryPanel() {
         return;
       }
 
-      const { data: oldItems, error: fetchError } = await supabase
-        .from('sale_items')
-        .select('product_id, quantity')
-        .eq('sale_id', saleId);
-      
-      if (fetchError) throw fetchError;
-
-      if (oldItems) {
-        for (const item of oldItems) {
-          const { error: restoreError } = await supabase.rpc('increment_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-          });
-          if (restoreError) {
-            // Fallback: direct UPDATE if RPC is missing/unavailable
-            const { data: prod } = await supabase
-              .from('products')
-              .select('stock_quantity')
-              .eq('id', item.product_id)
-              .single();
-            if (prod) {
-              await supabase
-                .from('products')
-                .update({ stock_quantity: (prod.stock_quantity ?? 0) + item.quantity })
-                .eq('id', item.product_id);
-            } else {
-              console.warn('[Update] Stock restore failed:', restoreError.message);
-            }
-          }
-        }
-      }
-
-      const { error: deleteError } = await supabase
-        .from('sale_items')
-        .delete()
-        .eq('sale_id', saleId);
-      if (deleteError) throw deleteError;
-
-      const productIds = items.map(i => i.product_id);
-      const { data: dbProducts, error: stockCheckError } = await supabase
-        .from('products')
-        .select('id, name, stock_quantity')
-        .in('id', productIds);
-
-      if (stockCheckError) throw stockCheckError;
-
-      for (const item of items) {
-        const dbProduct = dbProducts?.find(p => p.id === item.product_id);
-        if (dbProduct && dbProduct.stock_quantity < item.quantity) {
-          throw new Error(`Stock insuficiente para ${dbProduct.name}. Disponible: ${dbProduct.stock_quantity}`);
-        }
-      }
-
-      // Batch-insert the updated sale items in a single call
-      const { error: insertError } = await supabase.from('sale_items').insert(
-        items.map(item => ({
-          sale_id: saleId,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal,
-        }))
-      );
-      if (insertError) throw insertError;
-
-      for (const item of items) {
-        const { error: decrementError } = await supabase.rpc('decrement_stock', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity,
-        });
-        if (decrementError) throw new Error(`Error decrementando stock: ${decrementError.message}`);
-      }
-
-      const { error: updateError } = await supabase
-        .from('sales')
-        .update({ 
-          total_amount: newTotal,
-          iva_enabled: ivaEnabled,
-          tax_amount: taxAmount
-        })
-        .eq('id', saleId);
-      if (updateError) throw updateError;
+      await updateSaleWithStockAdjustment({
+        saleId,
+        items,
+        newTotal,
+        ivaEnabled,
+        taxAmount,
+        exchangeRate: selectedSale?.exchange_rate,
+      });
     },
     onSuccess: async (_, variables) => {
       // Invalidate cached items for this sale so re-opening shows updated data

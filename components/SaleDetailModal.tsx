@@ -69,7 +69,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editedItems, setEditedItems] = useState<SaleItem[]>([]);
   const [loadingPdf, setLoadingPdf] = useState(false);
-  const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? true);
+  const [ivaEnabled, setIvaEnabled] = useState(sale.iva_enabled ?? false);
   
   const { data: productsData } = useQuery<Product[]>({
     queryKey: ['sale-detail-all-products'],
@@ -87,7 +87,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
     if (sale.sale_items) {
       setEditedItems([...sale.sale_items]);
     }
-    setIvaEnabled(sale.iva_enabled ?? true);
+    setIvaEnabled(sale.iva_enabled ?? false);
   }, [sale]);
 
   const formatDate = (dateString: string) => {

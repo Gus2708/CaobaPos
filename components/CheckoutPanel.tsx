@@ -121,7 +121,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
 
       const totalBsVal = toBs(total);
 
-      await createSale.mutateAsync({
+      const createdSale = await createSale.mutateAsync({
         totalAmount: total,
         paymentMethod: selectedPayment!,
         items: saleItems,
@@ -136,7 +136,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       });
 
       setCompletedSale({
-        id: `temp-${Date.now()}`,
+        id: createdSale?.id || `temp-${Date.now()}`,
         items: [...items],
         subtotal,
         tax,
