@@ -56,6 +56,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       if (client?.id) {
         queryClient.invalidateQueries({ queryKey: ['client_credit_sales', client.id] });
         queryClient.invalidateQueries({ queryKey: ['client_payments', client.id] });
@@ -88,6 +89,7 @@ export const ClientDetailsModal = React.memo(function ClientDetailsModal({ visib
       queryClient.invalidateQueries({ queryKey: ['sales-history'] });
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['clients_balances'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       if (client?.id) {
         queryClient.invalidateQueries({ queryKey: ['client_credit_sales', client.id] });
       }

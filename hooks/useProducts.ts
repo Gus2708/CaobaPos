@@ -298,8 +298,8 @@ export function useCreateSale() {
           const dbProduct = dbProducts?.find((p) => p.id === item.product_id);
           return {
             sale_id: sale.id,
-            unit_cost: dbProduct?.cost || 0,
             ...item,
+            unit_cost: Number(dbProduct?.cost) || 0,
           };
         });
 

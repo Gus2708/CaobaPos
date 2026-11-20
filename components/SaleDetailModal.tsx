@@ -23,6 +23,7 @@ interface SaleItem {
   product_name: string;
   quantity: number;
   unit_price: number;
+  unit_cost?: number;
   subtotal: number;
 }
 
@@ -148,6 +149,7 @@ export const SaleDetailModal = memo(function SaleDetailModal({
           product_name: product.name,
           quantity: 1,
           unit_price: product.price,
+          unit_cost: Number(product.cost) || 0,
           subtotal: product.price,
         },
       ]);

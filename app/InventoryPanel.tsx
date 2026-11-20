@@ -579,6 +579,8 @@ export const InventoryPanel = memo(function InventoryPanel({
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       setEditing(null);
       showToast('Producto actualizado', 'success');
       onSuccess?.();
@@ -719,6 +721,8 @@ export const InventoryPanel = memo(function InventoryPanel({
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'products'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       setNewProduct({ name: '', price: '', cost: '', stock: '', categories: [], barcode: '' });
       setShowAddForm(false);
       showToast('Producto agregado', 'success');

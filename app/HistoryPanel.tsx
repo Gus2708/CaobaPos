@@ -42,6 +42,7 @@ interface SaleItem {
   product_name: string;
   quantity: number;
   unit_price: number;
+  unit_cost?: number;
   subtotal: number;
 }
 

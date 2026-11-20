@@ -15,6 +15,7 @@ interface Metrics {
   revenue: number;
   cost: number;
   profit: number;
+  tax?: number;
   pendingCredit?: number;
   receivedMoney?: number;
   cardRevenue?: number;

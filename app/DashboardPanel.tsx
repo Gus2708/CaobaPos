@@ -25,6 +25,8 @@ import { globalScrollY } from '../store/uiStore';
 import { isDemoActive, useDemoStore } from '../store/demoStore';
 import { getIsOnline } from '../lib/networkStatus';
 import { getCachedSales } from '../lib/offlineCache';
+import { computeDashboardMetrics, SaleMetricInput } from '../lib/dashboardMetrics';
+import { fetchAllPages, fetchByChunkedIn } from '../lib/supabasePagination';
 
 interface Sale {
   id: string;
@@ -50,6 +52,7 @@ interface SaleItem {
 interface ClientPayment {
   id: string;
   client_id: string;
+  sale_id?: string | null;
   amount: number;
   created_at: string;
   payment_method: string;
@@ -131,15 +134,15 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         }
         return list;
       }
-      let query = supabase.from('sales').select('*');
-      if (period === 'personalizado') {
-        query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
-      } else if (dateRange.start) {
-        query = query.gte('created_at', dateRange.start);
-      }
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
-      const rows = data ?? [];
+      const rows = await fetchAllPages<Sale>(() => {
+        let query = supabase.from('sales').select('*');
+        if (period === 'personalizado') {
+          query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
+        } else if (dateRange.start) {
+          query = query.gte('created_at', dateRange.start);
+        }
+        return query.order('created_at', { ascending: false });
+      });
       const cached = await getCachedSales();
       const pendingOffline = cached.filter((s) => {
         if (!String(s.id || '').startsWith('offline-')) return false;
@@ -151,8 +154,10 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     },
   });
 
+  const saleIds = useMemo(() => (sales ?? []).map(s => s.id), [sales]);
+
   const { data: saleItems } = useQuery<SaleItem[]>({
-    queryKey: ['dashboard', 'sale_items', period, dateRange, isDemoMode],
+    queryKey: ['dashboard', 'sale_items', period, dateRange, isDemoMode, saleIds],
     queryFn: async () => {
       if (isDemoActive()) {
         // Resolve sale ids from the store (not from the `sales` closure) so a refetch
@@ -166,29 +171,16 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         const currentSaleIds = new Set(inRange.map(s => s.id));
         return state.demoSaleItems.filter(i => currentSaleIds.has(i.sale_id));
       }
-      // Reuse the already-loaded `sales` IDs instead of re-querying `sales` a second time,
-      // and chunk `.in('sale_id', chunk)` into slices of 150 UUIDs to avoid HTTP 414 URI Too Long.
-      const saleIds = (sales ?? []).map(s => s.id);
+      // Reuse the already-loaded `sales` IDs and fetch items in chunked, paginated `.in()` calls
+      // to avoid HTTP 414 URI Too Long and the 1,000-row PostgREST cap.
       if (saleIds.length === 0) return [];
 
-      const CHUNK_SIZE = 150;
-      const chunks: string[][] = [];
-      for (let i = 0; i < saleIds.length; i += CHUNK_SIZE) {
-        chunks.push(saleIds.slice(i, i + CHUNK_SIZE));
-      }
-
-      const results = await Promise.all(
-        chunks.map(async (chunk) => {
-          const { data, error } = await supabase
-            .from('sale_items')
-            .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
-            .in('sale_id', chunk);
-          if (error) throw error;
-          return data ?? [];
-        })
+      return fetchByChunkedIn<SaleItem>(saleIds, (chunk) =>
+        supabase
+          .from('sale_items')
+          .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
+          .in('sale_id', chunk)
       );
-
-      return results.flat();
     },
     enabled: !!sales, // wait until the sales query has resolved
   });
@@ -207,15 +199,15 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
         }
         return list;
       }
-      let query = supabase.from('client_payments').select('*');
-      if (period === 'personalizado') {
-        query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
-      } else if (dateRange.start) {
-        query = query.gte('created_at', dateRange.start);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllPages<ClientPayment>(() => {
+        let query = supabase.from('client_payments').select('*');
+        if (period === 'personalizado') {
+          query = query.gte('created_at', dateRange.start).lte('created_at', dateRange.end);
+        } else if (dateRange.start) {
+          query = query.gte('created_at', dateRange.start);
+        }
+        return query;
+      });
     },
   });
 
@@ -225,11 +217,83 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
       if (isDemoActive()) {
         return useDemoStore.getState().demoProducts;
       }
-      const { data, error } = await supabase
-        .from('products')
-        .select('id, name, cost, price, stock_quantity');
-      if (error) throw error;
-      return data ?? [];
+      return fetchAllPages<Product>(() =>
+        supabase
+          .from('products')
+          .select('id, name, cost, price, stock_quantity')
+      );
+    },
+  });
+
+  const paymentClientIds = useMemo(
+    () => Array.from(new Set((allPayments ?? []).map(p => p.client_id).filter(Boolean))),
+    [allPayments]
+  );
+
+  const paymentSaleIds = useMemo(
+    () => Array.from(new Set((allPayments ?? []).map(p => p.sale_id).filter((id): id is string => Boolean(id)))),
+    [allPayments]
+  );
+
+  const hasPayments = paymentClientIds.length > 0 || paymentSaleIds.length > 0;
+
+  const { data: creditContext, isLoading: loadingCreditContext } = useQuery<{
+    creditSales: SaleMetricInput[];
+    creditSaleItems: SaleItem[];
+  }>({
+    queryKey: ['dashboard', 'credit_cost_context', paymentClientIds, paymentSaleIds, isDemoMode],
+    enabled: hasPayments,
+    queryFn: async () => {
+      if (isDemoActive()) {
+        const state = useDemoStore.getState();
+        return {
+          creditSales: state.demoSales.filter(s => s.payment_method === 'credito') as unknown as SaleMetricInput[],
+          creditSaleItems: state.demoSaleItems as unknown as SaleItem[],
+        };
+      }
+      if (!getIsOnline()) {
+        return { creditSales: [], creditSaleItems: [] };
+      }
+
+      const creditByClient = paymentClientIds.length > 0
+        ? await fetchByChunkedIn<SaleMetricInput>(paymentClientIds, (chunk) =>
+            supabase
+              .from('sales')
+              .select('id, client_id, total_amount, tax_amount, payment_method')
+              .eq('payment_method', 'credito')
+              .in('client_id', chunk)
+          )
+        : [];
+
+      const loadedSaleIds = new Set(creditByClient.map(s => s.id));
+      const missingSaleIds = paymentSaleIds.filter(id => !loadedSaleIds.has(id));
+
+      const extraSales = missingSaleIds.length > 0
+        ? await fetchByChunkedIn<SaleMetricInput>(missingSaleIds, (chunk) =>
+            supabase
+              .from('sales')
+              .select('id, client_id, total_amount, tax_amount, payment_method')
+              .in('id', chunk)
+          )
+        : [];
+
+      const dedupedSalesMap = new Map<string, SaleMetricInput>();
+      for (const s of [...creditByClient, ...extraSales]) {
+        dedupedSalesMap.set(s.id, s);
+      }
+      const creditSales = Array.from(dedupedSalesMap.values());
+      const creditSaleIds = creditSales.map(s => s.id);
+
+      const creditSaleItems = creditSaleIds.length > 0
+        ? await fetchByChunkedIn<SaleItem>(creditSaleIds, (chunk) =>
+            supabase
+              .from('sale_items')
+              .select('sale_id, product_id, quantity, unit_price, unit_cost, subtotal')
+              .in('sale_id', chunk)
+          )
+        : [];
+
+      return { creditSales, creditSaleItems };
     },
   });
 
@@ -254,96 +318,16 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
     return `Resumen Financiero (${periodLabel})`;
   }, [period, periodLabel]);
 
-  const productMap = useMemo(() => {
-    const map: Record<string, Product> = {};
-    (products ?? []).forEach(p => { map[p.id] = p; });
-    return map;
-  }, [products]);
-
   const currentMetrics = useMemo(() => {
-    const saleList = filteredSales;
-    const paymentList = allPayments ?? [];
-    const saleIds = new Set(saleList.map(s => s.id));
-    const items = saleItems ?? [];
-
-    let rawRevenue = 0;
-    let paidTaxAmount = 0;
-    let pendingCredit = 0;
-    let cashFromSales = 0;
-    let cardSales = 0;
-    let transferSales = 0;
-
-    saleList.forEach(s => {
-      const amt = Number(s.total_amount) || 0;
-      const taxAmt = Number(s.tax_amount) || 0;
-      rawRevenue += amt;
-      if (s.payment_method === 'credito') {
-        pendingCredit += amt;
-      } else {
-        paidTaxAmount += taxAmt;
-        if (s.payment_method === 'mixto' && s.payment_details) {
-          cashFromSales += Number(s.payment_details.cash) || 0;
-          cardSales += Number(s.payment_details.card) || 0;
-          transferSales += Number(s.payment_details.transfer) || 0;
-        } else if (s.payment_method === 'cash') {
-          cashFromSales += amt;
-        } else if (s.payment_method === 'card') {
-          cardSales += amt;
-        } else if (s.payment_method === 'transfer') {
-          transferSales += amt;
-        }
-      }
+    return computeDashboardMetrics({
+      sales: filteredSales,
+      saleItems: saleItems ?? [],
+      payments: allPayments ?? [],
+      products: products ?? [],
+      creditSales: creditContext?.creditSales ?? [],
+      creditSaleItems: creditContext?.creditSaleItems ?? [],
     });
-
-    let cashAbonos = 0;
-    let cardAbonos = 0;
-    let transferAbonos = 0;
-    paymentList.forEach(p => {
-      const amt = Number(p.amount) || 0;
-      if (p.payment_method === 'cash') {
-        cashAbonos += amt;
-      } else if (p.payment_method === 'card') {
-        cardAbonos += amt;
-      } else if (p.payment_method === 'transfer') {
-        transferAbonos += amt;
-      }
-    });
-
-    const totalAbonos = cashAbonos + cardAbonos + transferAbonos;
-    const receivedMoney = cashFromSales + cashAbonos;
-    const cardRevenue = cardSales + cardAbonos;
-    const transferRevenue = transferSales + transferAbonos;
-    const bsRevenue = cardRevenue + transferRevenue;
-    const effectiveRevenue = (rawRevenue - pendingCredit) + totalAbonos;
-
-    const saleMap = new Map(saleList.map(s => [s.id, s]));
-
-    let costOfPaidSales = 0;
-    items.forEach(item => {
-      if (saleIds.has(item.sale_id)) {
-        const sale = saleMap.get(item.sale_id);
-        if (sale && sale.payment_method !== 'credito') {
-          const itemCost = item.unit_cost !== undefined ? Number(item.unit_cost) : (productMap[item.product_id]?.cost || 0);
-          costOfPaidSales += (itemCost * item.quantity);
-        }
-      }
-    });
-
-    const profit = (rawRevenue - paidTaxAmount - pendingCredit - costOfPaidSales) + totalAbonos;
-    const margin = effectiveRevenue > 0 ? (profit / effectiveRevenue) * 100 : 0;
-
-    return {
-      revenue: effectiveRevenue,
-      cost: costOfPaidSales,
-      profit,
-      pendingCredit,
-      receivedMoney,
-      cardRevenue,
-      transferRevenue,
-      bsRevenue,
-      margin
-    };
-  }, [filteredSales, allPayments, saleItems, productMap]);
+  }, [filteredSales, allPayments, saleItems, products, creditContext]);
 
   const { showToast } = useToast();
 
@@ -415,7 +399,7 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
   const reducedMotion = useReducedMotion();
 
   // Show high-fidelity 1-to-1 structural skeleton while any core query is loading
-  const isLoading = loadingSales || !saleItems || !products;
+  const isLoading = loadingSales || !saleItems || !products || (hasPayments && loadingCreditContext);
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -522,10 +506,29 @@ export const DashboardPanel = React.memo(function DashboardPanel() {
                 </Text>
               </View>
 
+              {currentMetrics.tax > 0 && (
+                <View style={styles.moneyRow}>
+                  <View>
+                    <Text style={styles.moneyLabel} numberOfLines={1}>IVA recaudado</Text>
+                    <Text style={styles.moneyCaption} numberOfLines={1}>Incluido en lo vendido</Text>
+                  </View>
+                  <Text style={[styles.moneyValue, { color: tokens.colors.textMuted }]} numberOfLines={1}>
+                    -{formatUsd(currentMetrics.tax)}
+                  </Text>
+                </View>
+              )}
+
               <View style={[styles.moneyRow, { borderBottomWidth: 0 }]}>
                 <View>
                   <Text style={styles.moneyLabel} numberOfLines={1}>Costos</Text>
-                  <Text style={styles.moneyCaption} numberOfLines={1}>Mercancía vendida</Text>
+                  <Text
+                    style={[styles.moneyCaption, currentMetrics.missingCostProductCount > 0 && { color: tokens.colors.amber }]}
+                    numberOfLines={1}
+                  >
+                    {currentMetrics.missingCostProductCount > 0
+                      ? `${currentMetrics.missingCostProductCount} ${currentMetrics.missingCostProductCount === 1 ? 'producto sin costo' : 'productos sin costo'}`
+                      : 'Mercancía vendida'}
+                  </Text>
                 </View>
                 <Text style={[styles.moneyValue, { color: tokens.colors.textMuted }]} numberOfLines={1}>
                   -{formatUsd(currentMetrics.cost)}

@@ -15,19 +15,24 @@ const NOW = new Date();
 const TODAY_STR = NOW.toISOString();
 const PAST_DATE = new Date(NOW.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(); // 10 days ago
 
-const MOCK_PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   { id: 'p1', name: 'Product 1', cost: 10, price: 20, stock_quantity: 100 },
 ];
 
-const MOCK_SALES = [
+const DEFAULT_SALES = [
   { id: 's1', total_amount: 40, payment_method: 'cash', created_at: TODAY_STR }, // Today sale
   { id: 's2', total_amount: 100, payment_method: 'card', created_at: PAST_DATE }, // Past sale
 ];
 
-const MOCK_SALE_ITEMS = [
+const DEFAULT_SALE_ITEMS = [
   { sale_id: 's1', product_id: 'p1', quantity: 2, unit_price: 20, unit_cost: 10, subtotal: 40, sales: { created_at: TODAY_STR } }, // Cost: 2 * 10 = 20
   { sale_id: 's2', product_id: 'p1', quantity: 5, unit_price: 20, unit_cost: 10, subtotal: 100, sales: { created_at: PAST_DATE } }, // Cost: 5 * 10 = 50
 ];
+
+let mockSalesData: any[] = [];
+let mockSaleItemsData: any[] = [];
+let mockProductsData: any[] = [];
+let mockPaymentsData: any[] = [];
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
@@ -41,12 +46,17 @@ describe('DashboardPanel Metrics', () => {
   beforeEach(() => {
     queryClient.clear();
     jest.clearAllMocks();
+    mockSalesData = [...DEFAULT_SALES];
+    mockSaleItemsData = [...DEFAULT_SALE_ITEMS];
+    mockProductsData = [...DEFAULT_PRODUCTS];
+    mockPaymentsData = [];
     
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
       let filteredData: any[] = [];
-      if (table === 'sales') filteredData = [...MOCK_SALES];
-      else if (table === 'sale_items') filteredData = [...MOCK_SALE_ITEMS];
-      else if (table === 'products') filteredData = [...MOCK_PRODUCTS];
+      if (table === 'sales') filteredData = [...mockSalesData];
+      else if (table === 'sale_items') filteredData = [...mockSaleItemsData];
+      else if (table === 'products') filteredData = [...mockProductsData];
+      else if (table === 'client_payments') filteredData = [...mockPaymentsData];
 
       const mockChain: any = {
         select: jest.fn().mockReturnThis(),
@@ -61,11 +71,20 @@ describe('DashboardPanel Metrics', () => {
         in: jest.fn().mockImplementation((col, vals) => {
           if (col === 'sale_id') {
             filteredData = filteredData.filter(d => vals.includes(d.sale_id));
+          } else if (col === 'client_id') {
+            filteredData = filteredData.filter(d => vals.includes(d.client_id));
+          } else if (col === 'id') {
+            filteredData = filteredData.filter(d => vals.includes(d.id));
           }
           return mockChain;
         }),
         order: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockImplementation((col, val) => {
+          if (col === 'payment_method') {
+            filteredData = filteredData.filter(d => d.payment_method === val);
+          }
+          return mockChain;
+        }),
         single: jest.fn().mockReturnThis(),
       };
 
@@ -145,7 +164,7 @@ describe('DashboardPanel Metrics', () => {
       let filteredData: any[] = [];
       if (table === 'sales') filteredData = [taxedSale];
       else if (table === 'sale_items') filteredData = [taxedItem];
-      else if (table === 'products') filteredData = [...MOCK_PRODUCTS];
+      else if (table === 'products') filteredData = [...DEFAULT_PRODUCTS];
 
       const mockChain: any = {
         select: jest.fn().mockReturnThis(),
@@ -168,4 +187,50 @@ describe('DashboardPanel Metrics', () => {
     expect(profitElements.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/\$?\s*56[.,]00/)).toBeNull();
   });
+
+  it('falls back to catalog product cost when unit_cost is 0 or null and shows collected IVA', async () => {
+    mockProductsData = [
+      { id: 'p1', name: 'Product 1', cost: 25, price: 50, stock_quantity: 100 },
+    ];
+    mockSalesData = [
+      { id: 's1', total_amount: 116, payment_method: 'cash', iva_enabled: true, tax_amount: 16, created_at: TODAY_STR },
+    ];
+    mockSaleItemsData = [
+      { sale_id: 's1', product_id: 'p1', quantity: 1, unit_price: 50, unit_cost: 0, subtotal: 50 },
+      { sale_id: 's1', product_id: 'p1', quantity: 1, unit_price: 50, unit_cost: null, subtotal: 50 },
+    ];
+    mockPaymentsData = [];
+
+    await render(<DashboardPanel />, { wrapper });
+
+    expect(await screen.findByText('IVA recaudado')).toBeOnTheScreen();
+    expect(await screen.findByText('-$16,00')).toBeOnTheScreen();
+    // Total cost falls back to 2 * 25 = 50; profit = 116 - 16 (IVA) - 50 = 50
+    expect(await screen.findByText('-$50,00')).toBeOnTheScreen();
+    const profitElements = await screen.findAllByText(/\$?\s*50[.,]00/);
+    expect(profitElements.length).toBeGreaterThanOrEqual(1);
+  }, 20000);
+
+  it('deducts proportional credit sale cost from client_payments abonos', async () => {
+    mockProductsData = [
+      { id: 'p1', name: 'Product 1', cost: 60, price: 100, stock_quantity: 100 },
+    ];
+    mockSalesData = [
+      { id: 'cs_old', client_id: 'c1', total_amount: 100, payment_method: 'credito', tax_amount: 0, created_at: PAST_DATE },
+    ];
+    mockSaleItemsData = [
+      { sale_id: 'cs_old', product_id: 'p1', quantity: 1, unit_price: 100, unit_cost: 60, subtotal: 100 },
+    ];
+    mockPaymentsData = [
+      { id: 'pay1', client_id: 'c1', sale_id: 'cs_old', amount: 50, payment_method: 'cash', created_at: TODAY_STR },
+    ];
+
+    await render(<DashboardPanel />, { wrapper });
+
+    // Today filter excludes cs_old from sales, includes pay1 ($50 abono).
+    // Proportional cost = 50 * (60 / 100) = $30,00 -> profit = $20,00
+    expect(await screen.findByText('-$30,00')).toBeOnTheScreen();
+    const profitElements = await screen.findAllByText(/\$?\s*20[.,]00/);
+    expect(profitElements.length).toBeGreaterThanOrEqual(1);
+  }, 20000);
 });

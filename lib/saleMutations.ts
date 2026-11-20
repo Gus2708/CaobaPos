@@ -106,7 +106,7 @@ export async function updateSaleWithStockAdjustment({
       prev.product_id,
       (oldQtyByProduct.get(prev.product_id) ?? 0) + Number(prev.quantity || 0)
     );
-    if (prev.unit_cost !== undefined && prev.unit_cost !== null) {
+    if (prev.unit_cost !== undefined && prev.unit_cost !== null && Number(prev.unit_cost) > 0) {
       oldCostByProduct.set(prev.product_id, Number(prev.unit_cost));
     }
   }
@@ -153,11 +153,13 @@ export async function updateSaleWithStockAdjustment({
 
   // 5. Insert updated sale_items (preserving unit_cost); rollback old items if insert fails
   const rowsToInsert = items.map((item) => {
+    const explicitCost = Number(item.unit_cost);
+    const catalogCost = Number(dbProductMap.get(item.product_id)?.cost);
     const preservedCost =
-      item.unit_cost ??
-      oldCostByProduct.get(item.product_id) ??
-      dbProductMap.get(item.product_id)?.cost ??
-      0;
+      Number.isFinite(explicitCost) && explicitCost > 0
+        ? explicitCost
+        : oldCostByProduct.get(item.product_id) ??
+          (Number.isFinite(catalogCost) && catalogCost > 0 ? catalogCost : 0);
     return {
       sale_id: saleId,
       product_id: item.product_id,
