@@ -23,7 +23,7 @@ import { useExchangeRate } from '../hooks/useExchangeRate';
 import { useAuth } from '../hooks/useAuth';
 import { getEmployeeDisplayName } from '../hooks/useProducts';
 import { TAX_RATE } from '../lib/constants';
-import { formatUsd } from '../lib/money';
+import { formatUsd, parseAmount } from '../lib/money';
 const PAYMENT_METHODS = [
   { key: 'cash', label: 'Efectivo', icon: 'money-bill' },
   { key: 'card', label: 'Tarjeta', icon: 'credit-card' },
@@ -138,9 +138,9 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
       const totalBsVal = toBs(total);
 
       const paymentDetailsObj = selectedPayment === 'mixto' ? {
-        cash: parseFloat(mixCash) || 0,
-        card: parseFloat(mixCard) || 0,
-        transfer: parseFloat(mixTransfer) || 0,
+        cash: Math.max(0, parseAmount(mixCash)),
+        card: Math.max(0, parseAmount(mixCard)),
+        transfer: Math.max(0, parseAmount(mixTransfer)),
       } : undefined;
 
       const createdSale = await createSale.mutateAsync({
@@ -208,7 +208,10 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
     }
 
     if (selectedPayment === 'mixto') {
-      const sumMix = (parseFloat(mixCash) || 0) + (parseFloat(mixCard) || 0) + (parseFloat(mixTransfer) || 0);
+      const cashVal = Math.max(0, parseAmount(mixCash));
+      const cardVal = Math.max(0, parseAmount(mixCard));
+      const transferVal = Math.max(0, parseAmount(mixTransfer));
+      const sumMix = parseFloat((cashVal + cardVal + transferVal).toFixed(2));
       if (Math.abs(sumMix - total) > 0.05) {
         showToast(`El pago mixto (${formatUsd(sumMix)}) debe igualar el total (${formatUsd(total)})`, 'warning');
         return;
@@ -469,6 +472,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 keyboardType="decimal-pad"
                 value={mixCash}
                 onChangeText={setMixCash}
+                testID="mix-input-cash"
               />
             </View>
             <View style={styles.mixtoRow}>
@@ -480,6 +484,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 keyboardType="decimal-pad"
                 value={mixCard}
                 onChangeText={setMixCard}
+                testID="mix-input-card"
               />
             </View>
             <View style={styles.mixtoRow}>
@@ -491,6 +496,7 @@ export const CheckoutPanel = React.memo(function CheckoutPanel({ onCloseMobile }
                 keyboardType="decimal-pad"
                 value={mixTransfer}
                 onChangeText={setMixTransfer}
+                testID="mix-input-transfer"
               />
             </View>
           </View>
