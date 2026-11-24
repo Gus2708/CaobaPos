@@ -10,7 +10,7 @@ import { useHeaderHeight } from '../hooks/useHeaderInsets';
 import { Image } from 'expo-image';
 import { Text } from '../components/Text';
 import { CachedImage } from '../components/CachedImage';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import { Product, useSettingsStore } from '../store/cartStore';
@@ -21,7 +21,7 @@ import { ImagePickerModal } from '../components/ImagePickerModal';
 import { useToast } from '../components/Toast';
 import { tokens } from '../lib/designTokens';
 import { scale, verticalScale, moderateScale } from '../lib/responsive';
-import { formatUsd } from '../lib/money';
+import { formatUsd, parseAmount } from '../lib/money';
 import { showDialog } from '../lib/dialog';
 import { useCategories } from '../hooks/useProducts';
 import { globalScrollY, headerTranslateY } from '../store/uiStore';
@@ -94,7 +94,7 @@ const ProductItem = memo(({
   setQuickCatText: (s: string) => void;
   handleQuickAdd: (t: 'new' | 'edit') => void;
 }) => {
-  if (isEditing) {
+  if (isEditing && !readOnly) {
     const editState = item as unknown as EditState;
     return (
       <View style={styles.editCard} testID="edit-card">
@@ -173,6 +173,7 @@ const ProductItem = memo(({
               placeholder="0.00"
               placeholderTextColor="#6A6A72"
               keyboardType="decimal-pad"
+              testID="edit-input-cost"
             />
           </View>
           <View style={[styles.flex1, styles.formSection]}>
@@ -294,10 +295,13 @@ const ProductItem = memo(({
   return (
     <TouchableOpacity 
       style={styles.listItemWrapper} 
-      onPress={() => onStartEdit(item)}
-      activeOpacity={0.7}
+      onPress={() => {
+        if (!readOnly) onStartEdit(item);
+      }}
+      disabled={readOnly}
+      activeOpacity={readOnly ? 1 : 0.7}
       accessibilityRole="button"
-      accessibilityLabel={`Editar ${item.name}`}
+      accessibilityLabel={readOnly ? item.name : `Editar ${item.name}`}
     >
       <View style={styles.item}>
         <View style={styles.itemMainRow}>
@@ -329,9 +333,11 @@ const ProductItem = memo(({
             </View>
           </View>
 
-          <View style={styles.itemChevron}>
-            <Icon name="chevron-right" size={20} color={tokens.colors.textMuted} />
-          </View>
+          {!readOnly && (
+            <View style={styles.itemChevron}>
+              <Icon name="chevron-right" size={20} color={tokens.colors.textMuted} />
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -425,7 +431,7 @@ export const InventoryPanel = memo(function InventoryPanel({
       
       return (data || []).map(p => ({
         ...p,
-        categories: p.product_categories?.map((pc: any) => pc.category.name) || []
+        categories: p.product_categories?.map((pc: any) => pc.category?.name).filter(Boolean) || []
       }));
     },
     getNextPageParam: (lastPage, allPages) => {
@@ -450,34 +456,34 @@ export const InventoryPanel = memo(function InventoryPanel({
   const updateMutation = useMutation({
     mutationFn: async (item: EditState) => {
       if (isDemoActive()) {
-        useDemoStore.getState().simulateUpdateProduct(item.id, {
+        return useDemoStore.getState().simulateUpdateProduct(item.id, {
           name: item.name,
-          price: parseFloat(item.price) || 0,
-          cost: parseFloat(item.cost) || 0,
-          stock_quantity: parseInt(item.stock) || 0,
+          price: Math.max(0, parseAmount(item.price)),
+          cost: Math.max(0, parseAmount(item.cost)),
+          stock_quantity: parseInt(item.stock, 10) || 0,
           categories: item.categories,
           barcode: item.barcode || undefined,
         });
-        return;
       }
 
       if (!getIsOnline()) {
         const updates: Record<string, any> = {
           name: item.name,
-          price: parseFloat(item.price) || 0,
-          cost: parseFloat(item.cost) || 0,
-          stock_quantity: parseInt(item.stock) || 0,
+          price: Math.max(0, parseAmount(item.price)),
+          cost: Math.max(0, parseAmount(item.cost)),
+          stock_quantity: parseInt(item.stock, 10) || 0,
           category: item.categories[0] || null,
         };
         if (item.barcode) updates.barcode = item.barcode;
         await enqueueOfflineItem('UPDATE_PRODUCT', { id: item.id, updates });
         const cached = await getCachedProducts();
+        const existing = cached.find((p) => p.id === item.id);
         await saveCachedProducts(
           cached.map((p) =>
             p.id === item.id ? { ...p, ...updates, categories: item.categories } : p
           )
         );
-        return;
+        return existing ? ({ ...existing, ...updates, categories: item.categories } as Product) : null;
       }
 
       if (item.barcode) {
@@ -548,9 +554,9 @@ export const InventoryPanel = memo(function InventoryPanel({
 
       const updates: Record<string, any> = {
         name: item.name,
-        price: parseFloat(item.price) || 0,
-        cost: parseFloat(item.cost) || 0,
-        stock_quantity: parseInt(item.stock) || 0,
+        price: Math.max(0, parseAmount(item.price)),
+        cost: Math.max(0, parseAmount(item.cost)),
+        stock_quantity: parseInt(item.stock, 10) || 0,
         category: item.categories[0] || null,
       };
       
@@ -569,18 +575,37 @@ export const InventoryPanel = memo(function InventoryPanel({
         }
       }
 
-      const { error } = await supabase
+      const { data: updatedRow, error } = await supabase
         .from('products')
         .update(updates)
-        .eq('id', item.id);
+        .eq('id', item.id)
+        .select('*')
+        .maybeSingle();
       if (error) throw error;
+      if (!updatedRow) {
+        throw new Error('No se pudo actualizar el producto. Verifica que tengas permisos de administrador.');
+      }
+      return { ...updatedRow, categories: item.categories } as Product;
     },
-    onSuccess: () => {
+    onSuccess: (updatedProduct) => {
+      if (updatedProduct) {
+        queryClient.setQueryData<InfiniteData<Product[]>>(
+          ['inventory-products', isDemoMode],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              pages: old.pages.map((page) =>
+                page.map((p) => (p.id === updatedProduct.id ? { ...p, ...updatedProduct } : p))
+              ),
+            };
+          }
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard', 'products'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
       setEditing(null);
       showToast('Producto actualizado', 'success');
       onSuccess?.();
@@ -604,14 +629,22 @@ export const InventoryPanel = memo(function InventoryPanel({
         return;
       }
       // 1. Soft delete (Archive)
-      const { error } = await supabase.from('products').update({ is_active: false }).eq('id', id);
+      const { data: deletedRow, error } = await supabase
+        .from('products')
+        .update({ is_active: false })
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
       if (error) throw error;
+      if (!deletedRow) {
+        throw new Error('No se pudo eliminar el producto. Verifica tus permisos de administrador.');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory-products'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
-    onError: () => showToast('No se pudo eliminar', 'error'),
+    onError: (error: any) => showToast(error?.message || 'No se pudo eliminar', 'error'),
   });
 
   const createMutation = useMutation({
@@ -619,9 +652,9 @@ export const InventoryPanel = memo(function InventoryPanel({
       if (isDemoActive()) {
         useDemoStore.getState().simulateAddProduct({
           name: newProduct.name,
-          price: parseFloat(newProduct.price) || 0,
-          cost: parseFloat(newProduct.cost) || 0,
-          stock_quantity: parseInt(newProduct.stock) || 0,
+          price: Math.max(0, parseAmount(newProduct.price)),
+          cost: Math.max(0, parseAmount(newProduct.cost)),
+          stock_quantity: parseInt(newProduct.stock, 10) || 0,
           barcode: newProduct.barcode || undefined,
           is_active: true,
           categories: newProduct.categories,
@@ -632,9 +665,9 @@ export const InventoryPanel = memo(function InventoryPanel({
       if (!getIsOnline()) {
         const productPayload = {
           name: newProduct.name,
-          price: parseFloat(newProduct.price) || 0,
-          cost: parseFloat(newProduct.cost) || 0,
-          stock_quantity: parseInt(newProduct.stock) || 0,
+          price: Math.max(0, parseAmount(newProduct.price)),
+          cost: Math.max(0, parseAmount(newProduct.cost)),
+          stock_quantity: parseInt(newProduct.stock, 10) || 0,
           barcode: newProduct.barcode || null,
           is_active: true,
           category: newProduct.categories[0]?.toLowerCase() || null,
@@ -673,9 +706,9 @@ export const InventoryPanel = memo(function InventoryPanel({
 
       const { data, error: insertError } = await supabase.from('products').insert({
         name: newProduct.name,
-        price: parseFloat(newProduct.price) || 0,
-        cost: parseFloat(newProduct.cost) || 0,
-        stock_quantity: parseInt(newProduct.stock) || 0,
+        price: Math.max(0, parseAmount(newProduct.price)),
+        cost: Math.max(0, parseAmount(newProduct.cost)),
+        stock_quantity: parseInt(newProduct.stock, 10) || 0,
         barcode: newProduct.barcode || null,
         is_active: true,
         category: newProduct.categories[0]?.toLowerCase() || null,
@@ -868,6 +901,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   }, []);
 
   const startEdit = (product: Product) => {
+    if (readOnly) return;
     setEditing({
       id: product.id,
       name: product.name,
@@ -881,7 +915,7 @@ export const InventoryPanel = memo(function InventoryPanel({
   };
 
   const saveEdit = () => {
-    if (!editing) return;
+    if (readOnly || !editing) return;
     if (!editing.name.trim()) {
       showToast('El nombre es requerido', 'warning');
       return;
@@ -1257,6 +1291,7 @@ export const InventoryPanel = memo(function InventoryPanel({
         <AnimatedFlashList
           ListHeaderComponent={ListHeader}
           data={filteredProducts}
+          extraData={editing}
           keyExtractor={(item: any) => item.id}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"

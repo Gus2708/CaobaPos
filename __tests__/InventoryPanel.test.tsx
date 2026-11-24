@@ -80,3 +80,185 @@ describe('InventoryPanel', () => {
     expect(createBtn).toBeDisabled();
   }, 15000);
 });
+
+describe('InventoryPanel product editing', () => {
+  const defaultFromImpl = (supabase.from as jest.Mock).getMockImplementation();
+
+  afterEach(() => {
+    if (defaultFromImpl) {
+      (supabase.from as jest.Mock).mockImplementation(defaultFromImpl);
+    }
+    jest.clearAllMocks();
+  });
+
+  function setupProductMocks(options: {
+    updateResult: { data: any; error: any };
+    onProductUpdate?: (updates: Record<string, any>) => void;
+  }) {
+    const productRow = {
+      id: 'prod-lays-1',
+      name: 'Lays 80g',
+      price: 1.5,
+      cost: 0.9,
+      stock_quantity: 12,
+      barcode: '',
+      is_active: true,
+      created_at: '2026-01-01T00:00:00.000Z',
+      product_categories: [{ category: { name: 'Snacks' } }],
+    };
+
+    (supabase.from as jest.Mock).mockImplementation((table: string) => {
+      if (table === 'categories') {
+        return {
+          select: jest.fn((cols: string) => {
+            if (cols === 'name') {
+              return {
+                order: jest.fn().mockResolvedValue({ data: [{ name: 'Snacks' }], error: null }),
+              };
+            }
+            return {
+              in: jest.fn().mockResolvedValue({ data: [{ id: 'cat-snacks' }], error: null }),
+            };
+          }),
+          upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+
+      if (table === 'product_categories') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn().mockResolvedValue({
+              data: [{ category_id: 'cat-snacks' }],
+              error: null,
+            }),
+          })),
+          delete: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              in: jest.fn().mockResolvedValue({ error: null }),
+            })),
+          })),
+          upsert: jest.fn().mockResolvedValue({ error: null }),
+        };
+      }
+
+      if (table === 'products') {
+        return {
+          select: jest.fn(() => ({
+            eq: jest.fn(() => ({
+              order: jest.fn(() => ({
+                range: jest.fn().mockResolvedValue({ data: [productRow], error: null }),
+              })),
+              neq: jest.fn(() => ({
+                eq: jest.fn(() => ({
+                  maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+                })),
+              })),
+            })),
+          })),
+          update: jest.fn((updates: Record<string, any>) => {
+            options.onProductUpdate?.(updates);
+            return {
+              eq: jest.fn(() => ({
+                select: jest.fn(() => ({
+                  maybeSingle: jest.fn().mockResolvedValue(options.updateResult),
+                })),
+              })),
+            };
+          }),
+        };
+      }
+
+      return defaultFromImpl ? defaultFromImpl(table) : {};
+    });
+  }
+
+  it('parses comma decimals for price and cost and confirms the updated row', async () => {
+    let capturedUpdates: Record<string, any> | null = null;
+    setupProductMocks({
+      onProductUpdate: (updates) => {
+        capturedUpdates = updates;
+      },
+      updateResult: {
+        data: {
+          id: 'prod-lays-1',
+          name: 'Lays 80g',
+          price: 2.5,
+          cost: 1.25,
+          stock_quantity: 12,
+          is_active: true,
+          created_at: '2026-01-01T00:00:00.000Z',
+        },
+        error: null,
+      },
+    });
+
+    await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
+
+    const row = await screen.findByRole('button', { name: 'Editar Lays 80g' }, { timeout: 5000 });
+    await fireEvent.press(row);
+
+    const priceInput = await screen.findByTestId('edit-input-price', {}, { timeout: 5000 });
+    await fireEvent.changeText(priceInput, '2,50');
+    const costInput = await screen.findByTestId('edit-input-cost', {}, { timeout: 5000 });
+    await fireEvent.changeText(costInput, '1,25');
+
+    expect(screen.getByTestId('edit-input-price').props.value).toBe('2,50');
+    expect(screen.getByTestId('edit-input-cost').props.value).toBe('1,25');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Guardar Cambios' }));
+
+    expect(await screen.findByText('Producto actualizado', {}, { timeout: 5000 })).toBeOnTheScreen();
+    expect(capturedUpdates).toEqual(
+      expect.objectContaining({
+        name: 'Lays 80g',
+        price: 2.5,
+        cost: 1.25,
+        stock_quantity: 12,
+      })
+    );
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-card')).toBeNull();
+    });
+  }, 15000);
+
+  it('shows a permission error and keeps edit mode open when update affects 0 rows', async () => {
+    setupProductMocks({
+      updateResult: { data: null, error: null },
+    });
+
+    await render(<InventoryPanel readOnly={false} />, { wrapper: AllTheProviders });
+
+    const row = await screen.findByRole('button', { name: 'Editar Lays 80g' }, { timeout: 5000 });
+    await fireEvent.press(row);
+
+    const priceInput = await screen.findByTestId('edit-input-price', {}, { timeout: 5000 });
+    await fireEvent.changeText(priceInput, '3,00');
+    const costInput = await screen.findByTestId('edit-input-cost', {}, { timeout: 5000 });
+    await fireEvent.changeText(costInput, '1,80');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Guardar Cambios' }));
+
+    expect(
+      await screen.findByText(
+        'No se pudo actualizar el producto. Verifica que tengas permisos de administrador.',
+        {},
+        { timeout: 5000 }
+      )
+    ).toBeOnTheScreen();
+    expect(screen.queryByText('Producto actualizado')).toBeNull();
+    expect(screen.getByTestId('edit-card')).toBeOnTheScreen();
+  }, 15000);
+
+  it('does not open edit mode when readOnly is true', async () => {
+    setupProductMocks({
+      updateResult: { data: null, error: null },
+    });
+
+    await render(<InventoryPanel readOnly={true} />, { wrapper: AllTheProviders });
+
+    const productLabel = await screen.findByText('Lays 80g', {}, { timeout: 5000 });
+    await fireEvent.press(productLabel);
+
+    expect(screen.queryByTestId('edit-card')).toBeNull();
+  }, 15000);
+});

@@ -330,23 +330,33 @@ async function processSingleItem(
 
     case 'UPDATE_PRODUCT': {
       const { id, updates } = item.payload;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('No se pudo sincronizar la actualización del producto (sin permisos o producto inexistente)');
+      }
       break;
     }
 
     case 'DELETE_PRODUCT': {
       const { id } = item.payload;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .update({ is_active: false })
-        .eq('id', id);
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        throw new Error('No se pudo sincronizar la eliminación del producto (sin permisos o producto inexistente)');
+      }
       break;
     }
 

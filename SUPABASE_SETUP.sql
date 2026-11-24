@@ -20,13 +20,11 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE(
-    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin',
-    EXISTS (
+  SELECT COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false)
+    OR EXISTS (
       SELECT 1 FROM user_roles
       WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
+    );
 $$;
 
 -- 2. Categories & Products
